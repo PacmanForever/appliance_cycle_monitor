@@ -190,3 +190,12 @@ async def test_migrate_saved_duration_options_from_minutes_to_seconds(hass):
         "max_runtime_seconds": 5400,
         "start_power_w": 4,
     }
+
+
+@pytest.mark.asyncio
+async def test_migrate_future_config_entry_version_is_rejected(hass):
+    entry = MockConfigEntry(domain=DOMAIN, version=3)
+    entry.add_to_hass(hass)
+
+    assert not await async_migrate_entry(hass, entry)
+    assert entry.version == 3
