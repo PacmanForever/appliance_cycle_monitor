@@ -54,6 +54,13 @@ def config() -> dict[str, str]:
     }
 
 
+async def _async_fire_deadline(runtime: ApplianceRuntime, when: datetime) -> None:
+    if runtime._unsubscribe_timer is not None:
+        runtime._unsubscribe_timer()
+        runtime._unsubscribe_timer = None
+    await runtime._async_handle_deadline(when)
+
+
 @pytest.mark.asyncio
 async def test_power_updates_and_switch_off_are_event_driven(hass, config, monkeypatch):
     current_time = [datetime.now(timezone.utc)]
@@ -68,7 +75,7 @@ async def test_power_updates_and_switch_off_are_event_driven(hass, config, monke
     await runtime.async_setup()
 
     current_time[0] += timedelta(seconds=15)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert runtime.detector.is_running
 
     current_time[0] += timedelta(seconds=1)
@@ -117,7 +124,7 @@ async def test_runtime_state_restores_after_unload(hass, config, monkeypatch):
     runtime = ApplianceRuntime(hass, entry, config)
     await runtime.async_setup()
     current_time[0] += timedelta(seconds=15)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     runtime.energy_kwh = 0.125
     runtime.pending_unload = True
     runtime.pending_reminder_count = 1
@@ -148,7 +155,7 @@ async def test_energy_integrates_power_over_elapsed_time(hass, config, monkeypat
     await runtime.async_setup()
 
     current_time[0] += timedelta(hours=1)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
 
     assert runtime.energy_kwh == pytest.approx(0.1)
     await runtime.async_unload()
@@ -170,17 +177,17 @@ async def test_max_runtime_actions_fire_once(hass, config, monkeypatch):
     await runtime.async_setup()
 
     current_time[0] += timedelta(seconds=15)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert runtime.detector.is_running
     triggered.clear()
 
     current_time[0] += timedelta(seconds=59)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert CONF_MAX_RUNTIME_ACTIONS not in triggered
 
     current_time[0] += timedelta(seconds=1)
-    await runtime._async_handle_deadline(current_time[0])
-    await runtime._async_handle_deadline(current_time[0] + timedelta(seconds=1))
+    await _async_fire_deadline(runtime, current_time[0])
+    await _async_fire_deadline(runtime, current_time[0] + timedelta(seconds=1))
 
     assert triggered == [CONF_MAX_RUNTIME_ACTIONS]
     assert runtime.detector.is_running
@@ -218,28 +225,28 @@ async def test_pending_reminders_use_initial_delay_then_repeat_interval(
     await runtime.async_setup()
 
     current_time[0] += timedelta(seconds=15)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     current_time[0] += timedelta(seconds=5)
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "0.5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
     )
     await hass.async_block_till_done()
     current_time[0] += timedelta(minutes=1)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     first_reminder_at = current_time[0] + timedelta(seconds=120)
 
     current_time[0] = first_reminder_at - timedelta(seconds=1)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert reminders == []
     current_time[0] = first_reminder_at
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert reminders == [CONF_PENDING_ACTIONS]
 
     current_time[0] += timedelta(seconds=299)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert len(reminders) == 1
     current_time[0] += timedelta(seconds=1)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert reminders == [CONF_PENDING_ACTIONS, CONF_PENDING_ACTIONS]
     assert runtime.next_pending_reminder is None
     await runtime.async_unload()
@@ -282,8 +289,8 @@ async def test_overdue_restored_reminder_runs_once_then_resumes_interval(
     monkeypatch.setattr(runtime, "_run_actions", record_actions)
     await runtime.async_setup()
 
-    await runtime._async_handle_deadline(current_time[0])
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
 
     assert reminders == [CONF_PENDING_ACTIONS]
     assert runtime.pending_reminder_count == 1
@@ -304,7 +311,7 @@ async def test_unavailable_power_does_not_finish_a_cycle(hass, config, monkeypat
     await runtime.async_setup()
 
     current_time[0] += timedelta(seconds=15)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     current_time[0] += timedelta(seconds=5)
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "0.5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
@@ -314,7 +321,7 @@ async def test_unavailable_power_does_not_finish_a_cycle(hass, config, monkeypat
     hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
     await hass.async_block_till_done()
     current_time[0] += timedelta(minutes=2)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
 
     assert runtime.detector.is_running
     assert runtime.detector.last_cycle_duration is None
@@ -573,7 +580,7 @@ async def test_restored_finish_deadline_waits_for_power_to_return(
     assert restored_deadline == current_time[0] + timedelta(seconds=80)
 
     current_time[0] += timedelta(minutes=2)
-    await runtime._async_handle_deadline(current_time[0])
+    await _async_fire_deadline(runtime, current_time[0])
     assert runtime.detector.is_running
     assert runtime.detector.next_deadline == restored_deadline
 
