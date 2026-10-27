@@ -56,7 +56,7 @@ def config() -> dict[str, str]:
 
 @pytest.mark.asyncio
 async def test_power_updates_and_switch_off_are_event_driven(hass, config, monkeypatch):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
@@ -82,7 +82,7 @@ async def test_power_updates_and_switch_off_are_event_driven(hass, config, monke
 
 @pytest.mark.asyncio
 async def test_door_open_clears_pending_reminders(hass, config, monkeypatch):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
     hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
@@ -107,7 +107,7 @@ async def test_door_open_clears_pending_reminders(hass, config, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_runtime_state_restores_after_unload(hass, config, monkeypatch):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
@@ -137,7 +137,7 @@ async def test_runtime_state_restores_after_unload(hass, config, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_energy_integrates_power_over_elapsed_time(hass, config, monkeypatch):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "100", {ATTR_UNIT_OF_MEASUREMENT: "W"}
@@ -156,7 +156,7 @@ async def test_energy_integrates_power_over_elapsed_time(hass, config, monkeypat
 
 @pytest.mark.asyncio
 async def test_max_runtime_actions_fire_once(hass, config, monkeypatch):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     config[CONF_MAX_RUNTIME_SECONDS] = 60
     hass.states.async_set(
@@ -191,7 +191,7 @@ async def test_max_runtime_actions_fire_once(hass, config, monkeypatch):
 async def test_pending_reminders_use_initial_delay_then_repeat_interval(
     hass, config, monkeypatch
 ):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     config.update(
         {
@@ -249,7 +249,7 @@ async def test_pending_reminders_use_initial_delay_then_repeat_interval(
 async def test_overdue_restored_reminder_runs_once_then_resumes_interval(
     hass, config, monkeypatch
 ):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     config.update(
         {
@@ -293,7 +293,7 @@ async def test_overdue_restored_reminder_runs_once_then_resumes_interval(
 
 @pytest.mark.asyncio
 async def test_unavailable_power_does_not_finish_a_cycle(hass, config, monkeypatch):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
@@ -325,7 +325,7 @@ async def test_unavailable_power_does_not_finish_a_cycle(hass, config, monkeypat
 async def test_remaining_estimate_decreases_during_power_outage(
     hass, config, monkeypatch
 ):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
@@ -555,7 +555,7 @@ async def test_optional_plug_and_pending_button_controls(
 async def test_restored_finish_deadline_waits_for_power_to_return(
     hass, config, monkeypatch
 ):
-    current_time = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
+    current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     detector = ApplianceCycleDetector()
     detector.observe_power(5, "W", current_time[0])

@@ -3,10 +3,9 @@
 import pytest
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers.config_validation import custom_serializer
+from homeassistant.helpers import selector
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.plugins import enable_custom_integrations
-from voluptuous_serialize import convert
 
 from custom_components.appliance_cycle_monitor import async_migrate_entry
 from custom_components.appliance_cycle_monitor.const import (
@@ -31,14 +30,14 @@ async def test_add_appliance_through_three_config_flow_steps(
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
-    serialized_schema = convert(
-        result["data_schema"], custom_serializer=custom_serializer
+    power_selector = next(
+        value
+        for marker, value in result["data_schema"].schema.items()
+        if marker.schema == CONF_POWER_ENTITY
     )
-    power_field = next(
-        field for field in serialized_schema if field["name"] == CONF_POWER_ENTITY
-    )
-    assert power_field["selector"]["entity"]["filter"] == [
-        {"device_class": ["power"], "domain": ["sensor"]}
+    assert isinstance(power_selector, selector.EntitySelector)
+    assert power_selector.config["filter"] == [
+        {"domain": ["sensor"], "device_class": ["power"]}
     ]
     flow_id = result["flow_id"]
 
