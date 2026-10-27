@@ -11,6 +11,8 @@ permissions:
 jobs:
   component:
     runs-on: ubuntu-latest
+    outputs:
+      tested_version: ${{ steps.home_assistant_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,4 +22,35 @@ jobs:
           cache-dependency-path: requirements-test.txt
       - run: pip install -r requirements-test.txt
       - run: pip install --upgrade homeassistant
+      - name: Capture tested Home Assistant version
+        id: home_assistant_version
+        run: echo "version=$(python -c 'from importlib.metadata import version; print(version("homeassistant"))')" >> "$GITHUB_OUTPUT"
       - run: python -m pytest -q tests/component
+
+  publish-tested-version:
+    if: github.ref == 'refs/heads/main'
+    needs: component
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Update tested version badge data
+        env:
+          TESTED_VERSION: ${{ needs.component.outputs.tested_version }}
+        run: |
+          python -c "import json, os; from pathlib import Path; Path('docs/home_assistant_compatibility.json').write_text(json.dumps({'tested_version': os.environ['TESTED_VERSION']}, indent=2) + '\\n')"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/home_assistant_compatibility.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: update tested Home Assistant version"
+          git pull --rebase origin main
+          git push origin main

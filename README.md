@@ -8,7 +8,7 @@
 [![HA Validation Tests](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/hassfest.yml/badge.svg?branch=main)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/hassfest.yml)
 [![License](https://img.shields.io/github/license/PacmanForever/appliance_cycle_monitor?label=GPLv3)](LICENSE)
 [![Coverage](https://img.shields.io/badge/coverage-%3E%3D95%25-brightgreen)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/tests.yml)
-[![Home Assistant](https://img.shields.io/badge/home%20assistant-2026.2.3%20tested-blue)](https://www.home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPacmanForever%2Fappliance_cycle_monitor%2Fmain%2Fdocs%2Fhome_assistant_compatibility.json&query=%24.tested_version&suffix=%20tested&label=home%20assistant&color=blue)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml)
 [![Daily HA compatibility](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml/badge.svg?branch=main)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml)
 
 A local Home Assistant integration that detects washer, dishwasher, and dryer cycles from an existing power sensor. It manages each appliance as its own Home Assistant device, with configurable actions and no external service or credentials.
@@ -64,6 +64,8 @@ python3 -m pytest -q --cov=custom_components.appliance_cycle_monitor --cov-repor
 ```
 
 GitHub Actions runs unit and component tests with combined coverage enforcement, HACS validation, Hassfest, and a daily component test against the latest stable Home Assistant release. Checks run on pushes and pull requests to `main`, and can also be started manually.
+
+The Home Assistant badge shows the latest stable version that passed the daily component tests and updates automatically after a successful run.
 
 ## License
 
