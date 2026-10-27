@@ -59,3 +59,7 @@ python3 -m pytest -q --cov=custom_components.appliance_cycle_monitor --cov-repor
 ```
 
 GitHub Actions runs unit and component tests with combined coverage enforcement, HACS validation, Hassfest, and a daily component test against the latest stable Home Assistant release. Checks run on pushes and pull requests to `main`, and can also be started manually.
+
+## License
+
+This project is distributed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for the full text.
