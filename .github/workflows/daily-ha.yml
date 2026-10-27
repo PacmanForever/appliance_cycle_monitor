@@ -21,7 +21,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-test.txt
       - run: pip install -r requirements-test.txt
-      - run: pip install --upgrade homeassistant
+      - run: pip install --upgrade homeassistant pytest-homeassistant-custom-component
       - name: Capture tested Home Assistant version
         id: home_assistant_version
         run: echo "version=$(python -c 'from importlib.metadata import version; print(version("homeassistant"))')" >> "$GITHUB_OUTPUT"
