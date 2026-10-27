@@ -1,0 +1,110 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Electrodomèstic i sensors d’entrada",
+        "data": {
+          "name": "Nom que es mostrarà per a aquest electrodomèstic",
+          "appliance_type": "Categoria (rentadora, rentaplats o assecadora)",
+          "power_entity": "Sensor de potència de l’aparell (ha d’indicar watts)",
+          "door_entity": "Sensor de porta oberta (opcional; activa l’estat i els avisos per buidar)",
+          "plug_entity": "Interruptor de l’endoll intel·ligent (opcional; si s’apaga, el cicle acaba)"
+        }
+      },
+      "thresholds": {
+        "title": "Condicions d’inici i finalització del cicle",
+        "data": {
+          "start_power_w": "Potència per sobre de la qual es considera que comença el cicle (W)",
+          "start_duration_seconds": "Segons que la potència ha de superar el llindar d’inici per confirmar el cicle",
+          "finish_power_w": "Potència per sota de la qual es considera que acaba el cicle (W)",
+          "finish_duration_seconds": "Segons que la potència ha d’estar sota el llindar final per confirmar que el cicle ha acabat",
+          "max_runtime_seconds": "Temps màxim del cicle en segons (avís opcional; no atura l’aparell)"
+        }
+      },
+      "actions": {
+        "title": "Accions per als esdeveniments del cicle",
+        "data": {
+          "start_actions": "Accions que s’executen quan comença el cicle",
+          "finish_actions": "Accions que s’executen quan acaba el cicle",
+          "max_runtime_actions": "Accions que s’executen una vegada si se supera el temps màxim",
+          "pending_actions": "Accions que es repeteixen mentre està pendent de buidar (requereix sensor de porta)",
+          "pending_delay_seconds": "Segons d’espera després del cicle abans del primer avís per buidar",
+          "pending_interval_seconds": "Segons entre els avisos posteriors per buidar",
+          "pending_repeats": "Avisos addicionals al primer (3 vol dir 4 avisos en total)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "Comprova que la potència de finalització sigui inferior a la d’inici i que els temps siguin vàlids.",
+      "invalid_pending_settings": "El retard ha de ser un enter positiu i les repeticions un enter no negatiu."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Electrodomèstic i sensors d’entrada",
+        "data": {
+          "name": "Nom que es mostrarà per a aquest electrodomèstic",
+          "appliance_type": "Categoria (rentadora, rentaplats o assecadora)",
+          "power_entity": "Sensor de potència de l’aparell (ha d’indicar watts)",
+          "door_entity": "Sensor de porta oberta (opcional; activa l’estat i els avisos per buidar)",
+          "plug_entity": "Interruptor de l’endoll intel·ligent (opcional; si s’apaga, el cicle acaba)"
+        }
+      },
+      "thresholds": {
+        "title": "Condicions d’inici i finalització del cicle",
+        "data": {
+          "start_power_w": "Potència per sobre de la qual es considera que comença el cicle (W)",
+          "start_duration_seconds": "Segons que la potència ha de superar el llindar d’inici per confirmar el cicle",
+          "finish_power_w": "Potència per sota de la qual es considera que acaba el cicle (W)",
+          "finish_duration_seconds": "Segons que la potència ha d’estar sota el llindar final per confirmar que el cicle ha acabat",
+          "max_runtime_seconds": "Temps màxim del cicle en segons (avís opcional; no atura l’aparell)"
+        }
+      },
+      "actions": {
+        "title": "Accions per als esdeveniments del cicle",
+        "data": {
+          "start_actions": "Accions que s’executen quan comença el cicle",
+          "finish_actions": "Accions que s’executen quan acaba el cicle",
+          "max_runtime_actions": "Accions que s’executen una vegada si se supera el temps màxim",
+          "pending_actions": "Accions que es repeteixen mentre està pendent de buidar (requereix sensor de porta)",
+          "pending_delay_seconds": "Segons d’espera després del cicle abans del primer avís per buidar",
+          "pending_interval_seconds": "Segons entre els avisos posteriors per buidar",
+          "pending_repeats": "Avisos addicionals al primer (3 vol dir 4 avisos en total)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "Comprova que la potència de finalització sigui inferior a la d’inici i que els temps siguin vàlids.",
+      "invalid_pending_settings": "El retard ha de ser un enter positiu i les repeticions un enter no negatiu."
+    }
+  },
+  "selector": {
+    "appliance_type": {
+      "options": {
+        "washer": "Rentadora",
+        "dishwasher": "Rentaplats",
+        "dryer": "Assecadora"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {"name": "Potència"},
+      "total_energy": {"name": "Energia total"},
+      "last_cycle_duration": {"name": "Durada de l’últim cicle"},
+      "estimated_remaining": {"name": "Temps restant estimat"}
+    },
+    "binary_sensor": {
+      "running": {"name": "En funcionament"},
+      "door": {"name": "Porta"},
+      "pending_unload": {"name": "Pendent de buidar"}
+    },
+    "switch": {
+      "plug": {"name": "Endoll intel·ligent"}
+    },
+    "button": {
+      "clear_pending": {"name": "Neteja l’estat «Pendent de buidar»"}
+    }
+  }
+}

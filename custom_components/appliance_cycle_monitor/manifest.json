@@ -1,0 +1,12 @@
+{
+  "domain": "appliance_cycle_monitor",
+  "name": "Appliance Cycle Monitor",
+  "codeowners": ["@PacmanForever"],
+  "config_flow": true,
+  "documentation": "https://github.com/PacmanForever/appliance_cycle_monitor",
+  "integration_type": "device",
+  "issue_tracker": "https://github.com/PacmanForever/appliance_cycle_monitor/issues",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "0.1.0"
+}

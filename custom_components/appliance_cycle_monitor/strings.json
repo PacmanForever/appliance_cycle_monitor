@@ -1,0 +1,110 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Appliance and input sensors",
+        "data": {
+          "name": "Name shown for this appliance",
+          "appliance_type": "Appliance category (washer, dishwasher, or dryer)",
+          "power_entity": "Power sensor for this appliance (in watts)",
+          "door_entity": "Door-open sensor (optional; enables unload status and reminders)",
+          "plug_entity": "Smart plug switch (optional; switching it off ends an active cycle)"
+        }
+      },
+      "thresholds": {
+        "title": "Cycle start and finish conditions",
+        "data": {
+          "start_power_w": "Power above which a cycle is considered started (W)",
+          "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
+          "finish_power_w": "Power below which a cycle is considered finished (W)",
+          "finish_duration_seconds": "Seconds power must stay below the finish level before confirming the cycle has ended",
+          "max_runtime_seconds": "Maximum cycle time in seconds (optional warning only; does not stop the cycle)"
+        }
+      },
+      "actions": {
+        "title": "Actions for cycle events",
+        "data": {
+          "start_actions": "Actions to run when the cycle starts",
+          "finish_actions": "Actions to run when the cycle finishes",
+          "max_runtime_actions": "Actions to run once if the maximum cycle time is exceeded",
+          "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
+          "pending_delay_seconds": "Seconds to wait after the cycle ends before the first unload reminder",
+          "pending_interval_seconds": "Seconds between later unload reminders",
+          "pending_repeats": "Reminders after the first one (3 means 4 reminders total)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
+      "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Appliance and input sensors",
+        "data": {
+          "name": "Name shown for this appliance",
+          "appliance_type": "Appliance category (washer, dishwasher, or dryer)",
+          "power_entity": "Power sensor for this appliance (in watts)",
+          "door_entity": "Door-open sensor (optional; enables unload status and reminders)",
+          "plug_entity": "Smart plug switch (optional; switching it off ends an active cycle)"
+        }
+      },
+      "thresholds": {
+        "title": "Cycle start and finish conditions",
+        "data": {
+          "start_power_w": "Power above which a cycle is considered started (W)",
+          "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
+          "finish_power_w": "Power below which a cycle is considered finished (W)",
+          "finish_duration_seconds": "Seconds power must stay below the finish level before confirming the cycle has ended",
+          "max_runtime_seconds": "Maximum cycle time in seconds (optional warning only; does not stop the cycle)"
+        }
+      },
+      "actions": {
+        "title": "Actions for cycle events",
+        "data": {
+          "start_actions": "Actions to run when the cycle starts",
+          "finish_actions": "Actions to run when the cycle finishes",
+          "max_runtime_actions": "Actions to run once if the maximum cycle time is exceeded",
+          "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
+          "pending_delay_seconds": "Seconds to wait after the cycle ends before the first unload reminder",
+          "pending_interval_seconds": "Seconds between later unload reminders",
+          "pending_repeats": "Reminders after the first one (3 means 4 reminders total)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
+      "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number."
+    }
+  },
+  "selector": {
+    "appliance_type": {
+      "options": {
+        "washer": "Washer",
+        "dishwasher": "Dishwasher",
+        "dryer": "Dryer"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {"name": "Power"},
+      "total_energy": {"name": "Total energy"},
+      "last_cycle_duration": {"name": "Last cycle duration"},
+      "estimated_remaining": {"name": "Estimated remaining time"}
+    },
+    "binary_sensor": {
+      "running": {"name": "Running"},
+      "door": {"name": "Door"},
+      "pending_unload": {"name": "Pending to unload"}
+    },
+    "switch": {
+      "plug": {"name": "Smart plug"}
+    },
+    "button": {
+      "clear_pending": {"name": "Clear pending-to-unload status"}
+    }
+  }
+}

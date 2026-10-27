@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Appliance Cycle Monitor icon</title>
+  <rect x="12" y="12" width="232" height="232" rx="52" fill="#103f42"/>
+  <rect x="55" y="37" width="146" height="182" rx="20" fill="#f3f2e8"/>
+  <rect x="72" y="53" width="112" height="31" rx="9" fill="#d5e9df"/>
+  <circle cx="165" cy="68.5" r="6.5" fill="#e77b5b"/>
+  <path d="M91 68.5h53" fill="none" stroke="#103f42" stroke-linecap="round" stroke-width="7"/>
+  <circle cx="128" cy="149" r="49" fill="#b9ddd2" stroke="#103f42" stroke-width="7"/>
+  <circle cx="128" cy="149" r="31" fill="#e4eee5" stroke="#3da996" stroke-width="5"/>
+  <path d="M100 133a33 33 0 0 1 49-15" fill="none" stroke="#147e73" stroke-linecap="round" stroke-width="8"/>
+  <path d="m147 108 12 8-14 4" fill="#147e73"/>
+  <path d="m132 126-14 23h12l-5 21 17-27h-12l5-17z" fill="#e7a83d"/>
+</svg>

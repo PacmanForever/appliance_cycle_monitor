@@ -1,0 +1,110 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Electrodoméstico y sensores de entrada",
+        "data": {
+          "name": "Nombre que se mostrará para este electrodoméstico",
+          "appliance_type": "Categoría (lavadora, lavavajillas o secadora)",
+          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
+          "door_entity": "Sensor de puerta abierta (opcional; activa el estado y los avisos para vaciar)",
+          "plug_entity": "Interruptor del enchufe inteligente (opcional; al apagarlo termina el ciclo)"
+        }
+      },
+      "thresholds": {
+        "title": "Condiciones de inicio y fin del ciclo",
+        "data": {
+          "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
+          "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
+          "finish_power_w": "Potencia por debajo de la cual se considera que termina el ciclo (W)",
+          "finish_duration_seconds": "Segundos que la potencia debe estar bajo el umbral final para confirmar que terminó el ciclo",
+          "max_runtime_seconds": "Duración máxima del ciclo en segundos (aviso opcional; no detiene el aparato)"
+        }
+      },
+      "actions": {
+        "title": "Acciones para los eventos del ciclo",
+        "data": {
+          "start_actions": "Acciones que se ejecutan cuando empieza el ciclo",
+          "finish_actions": "Acciones que se ejecutan cuando termina el ciclo",
+          "max_runtime_actions": "Acciones que se ejecutan una vez si se supera el tiempo máximo",
+          "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
+          "pending_delay_seconds": "Segundos de espera tras el ciclo antes del primer aviso para vaciar",
+          "pending_interval_seconds": "Segundos entre los siguientes avisos para vaciar",
+          "pending_repeats": "Avisos adicionales al primero (3 significa 4 avisos en total)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
+      "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Electrodoméstico y sensores de entrada",
+        "data": {
+          "name": "Nombre que se mostrará para este electrodoméstico",
+          "appliance_type": "Categoría (lavadora, lavavajillas o secadora)",
+          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
+          "door_entity": "Sensor de puerta abierta (opcional; activa el estado y los avisos para vaciar)",
+          "plug_entity": "Interruptor del enchufe inteligente (opcional; al apagarlo termina el ciclo)"
+        }
+      },
+      "thresholds": {
+        "title": "Condiciones de inicio y fin del ciclo",
+        "data": {
+          "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
+          "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
+          "finish_power_w": "Potencia por debajo de la cual se considera que termina el ciclo (W)",
+          "finish_duration_seconds": "Segundos que la potencia debe estar bajo el umbral final para confirmar que terminó el ciclo",
+          "max_runtime_seconds": "Duración máxima del ciclo en segundos (aviso opcional; no detiene el aparato)"
+        }
+      },
+      "actions": {
+        "title": "Acciones para los eventos del ciclo",
+        "data": {
+          "start_actions": "Acciones que se ejecutan cuando empieza el ciclo",
+          "finish_actions": "Acciones que se ejecutan cuando termina el ciclo",
+          "max_runtime_actions": "Acciones que se ejecutan una vez si se supera el tiempo máximo",
+          "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
+          "pending_delay_seconds": "Segundos de espera tras el ciclo antes del primer aviso para vaciar",
+          "pending_interval_seconds": "Segundos entre los siguientes avisos para vaciar",
+          "pending_repeats": "Avisos adicionales al primero (3 significa 4 avisos en total)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
+      "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo."
+    }
+  },
+  "selector": {
+    "appliance_type": {
+      "options": {
+        "washer": "Lavadora",
+        "dishwasher": "Lavavajillas",
+        "dryer": "Secadora"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {"name": "Potencia"},
+      "total_energy": {"name": "Energía total"},
+      "last_cycle_duration": {"name": "Duración del último ciclo"},
+      "estimated_remaining": {"name": "Tiempo restante estimado"}
+    },
+    "binary_sensor": {
+      "running": {"name": "En funcionamiento"},
+      "door": {"name": "Puerta"},
+      "pending_unload": {"name": "Pendiente de vaciar"}
+    },
+    "switch": {
+      "plug": {"name": "Enchufe inteligente"}
+    },
+    "button": {
+      "clear_pending": {"name": "Borrar estado «Pendiente de vaciar»"}
+    }
+  }
+}

@@ -1,0 +1,1 @@
+"""Home Assistant component tests."""

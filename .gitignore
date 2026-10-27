@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+.venv/
+venv/
+.ruff_cache/
+NEXT_SESSION.md
