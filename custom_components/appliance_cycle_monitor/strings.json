@@ -15,19 +15,34 @@
           "running_entity": "Binary contact that is on while the AC louver is open",
           "mail_motion_entity": "Interior motion sensor that detects incoming mail",
           "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
-          "door_entity": "Door-open sensor (optional for laundry; required for a refrigerator or mailbox)",
+          "washer_door_entity": "Washer door-open sensor (optional)",
+          "dishwasher_door_entity": "Dishwasher door-open sensor (optional)",
+          "dryer_door_entity": "Dryer door-open sensor (optional)",
+          "refrigerator_door_entity": "Refrigerator door-open sensor",
+          "smart_plug_entity": "Refrigerator smart switch",
+          "refrigerator_switch_door_entity": "Refrigerator door-open sensor",
+          "mailbox_motion_door_entity": "Mailbox main-door contact",
+          "mailbox_slot_door_entity": "Mailbox main-door contact",
           "plug_entity": "Appliance smart plug (optional)"
         },
         "data_description": {
           "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
           "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
           "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
-          "door_entity": "For a refrigerator or mailbox, an open contact means the main door is open.",
-          "plug_entity": "The integration also creates a switch to control this plug, but does not turn it off automatically. Turning it off cuts power to the appliance and marks an active cycle as finished."
+          "washer_door_entity": "An open contact means the washer door is open.",
+          "dishwasher_door_entity": "An open contact means the dishwasher door is open.",
+          "dryer_door_entity": "An open contact means the dryer door is open.",
+          "refrigerator_door_entity": "An open contact means the refrigerator door is open.",
+          "smart_plug_entity": "Select the smart switch connected to the refrigerator; on means it is powered and off means it is not running.",
+          "refrigerator_switch_door_entity": "An open contact means the refrigerator door is open.",
+          "mailbox_motion_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
+          "mailbox_slot_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
+          "plug_entity": "The integration can also provide a switch. Turning it off will abruptly cut power to the appliance."
         }
       },
       "parameters": {
         "title": "Type-specific parameters",
+        "description": "Parameters depend on the selected profile. If no fields are shown, this profile has no configurable parameters.",
         "data": {
           "start_power_w": "Power above which a cycle is considered started (W)",
           "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
@@ -81,19 +96,34 @@
           "running_entity": "Binary contact that is on while the AC louver is open",
           "mail_motion_entity": "Interior motion sensor that detects incoming mail",
           "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
-          "door_entity": "Door-open sensor (optional for laundry; required for a refrigerator or mailbox)",
+          "washer_door_entity": "Washer door-open sensor (optional)",
+          "dishwasher_door_entity": "Dishwasher door-open sensor (optional)",
+          "dryer_door_entity": "Dryer door-open sensor (optional)",
+          "refrigerator_door_entity": "Refrigerator door-open sensor",
+          "smart_plug_entity": "Refrigerator smart switch",
+          "refrigerator_switch_door_entity": "Refrigerator door-open sensor",
+          "mailbox_motion_door_entity": "Mailbox main-door contact",
+          "mailbox_slot_door_entity": "Mailbox main-door contact",
           "plug_entity": "Appliance smart plug (optional)"
         },
         "data_description": {
           "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
           "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
           "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
-          "door_entity": "For a refrigerator or mailbox, an open contact means the main door is open.",
-          "plug_entity": "The integration also creates a switch to control this plug, but does not turn it off automatically. Turning it off cuts power to the appliance and marks an active cycle as finished."
+          "washer_door_entity": "An open contact means the washer door is open.",
+          "dishwasher_door_entity": "An open contact means the dishwasher door is open.",
+          "dryer_door_entity": "An open contact means the dryer door is open.",
+          "refrigerator_door_entity": "An open contact means the refrigerator door is open.",
+          "smart_plug_entity": "Select the smart switch connected to the refrigerator; on means it is powered and off means it is not running.",
+          "refrigerator_switch_door_entity": "An open contact means the refrigerator door is open.",
+          "mailbox_motion_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
+          "mailbox_slot_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
+          "plug_entity": "The integration can also provide a switch. Turning it off will abruptly cut power to the appliance."
         }
       },
       "parameters": {
         "title": "Type-specific parameters",
+        "description": "Parameters depend on the selected profile. If no fields are shown, this profile has no configurable parameters.",
         "data": {
           "start_power_w": "Power above which a cycle is considered started (W)",
           "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
@@ -139,7 +169,8 @@
         "dryer": "Dryer",
         "air_conditioner_contact": "Air conditioner (louver contact)",
         "air_conditioner_power": "Air conditioner (power sensor)",
-        "refrigerator": "Refrigerator",
+        "refrigerator": "Refrigerator (power sensor)",
+        "refrigerator_switch": "Refrigerator (smart switch)",
         "mailbox_motion": "Mailbox (interior motion sensor)",
         "mailbox_slot": "Mailbox (mail-slot flap contact)"
       }

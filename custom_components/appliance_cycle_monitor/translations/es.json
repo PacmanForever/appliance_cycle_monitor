@@ -15,19 +15,34 @@
           "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
           "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
           "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
-          "door_entity": "Sensor de puerta abierta (opcional en lavandería; obligatorio para frigorífico o buzón)",
+          "washer_door_entity": "Sensor de apertura de la puerta de la lavadora (opcional)",
+          "dishwasher_door_entity": "Sensor de apertura de la puerta del lavavajillas (opcional)",
+          "dryer_door_entity": "Sensor de apertura de la puerta de la secadora (opcional)",
+          "refrigerator_door_entity": "Sensor de apertura de la puerta del frigorífico",
+          "smart_plug_entity": "Interruptor inteligente del frigorífico",
+          "refrigerator_switch_door_entity": "Sensor de apertura de la puerta del frigorífico",
+          "mailbox_motion_door_entity": "Contacto de la puerta principal del buzón",
+          "mailbox_slot_door_entity": "Contacto de la puerta principal del buzón",
           "plug_entity": "Enchufe inteligente del aparato (opcional)"
         },
         "data_description": {
           "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
           "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
           "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
-          "door_entity": "En un frigorífico o buzón, el contacto abierto indica que la puerta principal está abierta.",
-          "plug_entity": "La integración también crea un interruptor para controlar el enchufe, pero no lo apaga automáticamente. Si lo apagas, corta la alimentación del aparato y el ciclo en curso se marca como terminado."
+          "washer_door_entity": "El contacto abierto indica que la puerta de la lavadora está abierta.",
+          "dishwasher_door_entity": "El contacto abierto indica que la puerta del lavavajillas está abierta.",
+          "dryer_door_entity": "El contacto abierto indica que la puerta de la secadora está abierta.",
+          "refrigerator_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
+          "smart_plug_entity": "Selecciona el interruptor inteligente conectado al frigorífico; encendido significa que está alimentado y apagado que no está en marcha.",
+          "refrigerator_switch_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
+          "mailbox_motion_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
+          "mailbox_slot_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
+          "plug_entity": "La integración también puede incluir un interruptor. Si lo apagas, cortarás bruscamente la alimentación del aparato."
         }
       },
       "parameters": {
         "title": "Parámetros específicos del tipo",
+        "description": "Los parámetros dependen del perfil seleccionado. Si no aparece ningún campo, este perfil no tiene parámetros configurables.",
         "data": {
           "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
           "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
@@ -81,19 +96,34 @@
           "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
           "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
           "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
-          "door_entity": "Sensor de puerta abierta (opcional en lavandería; obligatorio para frigorífico o buzón)",
+          "washer_door_entity": "Sensor de apertura de la puerta de la lavadora (opcional)",
+          "dishwasher_door_entity": "Sensor de apertura de la puerta del lavavajillas (opcional)",
+          "dryer_door_entity": "Sensor de apertura de la puerta de la secadora (opcional)",
+          "refrigerator_door_entity": "Sensor de apertura de la puerta del frigorífico",
+          "smart_plug_entity": "Interruptor inteligente del frigorífico",
+          "refrigerator_switch_door_entity": "Sensor de apertura de la puerta del frigorífico",
+          "mailbox_motion_door_entity": "Contacto de la puerta principal del buzón",
+          "mailbox_slot_door_entity": "Contacto de la puerta principal del buzón",
           "plug_entity": "Enchufe inteligente del aparato (opcional)"
         },
         "data_description": {
           "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
           "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
           "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
-          "door_entity": "En un frigorífico o buzón, el contacto abierto indica que la puerta principal está abierta.",
-          "plug_entity": "La integración también crea un interruptor para controlar el enchufe, pero no lo apaga automáticamente. Si lo apagas, corta la alimentación del aparato y el ciclo en curso se marca como terminado."
+          "washer_door_entity": "El contacto abierto indica que la puerta de la lavadora está abierta.",
+          "dishwasher_door_entity": "El contacto abierto indica que la puerta del lavavajillas está abierta.",
+          "dryer_door_entity": "El contacto abierto indica que la puerta de la secadora está abierta.",
+          "refrigerator_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
+          "smart_plug_entity": "Selecciona el interruptor inteligente conectado al frigorífico; encendido significa que está alimentado y apagado que no está en marcha.",
+          "refrigerator_switch_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
+          "mailbox_motion_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
+          "mailbox_slot_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
+          "plug_entity": "La integración también puede incluir un interruptor. Si lo apagas, cortarás bruscamente la alimentación del aparato."
         }
       },
       "parameters": {
         "title": "Parámetros específicos del tipo",
+        "description": "Los parámetros dependen del perfil seleccionado. Si no aparece ningún campo, este perfil no tiene parámetros configurables.",
         "data": {
           "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
           "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
@@ -139,7 +169,8 @@
         "dryer": "Secadora",
         "air_conditioner_contact": "Aire acondicionado (contacto de lama)",
         "air_conditioner_power": "Aire acondicionado (sensor de potencia)",
-        "refrigerator": "Frigorífico",
+        "refrigerator": "Frigorífico (sensor de potencia)",
+        "refrigerator_switch": "Frigorífico (interruptor inteligente)",
         "mailbox_motion": "Buzón (sensor de movimiento interior)",
         "mailbox_slot": "Buzón (contacto de trampilla)"
       }

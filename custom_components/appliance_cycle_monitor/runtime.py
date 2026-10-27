@@ -154,11 +154,12 @@ class ApplianceRuntime:
             "running_sensor": CONF_RUNNING_ENTITY,
             "mail_motion": CONF_MAIL_MOTION_ENTITY,
             "mail_slot": CONF_MAIL_SLOT_ENTITY,
+            "smart_plug": CONF_PLUG_ENTITY,
         }[self.profile.detection_sources[0]]
         entity_ids = [self.config[source_key]]
         for key in (CONF_DOOR_ENTITY, CONF_PLUG_ENTITY):
             entity_id = self.config.get(key)
-            if entity_id:
+            if entity_id and entity_id not in entity_ids:
                 entity_ids.append(entity_id)
         self._unsubscribe_states = async_track_state_change_event(
             self.hass, entity_ids, self._async_handle_state_change
@@ -167,6 +168,8 @@ class ApplianceRuntime:
         now = dt_util.utcnow()
         source_state = self.hass.states.get(self.config[source_key])
         if "running_sensor" in self.profile.detection_sources:
+            self._apply_running_state(source_state, now, initialize=True)
+        elif "smart_plug" in self.profile.detection_sources:
             self._apply_running_state(source_state, now, initialize=True)
         elif "mail_motion" in self.profile.detection_sources or "mail_slot" in self.profile.detection_sources:
             self._initialize_mail_sensor(source_state)
@@ -253,6 +256,11 @@ class ApplianceRuntime:
             and entity_id == self.config.get(CONF_POWER_ENTITY)
         ):
             self._apply_power_state(new_state, now)
+        elif (
+            "smart_plug" in self.profile.detection_sources
+            and entity_id == self.config.get(CONF_PLUG_ENTITY)
+        ):
+            self._apply_running_state(new_state, now)
         elif entity_id == self.config.get(CONF_DOOR_ENTITY):
             self._apply_door_state(new_state, now)
         elif entity_id == self.config.get(CONF_PLUG_ENTITY):

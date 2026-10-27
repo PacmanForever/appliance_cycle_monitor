@@ -6,7 +6,7 @@ Crear una integració local de Home Assistant per centralitzar en un únic dispo
 
 L'usuari no ha de necessitar crear automatitzacions o blueprints externs per detectar l'inici o el final del cicle ni per executar les accions configurades.
 
-Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat detectat per contacte de pala o per potència, nevera amb detecció del compressor i alarma de porta, i bústia detectada per moviment interior o per contacte de portella. L'estructura ha de permetre afegir tipus futurs sense repartir condicions específiques per tipus entre els fluxos, el runtime i les plataformes d'entitats.
+Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat detectat per contacte de pala o per potència, nevera detectada per potència amb switch opcional o per interruptor intel·ligent obligatori, i bústia detectada per moviment interior o per contacte de portella. L'estructura ha de permetre afegir tipus futurs sense repartir condicions específiques per tipus entre els fluxos, el runtime i les plataformes d'entitats.
 
 ## 2. Identitat del projecte
 
@@ -15,7 +15,7 @@ Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat dete
 - **Tipus**: integració personalitzada de Home Assistant, distribuïble amb HACS
 - **Funcionament**: local; sense API externa ni credencials
 - **Font de dades principal**: entitat de potència de Home Assistant
-- **Tipus de dispositiu inicials**: `washer`, `dishwasher`, `dryer`, `air_conditioner_contact`, `air_conditioner_power`, `refrigerator`, `mailbox_motion`, `mailbox_slot`
+- **Tipus de dispositiu inicials**: `washer`, `dishwasher`, `dryer`, `air_conditioner_contact`, `air_conditioner_power`, `refrigerator`, `refrigerator_switch`, `mailbox_motion`, `mailbox_slot`
 - **Idioma font**: anglès
 - **Idiomes de la interfície**: anglès, castellà i català
 
@@ -52,13 +52,14 @@ Aquest flux és el lloc central per configurar tot el comportament propi de l'el
 
 ### 4.2 Entitats d'entrada
 
-- **Potència**: selector d'una entitat de potència de Home Assistant; obligatori en rentadora, rentaplats, assecadora, AC per potència i nevera. Cal interpretar `W`/`kW` i ignorar lectures no vàlides sense fallar.
+- **Potència**: selector d'una entitat de potència de Home Assistant; obligatori en rentadora, rentaplats, assecadora, AC per potència i el perfil `refrigerator`. No s'utilitza al perfil `refrigerator_switch`. Cal interpretar `W`/`kW` i ignorar lectures no vàlides sense fallar.
 - **Contacte de pala de l'AC**: selector obligatori del perfil `air_conditioner_contact`. `on` significa AC en funcionament i `off` aturat; les transicions actualitzen l'estat de funcionament.
-- **Obertura de porta de nevera**: selector obligatori del perfil `refrigerator`; reflecteix l'estat de porta i inicia o cancel·la l'alarma de porta oberta.
+- **Obertura de porta de nevera**: selector obligatori dels perfils `refrigerator` i `refrigerator_switch`; reflecteix l'estat de porta i inicia o cancel·la l'alarma de porta oberta.
+- **Switch de nevera**: al perfil `refrigerator`, selector opcional d'un endoll intel·ligent controlable. No substitueix el sensor obligatori de potència ni és la font normal de detecció; apagar-lo talla l'alimentació i finalitza immediatament un període actiu. Al perfil `refrigerator_switch`, el switch és obligatori, controla l'alimentació i és també la font binària d'activitat (`on` inicia i `off` finalitza el període).
 - **Arribada de correu**: `mailbox_motion` requereix un sensor binari de moviment interior i `mailbox_slot` un contacte binari a la portella d'entrada. Una transició `off`→`on` després d'haver observat `off` indica una arribada; l'estat inicial `on` no ha de generar una arribada falsa.
 - **Porta principal de la bústia**: selector obligatori dels dos perfils de bústia. L'obertura neteja «pendent de recollir» i cancel·la els recordatoris.
 - **Obertura de porta per a bugaderia**: selector opcional per a rentadora, rentaplats i assecadora; activa estat de porta i «pendent de buidar».
-- **Switch intel·ligent de l'endoll**: selector opcional només en perfils compatibles. La integració n'exposa el control i un canvi a `off` pot acabar un període actiu.
+- **Switch intel·ligent de l'endoll**: selector opcional només en perfils compatibles. La integració n'exposa el control i un canvi a `off` pot acabar un període actiu. En el perfil `refrigerator` és opcional i complementa la detecció per potència; en `refrigerator_switch` és obligatori i detecta l'activitat.
 
 Les fonts obligatòries depenen del tipus seleccionat. En els tipus d'AC, si hi ha potència i contacte de pala, s'escull el perfil per potència. No es requereixen helpers externs: la integració proporciona les entitats de sortida de la secció 5. Les entitats seleccionades són fonts externes i no s'han d'esborrar quan s'elimina el dispositiu.
 
@@ -84,7 +85,8 @@ Els tipus s'han de definir en un registre de perfils extensible. Cada perfil dec
 
 - **Aire condicionat per contacte** (`air_conditioner_contact`): el contacte de pala és la font binària de funcionament. Les transicions `off`→`on` i `on`→`off` inicien i finalitzen respectivament el període actiu. No es creen potència, energia, «pendent de buidar» ni temps restant estimat.
 - **Aire condicionat per potència** (`air_conditioner_power`): usa llindars/histèresi de potència per detectar activitat. No es creen «pendent de buidar» ni temps restant estimat.
-- **Nevera** (`refrigerator`): la potència detecta activitat del compressor i el contacte de porta detecta l'obertura. No s'hi creen «pendent de buidar» ni temps restant estimat. Hi ha dos grups independents d'alarma: porta oberta durant un temps configurable i compressor sense activitat durant un temps configurable.
+- **Nevera per potència** (`refrigerator`): requereix sensor de potència i contacte de porta. La potència detecta activitat del compressor i el contacte detecta l'obertura. Pot incloure opcionalment un switch intel·ligent controlable: aquest no substitueix ni canvia la detecció per potència, però apagar-lo talla l'alimentació i finalitza immediatament el període actiu. No s'hi creen «pendent de buidar» ni temps restant estimat. Hi ha dos grups independents d'alarma: porta oberta durant un temps configurable i compressor sense activitat durant un temps configurable.
+- **Nevera per interruptor** (`refrigerator_switch`): requereix un interruptor intel·ligent que controla l'alimentació i és la font binària d'activitat; també requereix un contacte separat de porta. `on` inicia i `off` finalitza el període actiu. No es creen potència, energia, temps restant, ni alarma de compressor inactiu, perquè aquest perfil no mesura l'activitat del compressor. Manté l'alarma configurable de porta oberta.
 - **Bústia amb moviment** (`mailbox_motion`): el moviment interior detecta l'arribada de correu. La porta principal és independent del sensor d'arribada i neteja l'estat pendent quan s'obre.
 - **Bústia amb portella** (`mailbox_slot`): l'obertura de la portella d'entrada detecta l'arribada de correu. La porta principal és independent del contacte de portella i neteja l'estat pendent quan s'obre.
 - En tots dos perfils de bústia, una arribada posa «pendent de recollir» a `on`, reinicia el recompte i activa les accions d'arribada. Els recordatoris configurats només s'inicien quan la porta principal consta tancada; si el correu arriba amb la porta oberta, es programen quan aquesta es tanca. El sensor d'arribada no s'interpreta com un inici o final de cicle.
@@ -100,7 +102,7 @@ Cada dispositiu pot tenir llistes d'accions de Home Assistant configurables i ed
 - **Accions en superar el temps màxim**: s'executen una sola vegada quan un cicle actiu supera el temps màxim configurat. Exemple: enviar una notificació. Aquest grup és independent de les accions de finalització.
 - **Accions mentre està pendent de buidar**: grup opcional disponible quan s'ha configurat un sensor de porta. En finalitzar el cicle, si «pendent de buidar» continua `on`, s'espera l'interval configurat abans de la primera execució. Després es repeteixen cada X segons mentre la porta continuï tancada i no s'hagi assolit el màxim. L'interval X ha de ser un nombre enter positiu i el nombre màxim de repeticions un enter no negatiu; els valors per defecte són 900 segons (15 minuts) i 3 repeticions. El límit compta només les execucions posteriors a la inicial; amb 3 repeticions, hi ha com a màxim 4 execucions en total. En obrir-se la porta, l'estat es neteja i les accions pendents es cancel·len immediatament. En assolir el màxim, les repeticions s'aturen encara que la porta continuï tancada i «pendent de buidar» es manté `on` fins que s'obri.
 - **Alarma de porta de nevera**: acció pròpia del tipus nevera, disponible amb contacte configurat; s'executa després del retard de porta oberta i repeteix segons els paràmetres del perfil fins al màxim. Tancar la porta rearma el grup.
-- **Alarma de compressor de nevera**: acció pròpia del tipus nevera; s'executa quan no s'ha detectat activitat del compressor durant el retard configurat i repeteix fins al màxim. Tornar a detectar activitat rearma el grup.
+- **Alarma de compressor de nevera**: només al perfil `refrigerator`, que mesura potència; s'executa quan no s'ha detectat activitat del compressor durant el retard configurat i repeteix fins al màxim. Tornar a detectar activitat rearma el grup. No existeix al perfil `refrigerator_switch`.
 - **Arribada de correu**: acció pròpia dels perfils de bústia, executada en detectar una arribada. Les accions de «pendent de recollir» segueixen el retard, interval i màxim de repeticions configurats, i es cancel·len en obrir-se la porta principal.
 
 Les accions són configuració de cada dispositiu; no s'han de codificar com a scripts fixos ni compartir automàticament entre aparells. La integració les ha d'executar directament en l'ordre configurat quan detecti els canvis de cicle o de porta, sense dependre d'una automatització o blueprint extern. No s'han de solapar dues execucions del mateix grup si una acció triga més que l'interval configurat. Es poden invocar scripts existents si l'usuari els selecciona, però no són obligatoris. Els errors d'una acció s'han de registrar sense interrompre la resta d'accions ni la detecció de cicles, i sense exposar dades sensibles.
@@ -109,14 +111,14 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 
 - Cada electrodomèstic configurat ha d'aparèixer com un dispositiu propi al registre de dispositius de Home Assistant.
 - Totes les entitats de sortida creades per la integració han d'estar associades al dispositiu de l'electrodomèstic i ser visibles des de la seva pàgina.
-- **Potència** i **Energia total consumida**: només es creen per perfils que tenen entrada de potència. L'energia és acumulada en kWh i persistent.
+- **Potència** i **Energia total consumida**: només es creen per perfils que tenen entrada de potència. L'energia és acumulada en kWh i persistent; no es creen a `refrigerator_switch`.
 - **Durada de l'últim període actiu**: sensor de sortida amb la durada del període d'activitat més recent detectat.
 - **Temps restant estimat**: només es crea per perfils de cicle que en poden oferir una estimació útil. No es crea per AC ni nevera.
 - **Estat (funcionament)**: entitat binària que indica si hi ha activitat segons l'estratègia declarada pel perfil.
 - **Porta**: si el perfil usa un contacte de porta, entitat binària de sortida que en reflecteix l'estat.
 - **Pendent de buidar/recollir**: per als perfils de bugaderia amb sensor de porta i per als perfils de bústia; mai per AC o nevera.
 - **Neteja manual de l'estat pendent**: quan un dispositiu té un estat «pendent de buidar», la integració ha de crear-hi també un botó propi per posar-lo manualment a `off`, independentment dels sensors. Aquesta acció de recuperació ha de funcionar encara que el sensor associat falli o no estigui disponible, i ha de cancel·lar els recordatoris pendents i reiniciar-ne el recompte.
-- **Endoll**: si el perfil admet un switch intel·ligent i se n'ha seleccionat un, entitat de switch associada que en reflecteix l'estat i permet activar-lo o desactivar-lo.
+- **Endoll**: si el perfil admet un switch intel·ligent i se n'ha seleccionat un, entitat de switch associada que en reflecteix l'estat i permet activar-lo o desactivar-lo. Al perfil `refrigerator`, és opcional i no substitueix la detecció per potència; al perfil `refrigerator_switch`, és obligatori i també és la font de detecció d'activitat.
 - **Entitats d'alarma**: les alarmes de nevera es representen amb els grups d'acció i els sensors d'estat declarats pel perfil; no es creen entitats de bugaderia per reaprofitar-les.
 - Quan hi ha sensor d'obertura, «Pendent de buidar» passa a `on` en iniciar un cicle i es manté en acabar-lo, fins que el sensor físic indiqui que la porta s'ha obert; llavors passa a `off`. No s'ha de reiniciar només perquè el cicle hagi acabat. En una bústia, «Pendent de recollir» passa a `on` en detectar correu i a `off` en obrir la porta principal. Sense sensor d'obertura no es creen les entitats Porta ni Pendent.
 - Si el dispositiu té un switch seleccionat i aquest passa a `off` mentre hi ha un període actiu, la integració l'ha de donar per finalitzat immediatament. La finalització no s'ha de duplicar si també baixa la potència.
@@ -179,12 +181,13 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 29. La icona de marca aprovada és `docs/appliance_cycle_monitor_icon.svg`; qualsevol canvi posterior de disseny necessita aprovació de l'usuari.
 30. Els perfils d'AC per contacte de pala i per potència demanen només la font seleccionada; si hi ha totes dues, l'usuari pot escollir el perfil per potència.
 31. Els perfils d'AC no creen «Pendent de buidar» ni «Temps restant estimat»; el perfil per contacte tampoc crea Potència o Energia.
-32. La nevera exigeix potència i contacte de porta, crea estat de funcionament i porta, no crea «Pendent de buidar» ni temps restant, i ofereix accions independents d'alarma de porta oberta i compressor inactiu.
+32. La nevera per potència (`refrigerator`) exigeix potència i contacte de porta, admet un switch de control opcional sense substituir la detecció per potència, crea estat de funcionament i porta, no crea «Pendent de buidar» ni temps restant, i ofereix alarmes independents de porta oberta i compressor inactiu.
 33. Les alarmes de nevera permeten un avís inicial més N repeticions addicionals; tancar la porta o reprendre l'activitat del compressor rearma només el grup corresponent.
 34. Rentadora, rentaplats i assecadora tenen perfils separats encara que comparteixin capacitats. Un perfil futur pot declarar paràmetres i accions diferents sense afegir condicions duplicades a cada capa.
 35. Es poden configurar els perfils `mailbox_motion` i `mailbox_slot` amb el seu sensor d'arribada i un contacte separat per a la porta principal.
 36. Després d'observar el sensor d'arribada apagat, cada transició a `on` executa les accions d'arribada i activa «Pendent de recollir»; l'estat inicial `on` o un estat no disponible no genera una arribada falsa.
 37. Obrir la porta principal neteja «Pendent de recollir» i cancel·la recordatoris. Si arriba correu amb la porta oberta, l'estat queda pendent però els recordatoris esperen que la porta es tanqui.
+38. La nevera per interruptor (`refrigerator_switch`) exigeix switch i contacte de porta; el switch és la font d'activitat. No crea potència, energia ni alarma de compressor inactiu, i sí l'alarma de porta oberta. L'apagada del switch de control opcional de `refrigerator` finalitza immediatament un període actiu.
 
 ## 9. Qualitat i proves
 

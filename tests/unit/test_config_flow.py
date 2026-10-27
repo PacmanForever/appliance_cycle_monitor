@@ -14,6 +14,8 @@ from custom_components.appliance_cycle_monitor.config_flow import (
     _action_schema,
     _identity_schema,
     _entry_options,
+    _normalize_sensor_values,
+    _sensor_form_values,
     _sensor_schema,
     _threshold_schema,
     _clear_pending_settings,
@@ -23,6 +25,7 @@ from custom_components.appliance_cycle_monitor.config_flow import (
 )
 from custom_components.appliance_cycle_monitor.appliance_types import (
     APPLIANCE_PROFILES,
+    APPLIANCE_TYPES,
     get_appliance_profile,
 )
 from custom_components.appliance_cycle_monitor.const import (
@@ -69,14 +72,19 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "door_entity": "binary_sensor.dishwasher_door",
             "plug_entity": "switch.dishwasher_plug",
         }
-        schema = _sensor_schema(
-            values, get_appliance_profile("dishwasher")
-        )
+        profile = get_appliance_profile("dishwasher")
+        schema = _sensor_schema(_sensor_form_values(values, profile), profile)
 
         values = schema({})
         self.assertEqual(values[CONF_POWER_ENTITY], "sensor.dishwasher_power")
-        self.assertEqual(values["door_entity"], "binary_sensor.dishwasher_door")
+        self.assertEqual(
+            values["dishwasher_door_entity"], "binary_sensor.dishwasher_door"
+        )
         self.assertEqual(values["plug_entity"], "switch.dishwasher_plug")
+        self.assertEqual(
+            _normalize_sensor_values(values, profile)["door_entity"],
+            "binary_sensor.dishwasher_door",
+        )
 
     def test_ac_profiles_request_only_their_selected_detection_source(self) -> None:
         contact_profile = get_appliance_profile("air_conditioner_contact")
@@ -130,17 +138,14 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                     CONF_RUNNING_ENTITY: "binary_sensor.appliance_activity",
                     "door_entity": "binary_sensor.appliance_door",
                 }
-                sensor_schema = _sensor_schema(values, profile)
+                sensor_schema = _sensor_schema(_sensor_form_values(values, profile), profile)
                 parameter_schema = _threshold_schema(values, profile)
                 action_schema = _action_schema(values, profile)
 
-                expected_source = (
-                    {
-                        "power": CONF_POWER_ENTITY,
-                        "running_sensor": CONF_RUNNING_ENTITY,
-                        "mail_motion": CONF_MAIL_MOTION_ENTITY,
-                        "mail_slot": CONF_MAIL_SLOT_ENTITY,
-                    }[profile.detection_sources[0]]
+                expected_source = next(
+                    item.form_key
+                    for item in profile.sensor_inputs
+                    if item.detection_source is not None
                 )
                 self.assertIn(expected_source, sensor_schema.schema)
                 self.assertEqual(
@@ -153,7 +158,8 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     profile.supports_door_sensor,
-                    "door_entity" in sensor_schema.schema,
+                    profile.door_sensor_input is not None
+                    and profile.door_sensor_input.form_key in sensor_schema.schema,
                 )
                 self.assertEqual(
                     "total_energy" in profile.output_entities,
@@ -179,6 +185,47 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                         group in profile.action_groups,
                         key in action_schema.schema,
                     )
+
+    def test_sensor_selectors_filter_by_domain_and_device_class(self) -> None:
+        for profile in APPLIANCE_PROFILES.values():
+            schema = _sensor_schema(_sensor_form_values(
+                {"door_entity": "binary_sensor.door"}, profile
+            ), profile)
+            selectors = {
+                marker.schema: entity_selector
+                for marker, entity_selector in schema.schema.items()
+            }
+            source_input = next(
+                item for item in profile.sensor_inputs
+                if item.detection_source is not None
+            )
+            if source_input.device_classes:
+                self.assertEqual(
+                    selectors[source_input.form_key].config["filter"],
+                    [
+                        {
+                            "domain": [source_input.domain],
+                            "device_class": [device_class],
+                        }
+                        for device_class in source_input.device_classes
+                    ],
+                )
+            else:
+                self.assertEqual(
+                    selectors[source_input.form_key].config["domain"],
+                    [source_input.domain],
+                )
+            if profile.door_sensor_input is not None:
+                self.assertEqual(
+                    selectors[profile.door_sensor_input.form_key].config["filter"],
+                    [
+                        {
+                            "domain": [profile.door_sensor_input.domain],
+                            "device_class": [device_class],
+                        }
+                        for device_class in profile.door_sensor_input.device_classes
+                    ],
+                )
 
     def test_refrigerator_requires_door_and_valid_alarm_limits(self) -> None:
         profile = get_appliance_profile("refrigerator")
@@ -361,6 +408,40 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         self.assertEqual(key_shape(translations[1]), expected)
         self.assertEqual(key_shape(translations[2]), expected)
         self.assertEqual(key_shape(translations[3]), expected)
+
+        catalan_options = translations[3]["selector"]["appliance_type"]["options"]
+        catalan_labels = [catalan_options[appliance_type] for appliance_type in APPLIANCE_TYPES]
+        self.assertEqual(catalan_labels, sorted(catalan_labels, key=str.casefold))
+
+        for translation in translations:
+            option_labels = translation["selector"]["appliance_type"]["options"]
+            self.assertEqual(set(option_labels), set(APPLIANCE_PROFILES))
+            for appliance_type, label in option_labels.items():
+                self.assertTrue(label.strip())
+                self.assertNotEqual(label, appliance_type)
+
+            for flow, identity_step in (("config", "user"), ("options", "init")):
+                parameter_description = translation[flow]["step"]["parameters"][
+                    "description"
+                ]
+                self.assertTrue(parameter_description.strip())
+                for profile in APPLIANCE_PROFILES.values():
+                    values = {"door_entity": "binary_sensor.door"}
+                    step_schemas = {
+                        identity_step: _identity_schema({}),
+                        "sensors": _sensor_schema(
+                            _sensor_form_values(values, profile), profile
+                        ),
+                        "parameters": _threshold_schema(values, profile),
+                        "actions": _action_schema(values, profile),
+                    }
+                    for step, schema in step_schemas.items():
+                        labels = translation[flow]["step"][step]["data"]
+                        for marker in schema.schema:
+                            key = marker.schema
+                            self.assertIn(key, labels)
+                            self.assertTrue(labels[key].strip())
+                            self.assertNotEqual(labels[key], key)
 
 
 @pytest.mark.asyncio

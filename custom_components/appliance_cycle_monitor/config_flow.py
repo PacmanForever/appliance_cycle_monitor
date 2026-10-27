@@ -109,46 +109,50 @@ def _identity_schema(values: dict[str, Any]) -> vol.Schema:
     )
 
 
+def _sensor_form_values(
+    values: dict[str, Any], profile: ApplianceTypeProfile
+) -> dict[str, Any]:
+    form_values = dict(values)
+    for sensor_input in profile.sensor_inputs:
+        if sensor_input.config_key in values:
+            form_values[sensor_input.form_key] = values[sensor_input.config_key]
+    return form_values
+
+
+def _normalize_sensor_values(
+    values: dict[str, Any], profile: ApplianceTypeProfile
+) -> dict[str, Any]:
+    normalized = dict(values)
+    for sensor_input in profile.sensor_inputs:
+        if sensor_input.form_key != sensor_input.config_key:
+            if sensor_input.form_key in normalized:
+                normalized[sensor_input.config_key] = normalized.pop(
+                    sensor_input.form_key
+                )
+    return normalized
+
+
 def _sensor_schema(values: dict[str, Any], profile: ApplianceTypeProfile) -> vol.Schema:
     schema: dict[Any, Any] = {}
-    source_is_optional = len(profile.detection_sources) > 1
-    for source in profile.detection_sources:
-        key = {
-            "power": CONF_POWER_ENTITY,
-            "running_sensor": CONF_RUNNING_ENTITY,
-            "mail_motion": CONF_MAIL_MOTION_ENTITY,
-            "mail_slot": CONF_MAIL_SLOT_ENTITY,
-        }[source]
-        marker = _optional(key, values) if source_is_optional else _required(key, values)
-        if source == "power":
-            entity_selector = selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    filter=[{"domain": "sensor", "device_class": "power"}]
-                )
-            )
-        else:
-            entity_selector = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="binary_sensor")
-            )
-        schema[marker] = entity_selector
-
-    if profile.supports_door_sensor:
+    for sensor_input in profile.sensor_inputs:
         marker = (
-            _required(CONF_DOOR_ENTITY, values)
-            if profile.requires_door_sensor
-            else _optional(CONF_DOOR_ENTITY, values)
+            _required(sensor_input.form_key, values)
+            if sensor_input.required
+            else _optional(sensor_input.form_key, values)
         )
-        entity_selector = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="binary_sensor")
-        )
+        if sensor_input.device_classes:
+            entity_filter = [
+                {"domain": sensor_input.domain, "device_class": device_class}
+                for device_class in sensor_input.device_classes
+            ]
+            selector_config = selector.EntitySelectorConfig(filter=entity_filter)
+        else:
+            selector_config = selector.EntitySelectorConfig(domain=sensor_input.domain)
+        entity_selector = selector.EntitySelector(selector_config)
         schema[marker] = (
             entity_selector
-            if profile.requires_door_sensor
-            else _OptionalEntitySelector(entity_selector.config)
-        )
-    if profile.supports_smart_plug:
-        schema[_optional(CONF_PLUG_ENTITY, values)] = _OptionalEntitySelector(
-            selector.EntitySelectorConfig(domain="switch")
+            if sensor_input.required
+            else _OptionalEntitySelector(selector_config)
         )
     return vol.Schema(schema)
 
@@ -312,22 +316,39 @@ def _validate_pending(values: dict[str, Any]) -> bool:
     )
 
 
-def _validate_alarm_settings(values: dict[str, Any]) -> bool:
+def _validate_alarm_settings(
+    values: dict[str, Any], profile: ApplianceTypeProfile | None = None
+) -> bool:
+    groups = (
+        profile.parameter_groups
+        if profile is not None
+        else ("door_alarm", "compressor_alarm", "alarm_repeats")
+    )
+    positive_keys = []
+    if "door_alarm" in groups:
+        positive_keys.append(CONF_DOOR_OPEN_DELAY_SECONDS)
+    if "compressor_alarm" in groups:
+        positive_keys.append(CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS)
+    if "alarm_repeats" in groups:
+        positive_keys.append(CONF_ALARM_REPEAT_INTERVAL_SECONDS)
+
     try:
-        door_delay = float(values[CONF_DOOR_OPEN_DELAY_SECONDS])
-        compressor_delay = float(values[CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS])
-        interval = float(values[CONF_ALARM_REPEAT_INTERVAL_SECONDS])
-        repeats = float(values[CONF_ALARM_REPEAT_COUNT])
+        positive_values = [float(values[key]) for key in positive_keys]
+        repeats = (
+            float(values[CONF_ALARM_REPEAT_COUNT])
+            if "alarm_repeats" in groups
+            else None
+        )
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
-    return (
-        all(
-            math.isfinite(value) and value > 0 and value.is_integer()
-            for value in (door_delay, compressor_delay, interval)
-        )
-        and math.isfinite(repeats)
-        and repeats >= 0
-        and repeats.is_integer()
+
+    if not all(
+        math.isfinite(value) and value > 0 and value.is_integer()
+        for value in positive_values
+    ):
+        return False
+    return repeats is None or (
+        math.isfinite(repeats) and repeats >= 0 and repeats.is_integer()
     )
 
 
@@ -424,12 +445,13 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         if user_input is not None:
-            self._draft.update(user_input)
+            profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
+            self._draft.update(_normalize_sensor_values(user_input, profile))
             return await self.async_step_parameters()
         profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
             step_id="sensors",
-            data_schema=_sensor_schema(self._draft, profile),
+            data_schema=_sensor_schema(_sensor_form_values(self._draft, profile), profile),
             last_step=False,
         )
 
@@ -449,7 +471,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_pending_settings"
             elif (
                 "alarm_repeats" in profile.parameter_groups
-                and not _validate_alarm_settings(user_input)
+                and not _validate_alarm_settings(user_input, profile)
             ):
                 errors["base"] = "invalid_alarm_settings"
             else:
@@ -514,12 +536,13 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
     ) -> dict[str, Any]:
         values = {**self._saved, **self._draft}
         if user_input is not None:
-            self._draft.update(user_input)
+            profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+            self._draft.update(_normalize_sensor_values(user_input, profile))
             return await self.async_step_parameters()
         profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
             step_id="sensors",
-            data_schema=_sensor_schema(values, profile),
+            data_schema=_sensor_schema(_sensor_form_values(values, profile), profile),
             last_step=False,
         )
 
@@ -540,7 +563,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 errors["base"] = "invalid_pending_settings"
             elif (
                 "alarm_repeats" in profile.parameter_groups
-                and not _validate_alarm_settings(user_input)
+                and not _validate_alarm_settings(user_input, profile)
             ):
                 errors["base"] = "invalid_alarm_settings"
             else:

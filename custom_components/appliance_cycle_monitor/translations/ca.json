@@ -15,19 +15,34 @@
           "running_entity": "Contacte binari actiu quan la pala de l’aire condicionat és oberta",
           "mail_motion_entity": "Sensor de moviment interior que detecta l’arribada de correu",
           "mail_slot_entity": "Contacte a la portella de la bústia per on s’introdueixen les cartes",
-          "door_entity": "Sensor de porta oberta (opcional per a bugaderia; obligatori per a la nevera o la bústia)",
+          "washer_door_entity": "Sensor de porta oberta de la rentadora (opcional)",
+          "dishwasher_door_entity": "Sensor de porta oberta del rentaplats (opcional)",
+          "dryer_door_entity": "Sensor de porta oberta de l’assecadora (opcional)",
+          "refrigerator_door_entity": "Sensor de porta oberta de la nevera",
+          "smart_plug_entity": "Interruptor intel·ligent de la nevera",
+          "refrigerator_switch_door_entity": "Sensor de porta oberta de la nevera",
+          "mailbox_motion_door_entity": "Contacte de la porta principal de la bústia",
+          "mailbox_slot_door_entity": "Contacte de la porta principal de la bústia",
           "plug_entity": "Endoll intel·ligent de l’aparell (opcional)"
         },
         "data_description": {
           "running_entity": "Munta el contacte a la pala de l’aire condicionat. La pala oberta indica que funciona.",
           "mail_motion_entity": "El moviment dins de la bústia indica que ha arribat una carta.",
           "mail_slot_entity": "L’obertura de la portella indica que ha arribat una carta.",
-          "door_entity": "En una nevera o una bústia, el contacte obert indica que la porta principal és oberta.",
-          "plug_entity": "La integració també crea un interruptor per controlar l’endoll, però no l’apaga automàticament. Si l’apagues, tallaràs l’alimentació de la màquina i el cicle en curs es donarà per acabat."
+          "washer_door_entity": "El contacte obert indica que la porta de la rentadora és oberta.",
+          "dishwasher_door_entity": "El contacte obert indica que la porta del rentaplats és oberta.",
+          "dryer_door_entity": "El contacte obert indica que la porta de l’assecadora és oberta.",
+          "refrigerator_door_entity": "El contacte obert indica que la porta de la nevera és oberta.",
+          "smart_plug_entity": "Selecciona l’interruptor intel·ligent connectat a la nevera; encès vol dir que té alimentació i apagat que no funciona.",
+          "refrigerator_switch_door_entity": "El contacte obert indica que la porta de la nevera és oberta.",
+          "mailbox_motion_door_entity": "El contacte obert indica que la porta principal de la bústia és oberta; obrir-la neteja el correu pendent.",
+          "mailbox_slot_door_entity": "El contacte obert indica que la porta principal de la bústia és oberta; obrir-la neteja el correu pendent.",
+          "plug_entity": "La integració també pot incloure un interruptor. Si l’apagues, tallaràs l’alimentació de la màquina de manera abrupta."
         }
       },
       "parameters": {
         "title": "Paràmetres específics del tipus",
+        "description": "Els paràmetres depenen del perfil seleccionat. Si no es mostra cap camp, aquest perfil no té paràmetres configurables.",
         "data": {
           "start_power_w": "Potència per sobre de la qual es considera que comença el cicle (W)",
           "start_duration_seconds": "Segons que la potència ha de superar el llindar d’inici per confirmar el cicle",
@@ -81,19 +96,34 @@
           "running_entity": "Contacte binari actiu quan la pala de l’aire condicionat és oberta",
           "mail_motion_entity": "Sensor de moviment interior que detecta l’arribada de correu",
           "mail_slot_entity": "Contacte a la portella de la bústia per on s’introdueixen les cartes",
-          "door_entity": "Sensor de porta oberta (opcional per a bugaderia; obligatori per a la nevera o la bústia)",
+          "washer_door_entity": "Sensor de porta oberta de la rentadora (opcional)",
+          "dishwasher_door_entity": "Sensor de porta oberta del rentaplats (opcional)",
+          "dryer_door_entity": "Sensor de porta oberta de l’assecadora (opcional)",
+          "refrigerator_door_entity": "Sensor de porta oberta de la nevera",
+          "smart_plug_entity": "Interruptor intel·ligent de la nevera",
+          "refrigerator_switch_door_entity": "Sensor de porta oberta de la nevera",
+          "mailbox_motion_door_entity": "Contacte de la porta principal de la bústia",
+          "mailbox_slot_door_entity": "Contacte de la porta principal de la bústia",
           "plug_entity": "Endoll intel·ligent de l’aparell (opcional)"
         },
         "data_description": {
           "running_entity": "Munta el contacte a la pala de l’aire condicionat. La pala oberta indica que funciona.",
           "mail_motion_entity": "El moviment dins de la bústia indica que ha arribat una carta.",
           "mail_slot_entity": "L’obertura de la portella indica que ha arribat una carta.",
-          "door_entity": "En una nevera o una bústia, el contacte obert indica que la porta principal és oberta.",
-          "plug_entity": "La integració també crea un interruptor per controlar l’endoll, però no l’apaga automàticament. Si l’apagues, tallaràs l’alimentació de la màquina i el cicle en curs es donarà per acabat."
+          "washer_door_entity": "El contacte obert indica que la porta de la rentadora és oberta.",
+          "dishwasher_door_entity": "El contacte obert indica que la porta del rentaplats és oberta.",
+          "dryer_door_entity": "El contacte obert indica que la porta de l’assecadora és oberta.",
+          "refrigerator_door_entity": "El contacte obert indica que la porta de la nevera és oberta.",
+          "smart_plug_entity": "Selecciona l’interruptor intel·ligent connectat a la nevera; encès vol dir que té alimentació i apagat que no funciona.",
+          "refrigerator_switch_door_entity": "El contacte obert indica que la porta de la nevera és oberta.",
+          "mailbox_motion_door_entity": "El contacte obert indica que la porta principal de la bústia és oberta; obrir-la neteja el correu pendent.",
+          "mailbox_slot_door_entity": "El contacte obert indica que la porta principal de la bústia és oberta; obrir-la neteja el correu pendent.",
+          "plug_entity": "La integració també pot incloure un interruptor. Si l’apagues, tallaràs l’alimentació de la màquina de manera abrupta."
         }
       },
       "parameters": {
         "title": "Paràmetres específics del tipus",
+        "description": "Els paràmetres depenen del perfil seleccionat. Si no es mostra cap camp, aquest perfil no té paràmetres configurables.",
         "data": {
           "start_power_w": "Potència per sobre de la qual es considera que comença el cicle (W)",
           "start_duration_seconds": "Segons que la potència ha de superar el llindar d’inici per confirmar el cicle",
@@ -139,7 +169,8 @@
         "dryer": "Assecadora",
         "air_conditioner_contact": "Aire condicionat (contacte de pala)",
         "air_conditioner_power": "Aire condicionat (sensor de potència)",
-        "refrigerator": "Nevera",
+        "refrigerator": "Nevera (sensor de potència)",
+        "refrigerator_switch": "Nevera (interruptor intel·ligent)",
         "mailbox_motion": "Bústia (sensor de moviment interior)",
         "mailbox_slot": "Bústia (contacte de portella)"
       }

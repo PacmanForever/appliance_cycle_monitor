@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 - 2026-10-27
+
+### Added
+
+- Add profile-owned sensor inputs with profile-specific labels, descriptions, entity domains, and device-class filters.
+- Add a smart-switch refrigerator profile with switch-based activity detection and a separate door sensor.
+- Allow an optional controllable smart plug on the power-based refrigerator profile without replacing power-based detection.
+
+### Changed
+
+- Distinguish the capabilities of power-based and smart-switch refrigerators: the switch profile has no power, energy, or compressor-inactivity entities or alarm.
+- Normalize profile-specific form fields to the existing canonical configuration keys to preserve stored configuration compatibility.
+- Expand CRUD and runtime coverage for profile-specific selectors and smart-switch refrigerator behavior.
+
 ## 0.2.0 - 2026-10-27
 
 ### Added

@@ -205,7 +205,7 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
     assert result["step_id"] == "sensors"
     result = await hass.config_entries.options.async_configure(
         flow_id,
-        {CONF_POWER_ENTITY: "sensor.new_power", CONF_DOOR_ENTITY: None},
+        {CONF_POWER_ENTITY: "sensor.new_power", "washer_door_entity": None},
     )
     assert result["step_id"] == "parameters"
     result = await hass.config_entries.options.async_configure(
@@ -287,21 +287,27 @@ async def test_every_profile_supports_config_entry_crud(
             flow_id, {"name": name, CONF_APPLIANCE_TYPE: appliance_type}
         )
 
-    def sensor_values(revision: str) -> dict[str, str]:
-        values = {}
-        if "running_sensor" in profile.detection_sources:
-            values[CONF_RUNNING_ENTITY] = f"binary_sensor.{revision}_activity"
-        elif "mail_motion" in profile.detection_sources:
-            values[CONF_MAIL_MOTION_ENTITY] = f"binary_sensor.{revision}_motion"
-        elif "mail_slot" in profile.detection_sources:
-            values[CONF_MAIL_SLOT_ENTITY] = f"binary_sensor.{revision}_slot"
-        elif "power" in profile.detection_sources:
-            values[CONF_POWER_ENTITY] = f"sensor.{revision}_power"
-        if profile.supports_door_sensor:
-            values[CONF_DOOR_ENTITY] = f"binary_sensor.{revision}_door"
-        if profile.supports_smart_plug:
-            values[CONF_PLUG_ENTITY] = f"switch.{revision}_plug"
-        return values
+    def sensor_values(revision: str) -> tuple[dict[str, str], dict[str, str]]:
+        form_values: dict[str, str] = {}
+        stored_values: dict[str, str] = {}
+        for sensor_input in profile.sensor_inputs:
+            if sensor_input.config_key == CONF_POWER_ENTITY:
+                entity_id = f"sensor.{revision}_power"
+            elif sensor_input.config_key == CONF_PLUG_ENTITY:
+                entity_id = f"switch.{revision}_plug"
+            elif sensor_input.config_key == CONF_RUNNING_ENTITY:
+                entity_id = f"binary_sensor.{revision}_activity"
+            elif sensor_input.config_key in {
+                CONF_MAIL_MOTION_ENTITY,
+                CONF_MAIL_SLOT_ENTITY,
+            }:
+                entity_id = f"binary_sensor.{revision}_arrival"
+            else:
+                entity_id = f"binary_sensor.{revision}_door"
+            if sensor_input.required or sensor_input.config_key not in stored_values:
+                form_values[sensor_input.form_key] = entity_id
+            stored_values[sensor_input.config_key] = entity_id
+        return form_values, stored_values
 
     def parameter_values() -> dict[str, int | float]:
         values: dict[str, int | float] = {}
@@ -346,8 +352,11 @@ async def test_every_profile_supports_config_entry_crud(
 
     result = await submit_identity(f"{appliance_type} appliance")
     assert result["step_id"] == "sensors"
+    first_sensor_form, first_sensor_storage = sensor_values(
+        f"{appliance_type}_first"
+    )
     result = await hass.config_entries.flow.async_configure(
-        flow_id, sensor_values(f"{appliance_type}_first")
+        flow_id, first_sensor_form
     )
     assert result["step_id"] == "parameters"
     result = await hass.config_entries.flow.async_configure(
@@ -361,7 +370,7 @@ async def test_every_profile_supports_config_entry_crud(
     assert entry.data == {
         "name": f"{appliance_type} appliance",
         CONF_APPLIANCE_TYPE: appliance_type,
-        **sensor_values(f"{appliance_type}_first"),
+        **first_sensor_storage,
     }
     assert entry in hass.config_entries.async_entries(DOMAIN)
 
@@ -372,8 +381,11 @@ async def test_every_profile_supports_config_entry_crud(
         {"name": f"{appliance_type} updated", CONF_APPLIANCE_TYPE: appliance_type},
     )
     assert result["step_id"] == "sensors"
+    second_sensor_form, second_sensor_storage = sensor_values(
+        f"{appliance_type}_second"
+    )
     result = await hass.config_entries.options.async_configure(
-        options_flow_id, sensor_values(f"{appliance_type}_second")
+        options_flow_id, second_sensor_form
     )
     assert result["step_id"] == "parameters"
     result = await hass.config_entries.options.async_configure(
@@ -388,7 +400,7 @@ async def test_every_profile_supports_config_entry_crud(
     assert entry.data == {
         "name": f"{appliance_type} updated",
         CONF_APPLIANCE_TYPE: appliance_type,
-        **sensor_values(f"{appliance_type}_second"),
+        **second_sensor_storage,
     }
 
     await hass.config_entries.async_remove(entry.entry_id)
