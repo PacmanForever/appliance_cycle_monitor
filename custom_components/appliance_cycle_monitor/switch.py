@@ -75,5 +75,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up the selected smart plug, if configured."""
     runtime: ApplianceRuntime = entry.runtime_data
-    if runtime.config.get(CONF_PLUG_ENTITY):
+    if (
+        "plug" in runtime.profile.output_entities
+        and runtime.config.get(CONF_PLUG_ENTITY)
+    ):
         async_add_entities([AppliancePlugSwitch(runtime, entry)])

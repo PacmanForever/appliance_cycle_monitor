@@ -10,13 +10,22 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.helpers import selector
 
+from .appliance_types import APPLIANCE_TYPES, ApplianceTypeProfile, get_appliance_profile
 from .const import (
-    APPLIANCE_TYPES,
     CONF_APPLIANCE_TYPE,
+    CONF_ALARM_REPEAT_COUNT,
+    CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+    CONF_COMPRESSOR_INACTIVE_ACTIONS,
+    CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_DOOR_ENTITY,
+    CONF_DOOR_OPEN_ACTIONS,
+    CONF_DOOR_OPEN_DELAY_SECONDS,
     CONF_FINISH_ACTIONS,
     CONF_FINISH_DURATION_SECONDS,
     CONF_FINISH_POWER_W,
+    CONF_MAIL_ARRIVAL_ACTIONS,
+    CONF_MAIL_MOTION_ENTITY,
+    CONF_MAIL_SLOT_ENTITY,
     CONF_MAX_RUNTIME_ACTIONS,
     CONF_MAX_RUNTIME_SECONDS,
     CONF_PENDING_ACTIONS,
@@ -25,11 +34,16 @@ from .const import (
     CONF_PENDING_REPEATS,
     CONF_PLUG_ENTITY,
     CONF_POWER_ENTITY,
+    CONF_RUNNING_ENTITY,
     CONF_START_ACTIONS,
     CONF_START_DURATION_SECONDS,
     CONF_START_POWER_W,
     DEFAULT_FINISH_DURATION_SECONDS,
     DEFAULT_FINISH_POWER_W,
+    DEFAULT_ALARM_REPEAT_COUNT,
+    DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS,
+    DEFAULT_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+    DEFAULT_DOOR_OPEN_DELAY_SECONDS,
     DEFAULT_PENDING_DELAY_SECONDS,
     DEFAULT_PENDING_INTERVAL_SECONDS,
     DEFAULT_PENDING_REPEATS,
@@ -43,8 +57,11 @@ _ENTRY_DATA_KEYS = {
     CONF_NAME,
     CONF_APPLIANCE_TYPE,
     CONF_POWER_ENTITY,
+    CONF_RUNNING_ENTITY,
     CONF_DOOR_ENTITY,
     CONF_PLUG_ENTITY,
+    CONF_MAIL_MOTION_ENTITY,
+    CONF_MAIL_SLOT_ENTITY,
 }
 
 
@@ -77,8 +94,9 @@ def _number_selector(unit: str, step: float = 0.1) -> selector.NumberSelector:
     )
 
 
-def _entity_schema(values: dict[str, Any]) -> vol.Schema:
-    schema: dict[Any, Any] = {
+def _identity_schema(values: dict[str, Any]) -> vol.Schema:
+    return vol.Schema(
+        {
         _required(CONF_NAME, values): selector.TextSelector(),
         _required(CONF_APPLIANCE_TYPE, values): selector.SelectSelector(
             selector.SelectSelectorConfig(
@@ -87,22 +105,57 @@ def _entity_schema(values: dict[str, Any]) -> vol.Schema:
                 translation_key=CONF_APPLIANCE_TYPE,
             )
         ),
-        _required(CONF_POWER_ENTITY, values): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                filter=[{"domain": "sensor", "device_class": "power"}]
+        }
+    )
+
+
+def _sensor_schema(values: dict[str, Any], profile: ApplianceTypeProfile) -> vol.Schema:
+    schema: dict[Any, Any] = {}
+    source_is_optional = len(profile.detection_sources) > 1
+    for source in profile.detection_sources:
+        key = {
+            "power": CONF_POWER_ENTITY,
+            "running_sensor": CONF_RUNNING_ENTITY,
+            "mail_motion": CONF_MAIL_MOTION_ENTITY,
+            "mail_slot": CONF_MAIL_SLOT_ENTITY,
+        }[source]
+        marker = _optional(key, values) if source_is_optional else _required(key, values)
+        if source == "power":
+            entity_selector = selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    filter=[{"domain": "sensor", "device_class": "power"}]
+                )
             )
-        ),
-    }
-    schema[_optional(CONF_DOOR_ENTITY, values)] = _OptionalEntitySelector(
-        selector.EntitySelectorConfig(domain="binary_sensor")
-    )
-    schema[_optional(CONF_PLUG_ENTITY, values)] = _OptionalEntitySelector(
-        selector.EntitySelectorConfig(domain="switch")
-    )
+        else:
+            entity_selector = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="binary_sensor")
+            )
+        schema[marker] = entity_selector
+
+    if profile.supports_door_sensor:
+        marker = (
+            _required(CONF_DOOR_ENTITY, values)
+            if profile.requires_door_sensor
+            else _optional(CONF_DOOR_ENTITY, values)
+        )
+        entity_selector = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="binary_sensor")
+        )
+        schema[marker] = (
+            entity_selector
+            if profile.requires_door_sensor
+            else _OptionalEntitySelector(entity_selector.config)
+        )
+    if profile.supports_smart_plug:
+        schema[_optional(CONF_PLUG_ENTITY, values)] = _OptionalEntitySelector(
+            selector.EntitySelectorConfig(domain="switch")
+        )
     return vol.Schema(schema)
 
 
-def _threshold_schema(values: dict[str, Any]) -> vol.Schema:
+def _threshold_schema(
+    values: dict[str, Any], profile: ApplianceTypeProfile
+) -> vol.Schema:
     start_power = values.get(CONF_START_POWER_W, DEFAULT_START_POWER_W)
     start_duration = values.get(
         CONF_START_DURATION_SECONDS, DEFAULT_START_DURATION_SECONDS
@@ -111,38 +164,27 @@ def _threshold_schema(values: dict[str, Any]) -> vol.Schema:
     finish_duration = values.get(
         CONF_FINISH_DURATION_SECONDS, DEFAULT_FINISH_DURATION_SECONDS
     )
-    schema: dict[Any, Any] = {
-        vol.Required(CONF_START_POWER_W, default=start_power): _number_selector("W"),
-        vol.Required(CONF_START_DURATION_SECONDS, default=start_duration): (
-            _number_selector("s", step=1)
-        ),
-        vol.Required(CONF_FINISH_POWER_W, default=finish_power): _number_selector("W"),
-        vol.Required(CONF_FINISH_DURATION_SECONDS, default=finish_duration): (
-            _number_selector("s", step=1)
-        ),
-        _optional(CONF_MAX_RUNTIME_SECONDS, values): _number_selector("s", step=1),
-    }
-    return vol.Schema(schema)
-
-
-def _action_schema(values: dict[str, Any]) -> vol.Schema:
-    schema: dict[Any, Any] = {
-        vol.Optional(CONF_START_ACTIONS, default=values.get(CONF_START_ACTIONS, [])):
-            selector.ActionSelector(),
-        vol.Optional(CONF_FINISH_ACTIONS, default=values.get(CONF_FINISH_ACTIONS, [])):
-            selector.ActionSelector(),
-        vol.Optional(
-            CONF_MAX_RUNTIME_ACTIONS,
-            default=values.get(CONF_MAX_RUNTIME_ACTIONS, []),
-        ): selector.ActionSelector(),
-    }
-    if values.get(CONF_DOOR_ENTITY):
+    schema: dict[Any, Any] = {}
+    if "power_cycle" in profile.parameter_groups:
         schema.update(
             {
-                vol.Optional(
-                    CONF_PENDING_ACTIONS,
-                    default=values.get(CONF_PENDING_ACTIONS, []),
-                ): selector.ActionSelector(),
+                vol.Required(CONF_START_POWER_W, default=start_power): _number_selector("W"),
+                vol.Required(CONF_START_DURATION_SECONDS, default=start_duration): (
+                    _number_selector("s", step=1)
+                ),
+                vol.Required(CONF_FINISH_POWER_W, default=finish_power): _number_selector("W"),
+                vol.Required(CONF_FINISH_DURATION_SECONDS, default=finish_duration): (
+                    _number_selector("s", step=1)
+                ),
+            }
+        )
+    if "max_runtime" in profile.parameter_groups:
+        schema[_optional(CONF_MAX_RUNTIME_SECONDS, values)] = _number_selector(
+            "s", step=1
+        )
+    if "pending_unload" in profile.parameter_groups and values.get(CONF_DOOR_ENTITY):
+        schema.update(
+            {
                 vol.Required(
                     CONF_PENDING_DELAY_SECONDS,
                     default=values.get(
@@ -162,10 +204,72 @@ def _action_schema(values: dict[str, Any]) -> vol.Schema:
                 ): _number_selector("", step=1),
             }
         )
+    if "door_alarm" in profile.parameter_groups:
+        schema[vol.Required(
+            CONF_DOOR_OPEN_DELAY_SECONDS,
+            default=values.get(
+                CONF_DOOR_OPEN_DELAY_SECONDS, DEFAULT_DOOR_OPEN_DELAY_SECONDS
+            ),
+        )] = _number_selector("s", step=1)
+    if "compressor_alarm" in profile.parameter_groups:
+        schema[vol.Required(
+            CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+            default=values.get(
+                CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+                DEFAULT_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+            ),
+        )] = _number_selector("s", step=1)
+    if "alarm_repeats" in profile.parameter_groups:
+        schema[vol.Required(
+            CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+            default=values.get(
+                CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+                DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS,
+            ),
+        )] = _number_selector("s", step=1)
+        schema[vol.Required(
+            CONF_ALARM_REPEAT_COUNT,
+            default=values.get(CONF_ALARM_REPEAT_COUNT, DEFAULT_ALARM_REPEAT_COUNT),
+        )] = _number_selector("", step=1)
     return vol.Schema(schema)
 
 
-def _validate_thresholds(values: dict[str, Any]) -> bool:
+def _action_schema(
+    values: dict[str, Any], profile: ApplianceTypeProfile
+) -> vol.Schema:
+    action_keys = {
+        "cycle_start": CONF_START_ACTIONS,
+        "cycle_finish": CONF_FINISH_ACTIONS,
+        "max_runtime": CONF_MAX_RUNTIME_ACTIONS,
+        "pending_unload": CONF_PENDING_ACTIONS,
+        "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
+        "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
+        "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
+    }
+    schema: dict[Any, Any] = {}
+    for group in profile.action_groups:
+        if group == "pending_unload" and not values.get(CONF_DOOR_ENTITY):
+            continue
+        key = action_keys[group]
+        schema[vol.Optional(key, default=values.get(key, []))] = (
+            selector.ActionSelector()
+        )
+    return vol.Schema(schema)
+
+
+def _validate_thresholds(
+    values: dict[str, Any], profile: ApplianceTypeProfile | None = None
+) -> bool:
+    if profile is not None and "power" not in profile.detection_sources:
+        maximum = values.get(CONF_MAX_RUNTIME_SECONDS)
+        if maximum in (None, ""):
+            return True
+        try:
+            max_runtime = float(maximum)
+        except (TypeError, ValueError, OverflowError):
+            return False
+        return math.isfinite(max_runtime) and max_runtime > 0
+
     try:
         start_power = float(values[CONF_START_POWER_W])
         finish_power = float(values[CONF_FINISH_POWER_W])
@@ -208,6 +312,25 @@ def _validate_pending(values: dict[str, Any]) -> bool:
     )
 
 
+def _validate_alarm_settings(values: dict[str, Any]) -> bool:
+    try:
+        door_delay = float(values[CONF_DOOR_OPEN_DELAY_SECONDS])
+        compressor_delay = float(values[CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS])
+        interval = float(values[CONF_ALARM_REPEAT_INTERVAL_SECONDS])
+        repeats = float(values[CONF_ALARM_REPEAT_COUNT])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    return (
+        all(
+            math.isfinite(value) and value > 0 and value.is_integer()
+            for value in (door_delay, compressor_delay, interval)
+        )
+        and math.isfinite(repeats)
+        and repeats >= 0
+        and repeats.is_integer()
+    )
+
+
 def _clear_pending_settings(values: dict[str, Any]) -> None:
     values[CONF_PENDING_ACTIONS] = []
     values[CONF_PENDING_DELAY_SECONDS] = DEFAULT_PENDING_DELAY_SECONDS
@@ -216,11 +339,67 @@ def _clear_pending_settings(values: dict[str, Any]) -> None:
 
 
 def _entry_data(values: dict[str, Any]) -> dict[str, Any]:
-    return {key: values[key] for key in _ENTRY_DATA_KEYS if key in values}
+    profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+    keys = _ENTRY_DATA_KEYS.copy()
+    source_keys = {
+        "power": CONF_POWER_ENTITY,
+        "running_sensor": CONF_RUNNING_ENTITY,
+        "mail_motion": CONF_MAIL_MOTION_ENTITY,
+        "mail_slot": CONF_MAIL_SLOT_ENTITY,
+    }
+    for source, key in source_keys.items():
+        if source not in profile.detection_sources:
+            keys.discard(key)
+    if not profile.supports_door_sensor:
+        keys.discard(CONF_DOOR_ENTITY)
+    if not profile.supports_smart_plug:
+        keys.discard(CONF_PLUG_ENTITY)
+    return {key: values[key] for key in keys if key in values}
 
 
 def _entry_options(values: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in values.items() if key not in _ENTRY_DATA_KEYS}
+    profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+    unsupported = set(_ENTRY_DATA_KEYS)
+    if "power" not in profile.detection_sources:
+        unsupported.update(
+            {
+                CONF_START_POWER_W,
+                CONF_START_DURATION_SECONDS,
+                CONF_FINISH_POWER_W,
+                CONF_FINISH_DURATION_SECONDS,
+            }
+        )
+    if "max_runtime" not in profile.parameter_groups:
+        unsupported.update({CONF_MAX_RUNTIME_SECONDS, CONF_MAX_RUNTIME_ACTIONS})
+    if "cycle_start" not in profile.action_groups:
+        unsupported.add(CONF_START_ACTIONS)
+    if "cycle_finish" not in profile.action_groups:
+        unsupported.add(CONF_FINISH_ACTIONS)
+    if "mail_arrival" not in profile.action_groups:
+        unsupported.add(CONF_MAIL_ARRIVAL_ACTIONS)
+    if "door_open_alarm" not in profile.action_groups:
+        unsupported.update({CONF_DOOR_OPEN_ACTIONS, CONF_DOOR_OPEN_DELAY_SECONDS})
+    if "compressor_inactive_alarm" not in profile.action_groups:
+        unsupported.update(
+            {CONF_COMPRESSOR_INACTIVE_ACTIONS, CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS}
+        )
+    if not any(
+        group in profile.action_groups
+        for group in ("door_open_alarm", "compressor_inactive_alarm")
+    ):
+        unsupported.update({CONF_ALARM_REPEAT_COUNT, CONF_ALARM_REPEAT_INTERVAL_SECONDS})
+    if "pending_unload" not in profile.parameter_groups or not values.get(
+        CONF_DOOR_ENTITY
+    ):
+        unsupported.update(
+            {
+                CONF_PENDING_ACTIONS,
+                CONF_PENDING_DELAY_SECONDS,
+                CONF_PENDING_INTERVAL_SECONDS,
+                CONF_PENDING_REPEATS,
+            }
+        )
+    return {key: value for key, value in values.items() if key not in unsupported}
 
 
 class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -236,26 +415,49 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> dict[str, Any]:
         if user_input is not None:
             self._draft = dict(user_input)
-            self._draft.setdefault(CONF_DOOR_ENTITY, None)
-            self._draft.setdefault(CONF_PLUG_ENTITY, None)
-            return await self.async_step_thresholds()
+            return await self.async_step_sensors()
         return self.async_show_form(
-            step_id="user", data_schema=_entity_schema({}), last_step=False
+            step_id="user", data_schema=_identity_schema({}), last_step=False
         )
 
-    async def async_step_thresholds(
+    async def async_step_sensors(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        if user_input is not None:
+            self._draft.update(user_input)
+            return await self.async_step_parameters()
+        profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
+        return self.async_show_form(
+            step_id="sensors",
+            data_schema=_sensor_schema(self._draft, profile),
+            last_step=False,
+        )
+
+    async def async_step_parameters(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not _validate_thresholds(user_input):
+            if not _validate_thresholds(user_input, profile):
                 errors["base"] = "invalid_thresholds"
+            elif (
+                "pending_unload" in profile.parameter_groups
+                and self._draft.get(CONF_DOOR_ENTITY)
+                and not _validate_pending(user_input)
+            ):
+                errors["base"] = "invalid_pending_settings"
+            elif (
+                "alarm_repeats" in profile.parameter_groups
+                and not _validate_alarm_settings(user_input)
+            ):
+                errors["base"] = "invalid_alarm_settings"
             else:
                 self._draft.update(user_input)
                 return await self.async_step_actions()
         return self.async_show_form(
-            step_id="thresholds",
-            data_schema=_threshold_schema(self._draft),
+            step_id="parameters",
+            data_schema=_threshold_schema(self._draft, profile),
             errors=errors,
             last_step=False,
         )
@@ -263,25 +465,23 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_actions(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        errors: dict[str, str] = {}
         if user_input is not None:
             self._draft.update(user_input)
-            if self._draft.get(CONF_DOOR_ENTITY) and not _validate_pending(
-                self._draft
+            profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
+            if "pending_unload" not in profile.parameter_groups or not self._draft.get(
+                CONF_DOOR_ENTITY
             ):
-                errors["base"] = "invalid_pending_settings"
-            else:
-                if not self._draft.get(CONF_DOOR_ENTITY):
-                    _clear_pending_settings(self._draft)
-                return self.async_create_entry(
-                    title=self._draft[CONF_NAME],
-                    data=_entry_data(self._draft),
-                    options=_entry_options(self._draft),
-                )
+                _clear_pending_settings(self._draft)
+            return self.async_create_entry(
+                title=self._draft[CONF_NAME],
+                data=_entry_data(self._draft),
+                options=_entry_options(self._draft),
+            )
         return self.async_show_form(
             step_id="actions",
-            data_schema=_action_schema(self._draft),
-            errors=errors,
+            data_schema=_action_schema(
+                self._draft, get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
+            ),
         )
 
     @staticmethod
@@ -290,7 +490,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
-    """Handle edits to an existing appliance using the same three steps."""
+    """Handle edits to an existing appliance using the same four steps."""
 
     def __init__(self) -> None:
         self._draft: dict[str, Any] = {}
@@ -304,27 +504,51 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
             self._saved.setdefault(CONF_NAME, self.config_entry.title)
         if user_input is not None:
             self._draft = dict(user_input)
-            self._draft.setdefault(CONF_DOOR_ENTITY, None)
-            self._draft.setdefault(CONF_PLUG_ENTITY, None)
-            return await self.async_step_thresholds()
+            return await self.async_step_sensors()
         return self.async_show_form(
-            step_id="init", data_schema=_entity_schema(self._saved), last_step=False
+            step_id="init", data_schema=_identity_schema(self._saved), last_step=False
         )
 
-    async def async_step_thresholds(
+    async def async_step_sensors(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         values = {**self._saved, **self._draft}
+        if user_input is not None:
+            self._draft.update(user_input)
+            return await self.async_step_parameters()
+        profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+        return self.async_show_form(
+            step_id="sensors",
+            data_schema=_sensor_schema(values, profile),
+            last_step=False,
+        )
+
+    async def async_step_parameters(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        values = {**self._saved, **self._draft}
+        profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not _validate_thresholds(user_input):
+            if not _validate_thresholds(user_input, profile):
                 errors["base"] = "invalid_thresholds"
+            elif (
+                "pending_unload" in profile.parameter_groups
+                and values.get(CONF_DOOR_ENTITY)
+                and not _validate_pending(user_input)
+            ):
+                errors["base"] = "invalid_pending_settings"
+            elif (
+                "alarm_repeats" in profile.parameter_groups
+                and not _validate_alarm_settings(user_input)
+            ):
+                errors["base"] = "invalid_alarm_settings"
             else:
                 self._draft.update(user_input)
                 return await self.async_step_actions()
         return self.async_show_form(
-            step_id="thresholds",
-            data_schema=_threshold_schema(values),
+            step_id="parameters",
+            data_schema=_threshold_schema(values, profile),
             errors=errors,
             last_step=False,
         )
@@ -333,26 +557,26 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         values = {**self._saved, **self._draft}
-        errors: dict[str, str] = {}
         if user_input is not None:
             self._draft.update(user_input)
             values = {**self._saved, **self._draft}
-            if values.get(CONF_DOOR_ENTITY) and not _validate_pending(values):
-                errors["base"] = "invalid_pending_settings"
-            else:
-                if not values.get(CONF_DOOR_ENTITY):
-                    _clear_pending_settings(values)
-                    _clear_pending_settings(self._draft)
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry,
-                    data=_entry_data(values),
-                    title=values[CONF_NAME],
-                )
-                return self.async_create_entry(
-                    title="", data=_entry_options(values)
-                )
+            profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+            if "pending_unload" not in profile.parameter_groups or not values.get(
+                CONF_DOOR_ENTITY
+            ):
+                _clear_pending_settings(values)
+                _clear_pending_settings(self._draft)
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=_entry_data(values),
+                title=values[CONF_NAME],
+            )
+            return self.async_create_entry(
+                title="", data=_entry_options(values)
+            )
         return self.async_show_form(
             step_id="actions",
-            data_schema=_action_schema(values),
-            errors=errors,
+            data_schema=_action_schema(
+                values, get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+            ),
         )

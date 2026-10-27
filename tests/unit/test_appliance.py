@@ -5,6 +5,7 @@ import unittest
 
 from custom_components.appliance_cycle_monitor.appliance import (
     ApplianceCycleDetector,
+    BinaryActivityDetector,
     CycleEvent,
     CycleThresholds,
     CycleTransition,
@@ -95,7 +96,15 @@ class ApplianceCycleDetectorTests(unittest.TestCase):
         self.assertIsNone(detector.next_deadline)
 
     def test_invalid_units_and_values_are_ignored(self) -> None:
-        for value, unit in ((5, None), (5, "mW"), (float("nan"), "W"), (True, "W")):
+        for value, unit in (
+            (5, None),
+            (5, "mW"),
+            (float("nan"), "W"),
+            (float("inf"), "W"),
+            (-1, "W"),
+            ("invalid", "W"),
+            (True, "W"),
+        ):
             with self.subTest(value=value, unit=unit):
                 detector = ApplianceCycleDetector()
                 self.assertEqual(detector.observe_power(value, unit, START), [])
@@ -162,17 +171,103 @@ class ApplianceCycleDetectorTests(unittest.TestCase):
         self.assertEqual(restored.next_deadline, START + timedelta(seconds=15))
         self.assertFalse(restored.is_running)
 
+    def test_reconcile_clears_candidates_contradicted_by_current_power(self) -> None:
+        detector = ApplianceCycleDetector()
+        detector.observe_power(5, "W", START)
+        self.assertEqual(detector.reconcile_power(4, "W", START), [])
+        self.assertIsNone(detector.next_deadline)
+
+        detector.observe_power(5, "W", START)
+        detector.advance_time(START + timedelta(seconds=15))
+        detector.observe_power(0.5, "W", START + timedelta(seconds=20))
+        self.assertEqual(
+            detector.reconcile_power(1, "W", START + timedelta(seconds=30)), []
+        )
+        self.assertIsNone(detector.next_deadline)
+
     def test_corrupt_state_is_rejected(self) -> None:
         detector = ApplianceCycleDetector()
 
         with self.assertRaises(ValueError):
             detector.restore_state({"cycle_started_at": "not-a-timestamp"})
 
+    def test_invalid_restored_values_are_rejected(self) -> None:
+        invalid_states = (
+            {"power_w": True},
+            {"cycle_started_at": "2026-01-01T00:00:00"},
+            {"last_cycle_duration_seconds": -1},
+            {
+                "cycle_started_at": START.isoformat(),
+                "start_candidate_at": START.isoformat(),
+            },
+            {"finish_candidate_at": START.isoformat()},
+        )
+        for state in invalid_states:
+            with self.subTest(state=state), self.assertRaises(ValueError):
+                ApplianceCycleDetector().restore_state(state)
+
     def test_invalid_thresholds_are_rejected(self) -> None:
         with self.assertRaises(ValueError):
             CycleThresholds(start_power_w=1, finish_power_w=1)
         with self.assertRaises(ValueError):
             CycleThresholds(start_duration=timedelta(seconds=-1))
+
+
+class BinaryActivityDetectorTests(unittest.TestCase):
+    def test_on_and_off_emit_immediate_activity_events(self) -> None:
+        detector = BinaryActivityDetector()
+
+        self.assertEqual(
+            detector.observe_state("on", START),
+            [CycleEvent(CycleTransition.STARTED, START)],
+        )
+        finished_at = START + timedelta(minutes=5)
+        self.assertEqual(
+            detector.observe_state("off", finished_at),
+            [
+                CycleEvent(
+                    CycleTransition.FINISHED,
+                    finished_at,
+                    timedelta(minutes=5),
+                )
+            ],
+        )
+        self.assertFalse(detector.is_running)
+
+    def test_unavailable_state_does_not_finish_active_period(self) -> None:
+        detector = BinaryActivityDetector()
+        detector.observe_state("on", START)
+
+        self.assertEqual(detector.observe_state("unavailable", START), [])
+        self.assertTrue(detector.is_running)
+        self.assertFalse(detector.available)
+
+    def test_state_round_trips(self) -> None:
+        detector = BinaryActivityDetector()
+        detector.observe_state("on", START)
+        restored = BinaryActivityDetector()
+
+        restored.restore_state(detector.export_state())
+
+        self.assertTrue(restored.is_running)
+        self.assertEqual(restored.cycle_started_at, START)
+        self.assertFalse(restored.available)
+
+    def test_idle_and_unavailable_states_do_not_emit_transitions(self) -> None:
+        detector = BinaryActivityDetector()
+
+        self.assertEqual(detector.reconcile_state(None, START), [])
+        self.assertFalse(detector.available)
+        self.assertEqual(detector.observe_state("off", START), [])
+        self.assertTrue(detector.available)
+        self.assertEqual(detector.advance_time(START + timedelta(minutes=1)), [])
+        self.assertIsNone(detector.finish_by_switch(START))
+
+    def test_invalid_restored_duration_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            BinaryActivityDetector().restore_state(
+                {"last_cycle_duration_seconds": float("nan")}
+            )
 
 
 if __name__ == "__main__":

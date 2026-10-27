@@ -81,47 +81,48 @@ async def async_setup_entry(
 ) -> None:
     """Set up appliance sensors."""
     runtime: ApplianceRuntime = entry.runtime_data
+    sensors = {
+        "power": ApplianceSensor(
+            runtime,
+            entry,
+            "power",
+            lambda: runtime.detector.power_w,
+            UnitOfPower.WATT,
+            SensorDeviceClass.POWER,
+            SensorStateClass.MEASUREMENT,
+        ),
+        "total_energy": ApplianceSensor(
+            runtime,
+            entry,
+            "total_energy",
+            lambda: runtime.energy_kwh,
+            UnitOfEnergy.KILO_WATT_HOUR,
+            SensorDeviceClass.ENERGY,
+            SensorStateClass.TOTAL_INCREASING,
+        ),
+        "last_cycle_duration": ApplianceSensor(
+            runtime,
+            entry,
+            "last_cycle_duration",
+            lambda: (
+                runtime.detector.last_cycle_duration.total_seconds()
+                if runtime.detector.last_cycle_duration is not None
+                else None
+            ),
+            UnitOfTime.SECONDS,
+            SensorDeviceClass.DURATION,
+            SensorStateClass.MEASUREMENT,
+        ),
+        "estimated_remaining": ApplianceSensor(
+            runtime,
+            entry,
+            "estimated_remaining",
+            lambda: runtime.remaining_seconds,
+            UnitOfTime.SECONDS,
+            SensorDeviceClass.DURATION,
+            SensorStateClass.MEASUREMENT,
+        ),
+    }
     async_add_entities(
-        [
-            ApplianceSensor(
-                runtime,
-                entry,
-                "power",
-                lambda: runtime.detector.power_w,
-                UnitOfPower.WATT,
-                SensorDeviceClass.POWER,
-                SensorStateClass.MEASUREMENT,
-            ),
-            ApplianceSensor(
-                runtime,
-                entry,
-                "total_energy",
-                lambda: runtime.energy_kwh,
-                UnitOfEnergy.KILO_WATT_HOUR,
-                SensorDeviceClass.ENERGY,
-                SensorStateClass.TOTAL_INCREASING,
-            ),
-            ApplianceSensor(
-                runtime,
-                entry,
-                "last_cycle_duration",
-                lambda: (
-                    runtime.detector.last_cycle_duration.total_seconds()
-                    if runtime.detector.last_cycle_duration is not None
-                    else None
-                ),
-                UnitOfTime.SECONDS,
-                SensorDeviceClass.DURATION,
-                SensorStateClass.MEASUREMENT,
-            ),
-            ApplianceSensor(
-                runtime,
-                entry,
-                "estimated_remaining",
-                lambda: runtime.remaining_seconds,
-                UnitOfTime.SECONDS,
-                SensorDeviceClass.DURATION,
-                SensorStateClass.MEASUREMENT,
-            ),
-        ]
+        [sensor for key, sensor in sensors.items() if key in runtime.profile.output_entities]
     )

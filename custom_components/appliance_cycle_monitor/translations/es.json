@@ -2,23 +2,48 @@
   "config": {
     "step": {
       "user": {
-        "title": "Electrodoméstico y sensores de entrada",
+        "title": "Tipo y nombre del electrodoméstico",
         "data": {
           "name": "Nombre que se mostrará para este electrodoméstico",
-          "appliance_type": "Categoría (lavadora, lavavajillas o secadora)",
-          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
-          "door_entity": "Sensor de puerta abierta (opcional; activa el estado y los avisos para vaciar)",
-          "plug_entity": "Interruptor del enchufe inteligente (opcional; al apagarlo termina el ciclo)"
+          "appliance_type": "Tipo de electrodoméstico"
         }
       },
-      "thresholds": {
-        "title": "Condiciones de inicio y fin del ciclo",
+      "sensors": {
+        "title": "Sensores de entrada",
+        "data": {
+          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
+          "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
+          "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
+          "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
+          "door_entity": "Sensor de puerta abierta (opcional en lavandería; obligatorio para frigorífico o buzón)",
+          "plug_entity": "Enchufe inteligente del aparato (opcional)"
+        },
+        "data_description": {
+          "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
+          "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
+          "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
+          "door_entity": "En un frigorífico o buzón, el contacto abierto indica que la puerta principal está abierta.",
+          "plug_entity": "La integración también crea un interruptor para controlar el enchufe, pero no lo apaga automáticamente. Si lo apagas, corta la alimentación del aparato y el ciclo en curso se marca como terminado."
+        }
+      },
+      "parameters": {
+        "title": "Parámetros específicos del tipo",
         "data": {
           "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
           "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
           "finish_power_w": "Potencia por debajo de la cual se considera que termina el ciclo (W)",
           "finish_duration_seconds": "Segundos que la potencia debe estar bajo el umbral final para confirmar que terminó el ciclo",
-          "max_runtime_seconds": "Duración máxima del ciclo en segundos (aviso opcional; no detiene el aparato)"
+          "max_runtime_seconds": "Tiempo máximo del ciclo",
+          "pending_delay_seconds": "Espera tras el ciclo antes del primer aviso para vaciar",
+          "pending_interval_seconds": "Intervalo entre los avisos posteriores para vaciar",
+          "pending_repeats": "Avisos adicionales después del primero (3 significa 4 en total)",
+          "door_open_delay_seconds": "Segundos que la puerta del frigorífico puede estar abierta antes del aviso",
+          "compressor_inactive_delay_seconds": "Segundos sin actividad del compresor antes del aviso",
+          "alarm_repeat_interval_seconds": "Intervalo entre avisos repetidos del frigorífico (segundos)",
+          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
+        },
+        "data_description": {
+          "max_runtime_seconds": "Opcional. Déjalo vacío para desactivarlo. Si el ciclo sigue en marcha al cumplirse este tiempo, se ejecutarán una vez las acciones que configures para este límite; el aparato no se detendrá."
         }
       },
       "actions": {
@@ -28,37 +53,63 @@
           "finish_actions": "Acciones que se ejecutan cuando termina el ciclo",
           "max_runtime_actions": "Acciones que se ejecutan una vez si se supera el tiempo máximo",
           "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
-          "pending_delay_seconds": "Segundos de espera tras el ciclo antes del primer aviso para vaciar",
-          "pending_interval_seconds": "Segundos entre los siguientes avisos para vaciar",
-          "pending_repeats": "Avisos adicionales al primero (3 significa 4 avisos en total)"
+          "door_open_actions": "Acciones para la alarma de puerta abierta del frigorífico",
+          "compressor_inactive_actions": "Acciones para la alarma de inactividad del compresor",
+          "mail_arrival_actions": "Acciones que se ejecutan cuando se detecta correo"
         }
       }
     },
     "error": {
       "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
-      "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo."
+      "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
+      "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Electrodoméstico y sensores de entrada",
+        "title": "Tipo y nombre del electrodoméstico",
         "data": {
           "name": "Nombre que se mostrará para este electrodoméstico",
-          "appliance_type": "Categoría (lavadora, lavavajillas o secadora)",
-          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
-          "door_entity": "Sensor de puerta abierta (opcional; activa el estado y los avisos para vaciar)",
-          "plug_entity": "Interruptor del enchufe inteligente (opcional; al apagarlo termina el ciclo)"
+          "appliance_type": "Tipo de electrodoméstico"
         }
       },
-      "thresholds": {
-        "title": "Condiciones de inicio y fin del ciclo",
+      "sensors": {
+        "title": "Sensores de entrada",
+        "data": {
+          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
+          "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
+          "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
+          "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
+          "door_entity": "Sensor de puerta abierta (opcional en lavandería; obligatorio para frigorífico o buzón)",
+          "plug_entity": "Enchufe inteligente del aparato (opcional)"
+        },
+        "data_description": {
+          "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
+          "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
+          "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
+          "door_entity": "En un frigorífico o buzón, el contacto abierto indica que la puerta principal está abierta.",
+          "plug_entity": "La integración también crea un interruptor para controlar el enchufe, pero no lo apaga automáticamente. Si lo apagas, corta la alimentación del aparato y el ciclo en curso se marca como terminado."
+        }
+      },
+      "parameters": {
+        "title": "Parámetros específicos del tipo",
         "data": {
           "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
           "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
           "finish_power_w": "Potencia por debajo de la cual se considera que termina el ciclo (W)",
           "finish_duration_seconds": "Segundos que la potencia debe estar bajo el umbral final para confirmar que terminó el ciclo",
-          "max_runtime_seconds": "Duración máxima del ciclo en segundos (aviso opcional; no detiene el aparato)"
+          "max_runtime_seconds": "Tiempo máximo del ciclo",
+          "pending_delay_seconds": "Espera tras el ciclo antes del primer aviso para vaciar",
+          "pending_interval_seconds": "Intervalo entre los avisos posteriores para vaciar",
+          "pending_repeats": "Avisos adicionales después del primero (3 significa 4 en total)",
+          "door_open_delay_seconds": "Segundos que la puerta del frigorífico puede estar abierta antes del aviso",
+          "compressor_inactive_delay_seconds": "Segundos sin actividad del compresor antes del aviso",
+          "alarm_repeat_interval_seconds": "Intervalo entre avisos repetidos del frigorífico (segundos)",
+          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
+        },
+        "data_description": {
+          "max_runtime_seconds": "Opcional. Déjalo vacío para desactivarlo. Si el ciclo sigue en marcha al cumplirse este tiempo, se ejecutarán una vez las acciones que configures para este límite; el aparato no se detendrá."
         }
       },
       "actions": {
@@ -68,15 +119,16 @@
           "finish_actions": "Acciones que se ejecutan cuando termina el ciclo",
           "max_runtime_actions": "Acciones que se ejecutan una vez si se supera el tiempo máximo",
           "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
-          "pending_delay_seconds": "Segundos de espera tras el ciclo antes del primer aviso para vaciar",
-          "pending_interval_seconds": "Segundos entre los siguientes avisos para vaciar",
-          "pending_repeats": "Avisos adicionales al primero (3 significa 4 avisos en total)"
+          "door_open_actions": "Acciones para la alarma de puerta abierta del frigorífico",
+          "compressor_inactive_actions": "Acciones para la alarma de inactividad del compresor",
+          "mail_arrival_actions": "Acciones que se ejecutan cuando se detecta correo"
         }
       }
     },
     "error": {
       "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
-      "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo."
+      "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
+      "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo."
     }
   },
   "selector": {
@@ -84,7 +136,12 @@
       "options": {
         "washer": "Lavadora",
         "dishwasher": "Lavavajillas",
-        "dryer": "Secadora"
+        "dryer": "Secadora",
+        "air_conditioner_contact": "Aire acondicionado (contacto de lama)",
+        "air_conditioner_power": "Aire acondicionado (sensor de potencia)",
+        "refrigerator": "Frigorífico",
+        "mailbox_motion": "Buzón (sensor de movimiento interior)",
+        "mailbox_slot": "Buzón (contacto de trampilla)"
       }
     }
   },

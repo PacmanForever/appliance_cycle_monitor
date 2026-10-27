@@ -42,5 +42,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up the manual-clear button when a door sensor is configured."""
     runtime: ApplianceRuntime = entry.runtime_data
-    if runtime.config.get(CONF_DOOR_ENTITY):
+    if (
+        "clear_pending" in runtime.profile.output_entities
+        and runtime.config.get(CONF_DOOR_ENTITY)
+    ):
         async_add_entities([ClearPendingButton(runtime, entry)])

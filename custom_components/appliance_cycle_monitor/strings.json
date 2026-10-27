@@ -2,23 +2,48 @@
   "config": {
     "step": {
       "user": {
-        "title": "Appliance and input sensors",
+        "title": "Appliance type and name",
         "data": {
           "name": "Name shown for this appliance",
-          "appliance_type": "Appliance category (washer, dishwasher, or dryer)",
-          "power_entity": "Power sensor for this appliance (in watts)",
-          "door_entity": "Door-open sensor (optional; enables unload status and reminders)",
-          "plug_entity": "Smart plug switch (optional; switching it off ends an active cycle)"
+          "appliance_type": "Appliance type"
         }
       },
-      "thresholds": {
-        "title": "Cycle start and finish conditions",
+      "sensors": {
+        "title": "Input sensors",
+        "data": {
+          "power_entity": "Power sensor for this appliance (in watts)",
+          "running_entity": "Binary contact that is on while the AC louver is open",
+          "mail_motion_entity": "Interior motion sensor that detects incoming mail",
+          "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
+          "door_entity": "Door-open sensor (optional for laundry; required for a refrigerator or mailbox)",
+          "plug_entity": "Appliance smart plug (optional)"
+        },
+        "data_description": {
+          "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
+          "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
+          "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
+          "door_entity": "For a refrigerator or mailbox, an open contact means the main door is open.",
+          "plug_entity": "The integration also creates a switch to control this plug, but does not turn it off automatically. Turning it off cuts power to the appliance and marks an active cycle as finished."
+        }
+      },
+      "parameters": {
+        "title": "Type-specific parameters",
         "data": {
           "start_power_w": "Power above which a cycle is considered started (W)",
           "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
           "finish_power_w": "Power below which a cycle is considered finished (W)",
           "finish_duration_seconds": "Seconds power must stay below the finish level before confirming the cycle has ended",
-          "max_runtime_seconds": "Maximum cycle time in seconds (optional warning only; does not stop the cycle)"
+          "max_runtime_seconds": "Maximum cycle runtime",
+          "pending_delay_seconds": "Wait after the cycle before the first unload reminder",
+          "pending_interval_seconds": "Interval between later unload reminders",
+          "pending_repeats": "Additional reminders after the first one (3 means 4 total)",
+          "door_open_delay_seconds": "Seconds the refrigerator door may stay open before the alarm",
+          "compressor_inactive_delay_seconds": "Seconds without compressor activity before the alarm",
+          "alarm_repeat_interval_seconds": "Interval between repeated refrigerator alarms (seconds)",
+          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)"
+        },
+        "data_description": {
+          "max_runtime_seconds": "Optional. Leave blank to disable. If the cycle is still running after this time, the actions you configure for this limit run once; the appliance is not stopped."
         }
       },
       "actions": {
@@ -28,37 +53,63 @@
           "finish_actions": "Actions to run when the cycle finishes",
           "max_runtime_actions": "Actions to run once if the maximum cycle time is exceeded",
           "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
-          "pending_delay_seconds": "Seconds to wait after the cycle ends before the first unload reminder",
-          "pending_interval_seconds": "Seconds between later unload reminders",
-          "pending_repeats": "Reminders after the first one (3 means 4 reminders total)"
+          "door_open_actions": "Actions to run while the refrigerator door alarm is active",
+          "compressor_inactive_actions": "Actions to run while the compressor inactivity alarm is active",
+          "mail_arrival_actions": "Actions to run when mail is detected"
         }
       }
     },
     "error": {
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
-      "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number."
+      "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
+      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Appliance and input sensors",
+        "title": "Appliance type and name",
         "data": {
           "name": "Name shown for this appliance",
-          "appliance_type": "Appliance category (washer, dishwasher, or dryer)",
-          "power_entity": "Power sensor for this appliance (in watts)",
-          "door_entity": "Door-open sensor (optional; enables unload status and reminders)",
-          "plug_entity": "Smart plug switch (optional; switching it off ends an active cycle)"
+          "appliance_type": "Appliance type"
         }
       },
-      "thresholds": {
-        "title": "Cycle start and finish conditions",
+      "sensors": {
+        "title": "Input sensors",
+        "data": {
+          "power_entity": "Power sensor for this appliance (in watts)",
+          "running_entity": "Binary contact that is on while the AC louver is open",
+          "mail_motion_entity": "Interior motion sensor that detects incoming mail",
+          "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
+          "door_entity": "Door-open sensor (optional for laundry; required for a refrigerator or mailbox)",
+          "plug_entity": "Appliance smart plug (optional)"
+        },
+        "data_description": {
+          "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
+          "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
+          "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
+          "door_entity": "For a refrigerator or mailbox, an open contact means the main door is open.",
+          "plug_entity": "The integration also creates a switch to control this plug, but does not turn it off automatically. Turning it off cuts power to the appliance and marks an active cycle as finished."
+        }
+      },
+      "parameters": {
+        "title": "Type-specific parameters",
         "data": {
           "start_power_w": "Power above which a cycle is considered started (W)",
           "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
           "finish_power_w": "Power below which a cycle is considered finished (W)",
           "finish_duration_seconds": "Seconds power must stay below the finish level before confirming the cycle has ended",
-          "max_runtime_seconds": "Maximum cycle time in seconds (optional warning only; does not stop the cycle)"
+          "max_runtime_seconds": "Maximum cycle runtime",
+          "pending_delay_seconds": "Wait after the cycle before the first unload reminder",
+          "pending_interval_seconds": "Interval between later unload reminders",
+          "pending_repeats": "Additional reminders after the first one (3 means 4 total)",
+          "door_open_delay_seconds": "Seconds the refrigerator door may stay open before the alarm",
+          "compressor_inactive_delay_seconds": "Seconds without compressor activity before the alarm",
+          "alarm_repeat_interval_seconds": "Interval between repeated refrigerator alarms (seconds)",
+          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)"
+        },
+        "data_description": {
+          "max_runtime_seconds": "Optional. Leave blank to disable. If the cycle is still running after this time, the actions you configure for this limit run once; the appliance is not stopped."
         }
       },
       "actions": {
@@ -68,15 +119,16 @@
           "finish_actions": "Actions to run when the cycle finishes",
           "max_runtime_actions": "Actions to run once if the maximum cycle time is exceeded",
           "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
-          "pending_delay_seconds": "Seconds to wait after the cycle ends before the first unload reminder",
-          "pending_interval_seconds": "Seconds between later unload reminders",
-          "pending_repeats": "Reminders after the first one (3 means 4 reminders total)"
+          "door_open_actions": "Actions to run while the refrigerator door alarm is active",
+          "compressor_inactive_actions": "Actions to run while the compressor inactivity alarm is active",
+          "mail_arrival_actions": "Actions to run when mail is detected"
         }
       }
     },
     "error": {
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
-      "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number."
+      "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
+      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number."
     }
   },
   "selector": {
@@ -84,7 +136,12 @@
       "options": {
         "washer": "Washer",
         "dishwasher": "Dishwasher",
-        "dryer": "Dryer"
+        "dryer": "Dryer",
+        "air_conditioner_contact": "Air conditioner (louver contact)",
+        "air_conditioner_power": "Air conditioner (power sensor)",
+        "refrigerator": "Refrigerator",
+        "mailbox_motion": "Mailbox (interior motion sensor)",
+        "mailbox_slot": "Mailbox (mail-slot flap contact)"
       }
     }
   },

@@ -11,15 +11,17 @@
 [![Home Assistant](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPacmanForever%2Fappliance_cycle_monitor%2Fmain%2Fdocs%2Fhome_assistant_compatibility.json&query=%24.tested_version&suffix=%20tested&label=home%20assistant&color=blue)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml)
 [![Daily HA compatibility](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml/badge.svg?branch=main)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml)
 
-A local Home Assistant integration that detects washer, dishwasher, and dryer cycles from an existing power sensor. It manages each appliance as its own Home Assistant device, with configurable actions and no external service or credentials.
+A local Home Assistant integration for washers, dishwashers, dryers, air conditioners, refrigerators, and mailboxes. It detects appliance activity from a power sensor or, for an air conditioner's louver, a binary contact, and detects mail from an interior motion sensor or mail-slot flap contact. Each appliance or mailbox is managed as its own Home Assistant device with configurable actions and no external service or credentials.
 
 ## Features
 
 - Detect cycle start and finish from power thresholds with configurable confirmation times.
+- Detect an air conditioner's activity either from its louver contact or from power; choose the power profile when both sensors are available.
+- Monitor refrigerator compressor activity and door-open duration with independent, configurable alarms.
+- Detect mail through mailbox interior motion or a mail-slot flap contact, run arrival actions, and track mail pending collection.
 - Track lifetime energy, last-cycle duration, estimated remaining time, and running state.
-- Optionally monitor a door and smart plug, and track pending unloading.
-- Configure separate Home Assistant actions for cycle start, cycle finish, maximum runtime, and pending-unload reminders.
-- Persist cycle and reminder state across Home Assistant restarts.
+- Optionally monitor laundry-appliance doors and smart plugs, and track pending unloading.
+- Configure profile-specific Home Assistant actions and persist cycle, reminder, and alarm state across Home Assistant restarts.
 
 ## Installation
 
@@ -39,17 +41,18 @@ The integration works on supported Home Assistant versions; displaying its local
 
 ## Configuration
 
-Each appliance has a separate config entry and device. Setup and editing use three steps:
+Each appliance has a separate config entry and device. Setup and editing use four steps:
 
-1. Select the appliance type and power sensor, optionally select a door sensor and smart-plug switch, and enter a name.
-2. Set power thresholds, confirmation times, and an optional maximum runtime.
-3. Configure actions for cycle start, cycle finish, maximum runtime, and pending-unload reminders.
+1. Select the appliance type and enter a name.
+2. Select the sensors required or supported by that profile. Laundry doors and smart plugs are optional; a refrigerator requires power and a door contact; an AC uses either its louver contact or power; a mailbox uses an arrival sensor and its main-door contact.
+3. Configure the selected profile's thresholds, delays, and reminder parameters.
+4. Configure the available actions for that profile.
 
-Defaults are 4 W for 15 seconds to start a cycle and 1 W for 60 seconds to finish. All configurable durations use seconds. Turning off a configured plug ends an active cycle immediately. Pending-unload reminders start after 900 seconds and repeat at the configured interval, up to the configured number of additional repetitions.
+Power-cycle defaults are 4 W for 15 seconds to start and 1 W for 60 seconds to finish. All configurable durations use seconds. Turning off a configured plug ends an active period immediately. Laundry pending-unload reminders and refrigerator alarms run once, then repeat up to the configured number of additional repetitions.
 
 ## Entities and automations
 
-Each appliance provides power, lifetime energy, last-cycle duration, estimated remaining time, and a running binary sensor. When configured, the door sensor also enables door and pending-unload binary sensors and a button to clear the pending state. A selected smart plug is exposed as a switch on the appliance device.
+Outputs depend on the selected profile. Power-based profiles provide power and lifetime energy; appliance profiles provide activity state and last-activity duration. Estimated remaining time is limited to laundry profiles. Refrigerator devices expose their door state and independent door-open/compressor-inactive actions. Mailboxes expose their main-door and pending-to-unload states, plus a button to clear pending status. An arrival sensor detects mail and runs its configured actions; opening the main door clears pending status and cancels reminders. An AC contact profile exposes activity without power or energy sensors. A selected smart plug is exposed as a switch on the device.
 
 External automations can react to state changes of the running and pending-unload binary sensors. The integration does not currently fire custom events on the Home Assistant event bus. Pending unload clears when the door opens or when the clear button is pressed.
 

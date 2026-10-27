@@ -233,3 +233,85 @@ class ApplianceCycleDetector:
         if normalized_unit == "kw":
             return numeric_value * 1000
         return None
+
+
+class BinaryActivityDetector:
+    """Track activity from a binary sensor that is on while an appliance runs."""
+
+    def __init__(self) -> None:
+        self.power_w: float | None = None
+        self.cycle_started_at: datetime | None = None
+        self.last_cycle_duration: timedelta | None = None
+        self.available = False
+
+    @property
+    def is_running(self) -> bool:
+        return self.cycle_started_at is not None
+
+    @property
+    def next_deadline(self) -> datetime | None:
+        return None
+
+    def observe_state(self, value: str | None, at: datetime) -> list[CycleEvent]:
+        if value not in ("on", "off"):
+            self.available = False
+            return []
+        self.available = True
+        if value == "on" and not self.is_running:
+            self.cycle_started_at = at
+            return [CycleEvent(CycleTransition.STARTED, at)]
+        if value == "off" and self.is_running:
+            return [self._finish_cycle(at)]
+        return []
+
+    def reconcile_state(self, value: str | None, at: datetime) -> list[CycleEvent]:
+        if value not in ("on", "off"):
+            self.available = False
+            return []
+        return self.observe_state(value, at)
+
+    def advance_time(self, at: datetime) -> list[CycleEvent]:
+        return []
+
+    def finish_by_switch(self, at: datetime) -> CycleEvent | None:
+        if not self.is_running:
+            return None
+        return self._finish_cycle(at)
+
+    def export_state(self) -> dict[str, Any]:
+        return {
+            "power_w": None,
+            "cycle_started_at": ApplianceCycleDetector._format_datetime(
+                self.cycle_started_at
+            ),
+            "last_cycle_duration_seconds": (
+                self.last_cycle_duration.total_seconds()
+                if self.last_cycle_duration is not None
+                else None
+            ),
+            "start_candidate_at": None,
+            "finish_candidate_at": None,
+        }
+
+    def restore_state(self, state: dict[str, Any]) -> None:
+        self.cycle_started_at = ApplianceCycleDetector._parse_datetime(
+            state.get("cycle_started_at")
+        )
+        self.power_w = None
+        self.available = False
+        duration_seconds = state.get("last_cycle_duration_seconds")
+        if duration_seconds is None:
+            self.last_cycle_duration = None
+            return
+        duration = float(duration_seconds)
+        if not math.isfinite(duration) or duration < 0:
+            raise ValueError("Invalid stored activity duration")
+        self.last_cycle_duration = timedelta(seconds=duration)
+
+    def _finish_cycle(self, at: datetime) -> CycleEvent:
+        started_at = self.cycle_started_at
+        assert started_at is not None
+        duration = max(at - started_at, timedelta(0))
+        self.cycle_started_at = None
+        self.last_cycle_duration = duration
+        return CycleEvent(CycleTransition.FINISHED, at, duration)

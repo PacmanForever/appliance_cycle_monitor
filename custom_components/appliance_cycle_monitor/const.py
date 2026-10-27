@@ -4,6 +4,16 @@ DOMAIN = "appliance_cycle_monitor"
 
 CONF_APPLIANCE_TYPE = "appliance_type"
 CONF_POWER_ENTITY = "power_entity"
+CONF_RUNNING_ENTITY = "running_entity"
+CONF_MAIL_MOTION_ENTITY = "mail_motion_entity"
+CONF_MAIL_SLOT_ENTITY = "mail_slot_entity"
+CONF_MAIL_ARRIVAL_ACTIONS = "mail_arrival_actions"
+CONF_DOOR_OPEN_ACTIONS = "door_open_actions"
+CONF_COMPRESSOR_INACTIVE_ACTIONS = "compressor_inactive_actions"
+CONF_DOOR_OPEN_DELAY_SECONDS = "door_open_delay_seconds"
+CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS = "compressor_inactive_delay_seconds"
+CONF_ALARM_REPEAT_INTERVAL_SECONDS = "alarm_repeat_interval_seconds"
+CONF_ALARM_REPEAT_COUNT = "alarm_repeat_count"
 CONF_DOOR_ENTITY = "door_entity"
 CONF_PLUG_ENTITY = "plug_entity"
 CONF_START_POWER_W = "start_power_w"
@@ -26,5 +36,7 @@ DEFAULT_FINISH_DURATION_SECONDS = 60
 DEFAULT_PENDING_DELAY_SECONDS = 900
 DEFAULT_PENDING_INTERVAL_SECONDS = 900
 DEFAULT_PENDING_REPEATS = 3
-
-APPLIANCE_TYPES = ("washer", "dishwasher", "dryer")
+DEFAULT_DOOR_OPEN_DELAY_SECONDS = 120
+DEFAULT_COMPRESSOR_INACTIVE_DELAY_SECONDS = 3600
+DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS = 900
+DEFAULT_ALARM_REPEAT_COUNT = 3

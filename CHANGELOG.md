@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 - 2026-10-27
+
+### Added
+
+- Add profile-specific configuration and entities for washers, dishwashers, dryers, air conditioners, and refrigerators.
+- Detect air-conditioner activity from either power readings or a louver contact, and add independent refrigerator door and compressor alarms.
+- Add mailbox profiles using an interior motion sensor or mail-slot flap contact, with arrival actions, pending-to-unload state, reminders, and main-door clearing.
+- Add four-step profile-aware setup and options flows, with English, Spanish, and Catalan translations.
+- Persist cycle, reminder, and alarm state and verify profile creation, editing, and deletion with unit and Home Assistant component tests.
+
+### Compatibility
+
+- Component tests passed with Home Assistant 2026.10.4.
+
 ## 0.1.0 - 2026-10-27
 
 First public release of Appliance Cycle Monitor.

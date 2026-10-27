@@ -67,31 +67,38 @@ async def async_setup_entry(
 ) -> None:
     """Set up appliance binary sensors."""
     runtime: ApplianceRuntime = entry.runtime_data
-    entities = [
-        ApplianceBinarySensor(
+    entities = []
+    if "running" in runtime.profile.output_entities:
+        entities.append(ApplianceBinarySensor(
             runtime,
             entry,
             "running",
             lambda: runtime.detector.is_running,
             BinarySensorDeviceClass.RUNNING,
+        ))
+    if (
+        "door" in runtime.profile.output_entities
+        and runtime.config.get(CONF_DOOR_ENTITY)
+    ):
+        entities.append(
+            ApplianceBinarySensor(
+                runtime,
+                entry,
+                "door",
+                lambda: runtime.door_open,
+                BinarySensorDeviceClass.DOOR,
+            )
         )
-    ]
-    if runtime.config.get(CONF_DOOR_ENTITY):
-        entities.extend(
-            [
-                ApplianceBinarySensor(
-                    runtime,
-                    entry,
-                    "door",
-                    lambda: runtime.door_open,
-                    BinarySensorDeviceClass.DOOR,
-                ),
-                ApplianceBinarySensor(
-                    runtime,
-                    entry,
-                    "pending_unload",
-                    lambda: runtime.pending_unload,
-                ),
-            ]
+    if (
+        "pending_unload" in runtime.profile.output_entities
+        and runtime.config.get(CONF_DOOR_ENTITY)
+    ):
+        entities.append(
+            ApplianceBinarySensor(
+                runtime,
+                entry,
+                "pending_unload",
+                lambda: runtime.pending_unload,
+            )
         )
     async_add_entities(entities)

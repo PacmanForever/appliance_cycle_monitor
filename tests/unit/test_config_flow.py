@@ -12,17 +12,40 @@ from custom_components.appliance_cycle_monitor.config_flow import (
     ApplianceCycleMonitorConfigFlow,
     ApplianceCycleMonitorOptionsFlow,
     _action_schema,
-    _entity_schema,
+    _identity_schema,
+    _entry_options,
+    _sensor_schema,
     _threshold_schema,
     _clear_pending_settings,
+    _validate_alarm_settings,
     _validate_pending,
     _validate_thresholds,
 )
+from custom_components.appliance_cycle_monitor.appliance_types import (
+    APPLIANCE_PROFILES,
+    get_appliance_profile,
+)
 from custom_components.appliance_cycle_monitor.const import (
+    CONF_ALARM_REPEAT_COUNT,
+    CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+    CONF_APPLIANCE_TYPE,
+    CONF_COMPRESSOR_INACTIVE_ACTIONS,
+    CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+    CONF_DOOR_OPEN_ACTIONS,
+    CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_FINISH_ACTIONS,
+    CONF_MAIL_ARRIVAL_ACTIONS,
+    CONF_MAIL_MOTION_ENTITY,
+    CONF_MAIL_SLOT_ENTITY,
+    CONF_MAX_RUNTIME_ACTIONS,
+    CONF_MAX_RUNTIME_SECONDS,
     CONF_PENDING_ACTIONS,
     CONF_PENDING_DELAY_SECONDS,
     CONF_PENDING_INTERVAL_SECONDS,
     CONF_PENDING_REPEATS,
+    CONF_POWER_ENTITY,
+    CONF_RUNNING_ENTITY,
+    CONF_START_ACTIONS,
     DEFAULT_PENDING_DELAY_SECONDS,
     DEFAULT_PENDING_INTERVAL_SECONDS,
     DEFAULT_PENDING_REPEATS,
@@ -30,43 +53,203 @@ from custom_components.appliance_cycle_monitor.const import (
 
 
 class ConfigFlowSchemaTests(unittest.TestCase):
-    def test_appliance_type_and_power_sensor_are_required(self) -> None:
-        schema = _entity_schema({})
+    def test_identity_schema_requires_name_and_type(self) -> None:
+        schema = _identity_schema({})
         with self.assertRaises(vol.Invalid):
-            schema({"name": "Washer", "power_entity": "sensor.washer_power"})
+            schema({"name": "Washer"})
 
-        values = schema(
-            {
-                "name": "Washer",
-                "appliance_type": "washer",
-                "power_entity": "sensor.washer_power",
-            }
-        )
+        values = schema({"name": "Washer", CONF_APPLIANCE_TYPE: "washer"})
 
-        self.assertEqual(values["power_entity"], "sensor.washer_power")
-        self.assertEqual(values["appliance_type"], "washer")
-        self.assertNotIn("door_entity", values)
-        self.assertNotIn("plug_entity", values)
+        self.assertEqual(values[CONF_APPLIANCE_TYPE], "washer")
+        self.assertNotIn(CONF_POWER_ENTITY, values)
 
     def test_sensor_selection_fields_prefill_during_edit(self) -> None:
-        schema = _entity_schema(
-            {
-                "name": "Dishwasher",
-                "appliance_type": "dishwasher",
-                "power_entity": "sensor.dishwasher_power",
-                "door_entity": "binary_sensor.dishwasher_door",
-                "plug_entity": "switch.dishwasher_plug",
-            }
+        values = {
+            CONF_POWER_ENTITY: "sensor.dishwasher_power",
+            "door_entity": "binary_sensor.dishwasher_door",
+            "plug_entity": "switch.dishwasher_plug",
+        }
+        schema = _sensor_schema(
+            values, get_appliance_profile("dishwasher")
         )
 
         values = schema({})
-        self.assertEqual(values["name"], "Dishwasher")
-        self.assertEqual(values["power_entity"], "sensor.dishwasher_power")
+        self.assertEqual(values[CONF_POWER_ENTITY], "sensor.dishwasher_power")
         self.assertEqual(values["door_entity"], "binary_sensor.dishwasher_door")
         self.assertEqual(values["plug_entity"], "switch.dishwasher_plug")
 
+    def test_ac_profiles_request_only_their_selected_detection_source(self) -> None:
+        contact_profile = get_appliance_profile("air_conditioner_contact")
+        power_profile = get_appliance_profile("air_conditioner_power")
+        contact_schema = _sensor_schema({}, contact_profile)
+        power_schema = _sensor_schema({}, power_profile)
+
+        self.assertIn(CONF_RUNNING_ENTITY, contact_schema.schema)
+        self.assertNotIn(CONF_POWER_ENTITY, contact_schema.schema)
+        self.assertIn(CONF_POWER_ENTITY, power_schema.schema)
+        self.assertNotIn(CONF_RUNNING_ENTITY, power_schema.schema)
+        self.assertFalse(contact_profile.supports_pending_unload)
+        self.assertFalse(contact_profile.estimates_remaining)
+        self.assertFalse(power_profile.supports_pending_unload)
+        self.assertFalse(power_profile.estimates_remaining)
+
+    def test_each_profile_schema_matches_its_declared_contract(self) -> None:
+        parameter_keys = {
+            "power_cycle": {
+                "start_power_w",
+                "start_duration_seconds",
+                "finish_power_w",
+                "finish_duration_seconds",
+            },
+            "max_runtime": {"max_runtime_seconds"},
+            "pending_unload": {
+                CONF_PENDING_DELAY_SECONDS,
+                CONF_PENDING_INTERVAL_SECONDS,
+                CONF_PENDING_REPEATS,
+            },
+            "door_alarm": {CONF_DOOR_OPEN_DELAY_SECONDS},
+            "compressor_alarm": {CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS},
+            "alarm_repeats": {
+                CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+                CONF_ALARM_REPEAT_COUNT,
+            },
+        }
+        action_keys = {
+            "cycle_start": "start_actions",
+            "cycle_finish": "finish_actions",
+            "max_runtime": "max_runtime_actions",
+            "pending_unload": CONF_PENDING_ACTIONS,
+            "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
+            "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
+            "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
+        }
+        for appliance_type, profile in APPLIANCE_PROFILES.items():
+            with self.subTest(appliance_type=appliance_type):
+                values = {
+                    CONF_POWER_ENTITY: "sensor.appliance_power",
+                    CONF_RUNNING_ENTITY: "binary_sensor.appliance_activity",
+                    "door_entity": "binary_sensor.appliance_door",
+                }
+                sensor_schema = _sensor_schema(values, profile)
+                parameter_schema = _threshold_schema(values, profile)
+                action_schema = _action_schema(values, profile)
+
+                expected_source = (
+                    {
+                        "power": CONF_POWER_ENTITY,
+                        "running_sensor": CONF_RUNNING_ENTITY,
+                        "mail_motion": CONF_MAIL_MOTION_ENTITY,
+                        "mail_slot": CONF_MAIL_SLOT_ENTITY,
+                    }[profile.detection_sources[0]]
+                )
+                self.assertIn(expected_source, sensor_schema.schema)
+                self.assertEqual(
+                    "power" in profile.detection_sources,
+                    CONF_POWER_ENTITY in sensor_schema.schema,
+                )
+                self.assertEqual(
+                    "running_sensor" in profile.detection_sources,
+                    CONF_RUNNING_ENTITY in sensor_schema.schema,
+                )
+                self.assertEqual(
+                    profile.supports_door_sensor,
+                    "door_entity" in sensor_schema.schema,
+                )
+                self.assertEqual(
+                    "total_energy" in profile.output_entities,
+                    "power" in profile.detection_sources,
+                )
+                self.assertEqual(
+                    "estimated_remaining" in profile.output_entities,
+                    profile.estimates_remaining,
+                )
+                self.assertEqual(
+                    "pending_unload" in profile.output_entities,
+                    profile.supports_pending_unload,
+                )
+
+                for group, keys in parameter_keys.items():
+                    for key in keys:
+                        self.assertEqual(
+                            group in profile.parameter_groups,
+                            key in parameter_schema.schema,
+                        )
+                for group, key in action_keys.items():
+                    self.assertEqual(
+                        group in profile.action_groups,
+                        key in action_schema.schema,
+                    )
+
+    def test_refrigerator_requires_door_and_valid_alarm_limits(self) -> None:
+        profile = get_appliance_profile("refrigerator")
+        sensor_schema = _sensor_schema({}, profile)
+        with self.assertRaises(vol.Invalid):
+            sensor_schema({CONF_POWER_ENTITY: "sensor.fridge_power"})
+
+        self.assertTrue(
+            _validate_alarm_settings(
+                {
+                    CONF_DOOR_OPEN_DELAY_SECONDS: 120,
+                    CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 3600,
+                    CONF_ALARM_REPEAT_INTERVAL_SECONDS: 900,
+                    CONF_ALARM_REPEAT_COUNT: 3,
+                }
+            )
+        )
+        self.assertFalse(
+            _validate_alarm_settings(
+                {
+                    CONF_DOOR_OPEN_DELAY_SECONDS: 0,
+                    CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 3600,
+                    CONF_ALARM_REPEAT_INTERVAL_SECONDS: 900,
+                    CONF_ALARM_REPEAT_COUNT: 3,
+                }
+            )
+        )
+
+    def test_threshold_and_alarm_validators_reject_missing_or_invalid_values(self) -> None:
+        contact_profile = get_appliance_profile("air_conditioner_contact")
+        self.assertTrue(_validate_thresholds({}, contact_profile))
+        self.assertTrue(
+            _validate_thresholds(
+                {CONF_MAX_RUNTIME_SECONDS: 60}, contact_profile
+            )
+        )
+        self.assertFalse(
+            _validate_thresholds(
+                {CONF_MAX_RUNTIME_SECONDS: "invalid"}, contact_profile
+            )
+        )
+        self.assertFalse(
+            _validate_thresholds({"start_power_w": 4})
+        )
+        self.assertFalse(_validate_pending({}))
+        self.assertFalse(_validate_alarm_settings({}))
+
+    def test_profile_change_discards_actions_not_declared_by_new_profile(self) -> None:
+        options = _entry_options(
+            {
+                CONF_APPLIANCE_TYPE: "refrigerator",
+                CONF_START_ACTIONS: [{"action": "test.start"}],
+                CONF_FINISH_ACTIONS: [{"action": "test.finish"}],
+                CONF_MAX_RUNTIME_ACTIONS: [{"action": "test.timeout"}],
+                CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door"}],
+                CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor"}],
+                CONF_ALARM_REPEAT_COUNT: 3,
+                CONF_ALARM_REPEAT_INTERVAL_SECONDS: 900,
+            }
+        )
+
+        self.assertNotIn(CONF_START_ACTIONS, options)
+        self.assertNotIn(CONF_FINISH_ACTIONS, options)
+        self.assertNotIn(CONF_MAX_RUNTIME_ACTIONS, options)
+        self.assertIn(CONF_DOOR_OPEN_ACTIONS, options)
+        self.assertIn(CONF_COMPRESSOR_INACTIVE_ACTIONS, options)
+        self.assertIn(CONF_ALARM_REPEAT_COUNT, options)
+        self.assertIn(CONF_ALARM_REPEAT_INTERVAL_SECONDS, options)
+
     def test_default_thresholds_and_coherence_validation(self) -> None:
-        values = _threshold_schema({})(
+        values = _threshold_schema({}, get_appliance_profile("washer"))(
             {
                 "start_power_w": 4,
                 "finish_power_w": 1,
@@ -88,16 +271,23 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         )
 
     def test_pending_fields_are_only_shown_with_door_sensor(self) -> None:
-        without_door = _action_schema({})
-        with_door = _action_schema({"door_entity": "binary_sensor.door"})
+        profile = get_appliance_profile("washer")
+        without_door = _threshold_schema({}, profile)
+        with_door = _threshold_schema({"door_entity": "binary_sensor.door"}, profile)
+        actions_without_door = _action_schema({}, profile)
+        actions_with_door = _action_schema({"door_entity": "binary_sensor.door"}, profile)
 
-        self.assertNotIn(CONF_PENDING_ACTIONS, without_door.schema)
+        self.assertNotIn(CONF_PENDING_DELAY_SECONDS, without_door.schema)
+        self.assertIn(CONF_PENDING_DELAY_SECONDS, with_door.schema)
+        self.assertNotIn(CONF_PENDING_DELAY_SECONDS, actions_with_door.schema)
+        self.assertNotIn(CONF_PENDING_INTERVAL_SECONDS, actions_with_door.schema)
+        self.assertNotIn(CONF_PENDING_REPEATS, actions_with_door.schema)
+        self.assertNotIn(CONF_PENDING_ACTIONS, actions_without_door.schema)
+        self.assertIn(CONF_PENDING_ACTIONS, actions_with_door.schema)
         values = with_door(
             {
-                "start_actions": [],
-                "finish_actions": [],
-                "max_runtime_actions": [],
-                "pending_actions": [],
+                "start_power_w": 4,
+                "finish_power_w": 1,
             }
         )
         self.assertEqual(values[CONF_PENDING_DELAY_SECONDS], DEFAULT_PENDING_DELAY_SECONDS)
@@ -170,10 +360,11 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         expected = key_shape(translations[0])
         self.assertEqual(key_shape(translations[1]), expected)
         self.assertEqual(key_shape(translations[2]), expected)
+        self.assertEqual(key_shape(translations[3]), expected)
 
 
 @pytest.mark.asyncio
-async def test_config_flow_has_three_forward_steps_and_separates_options():
+async def test_config_flow_has_four_forward_steps_and_separates_options():
     flow = ApplianceCycleMonitorConfigFlow()
     shown_steps: list[dict[str, object]] = []
     flow.async_show_form = lambda **result: shown_steps.append(result) or result
@@ -183,17 +374,21 @@ async def test_config_flow_has_three_forward_steps_and_separates_options():
     assert first_result["step_id"] == "user"
     assert first_result["last_step"] is False
 
-    thresholds_result = await flow.async_step_user(
+    sensors_result = await flow.async_step_user(
         {
             "name": "Washer",
             "appliance_type": "washer",
-            "power_entity": "sensor.washer_power",
         }
     )
-    assert thresholds_result["step_id"] == "thresholds"
-    assert thresholds_result["last_step"] is False
+    assert sensors_result["step_id"] == "sensors"
 
-    actions_result = await flow.async_step_thresholds(
+    parameters_result = await flow.async_step_sensors(
+        {"power_entity": "sensor.washer_power"}
+    )
+    assert parameters_result["step_id"] == "parameters"
+    assert parameters_result["last_step"] is False
+
+    actions_result = await flow.async_step_parameters(
         {
             "start_power_w": 4,
             "start_duration_seconds": 15,
@@ -216,13 +411,74 @@ async def test_config_flow_has_three_forward_steps_and_separates_options():
     assert created["options"]["start_power_w"] == 4
     assert [result["step_id"] for result in shown_steps] == [
         "user",
-        "thresholds",
+        "sensors",
+        "parameters",
         "actions",
     ]
 
 
 @pytest.mark.asyncio
-async def test_options_flow_edits_three_steps_and_clears_removed_door_settings(
+async def test_pending_settings_are_validated_on_parameters_step():
+    flow = ApplianceCycleMonitorConfigFlow()
+    flow.async_show_form = lambda **result: result
+    flow.async_create_entry = lambda **result: result
+
+    await flow.async_step_user(
+        {
+            "name": "Washer",
+            "appliance_type": "washer",
+        }
+    )
+    await flow.async_step_sensors(
+        {
+            "power_entity": "sensor.washer_power",
+            "door_entity": "binary_sensor.washer_door",
+        }
+    )
+    result = await flow.async_step_parameters(
+        {
+            "start_power_w": 4,
+            "start_duration_seconds": 15,
+            "finish_power_w": 1,
+            "finish_duration_seconds": 60,
+            CONF_PENDING_DELAY_SECONDS: 0,
+            CONF_PENDING_INTERVAL_SECONDS: 900,
+            CONF_PENDING_REPEATS: 3,
+        }
+    )
+
+    assert result["step_id"] == "parameters"
+    assert result["errors"] == {"base": "invalid_pending_settings"}
+
+    result = await flow.async_step_parameters(
+        {
+            "start_power_w": 4,
+            "start_duration_seconds": 15,
+            "finish_power_w": 1,
+            "finish_duration_seconds": 60,
+            CONF_PENDING_DELAY_SECONDS: 1200,
+            CONF_PENDING_INTERVAL_SECONDS: 1800,
+            CONF_PENDING_REPEATS: 2,
+        }
+    )
+    assert result["step_id"] == "actions"
+    assert CONF_PENDING_DELAY_SECONDS not in result["data_schema"].schema
+
+    created = await flow.async_step_actions(
+        {
+            "start_actions": [],
+            "finish_actions": [],
+            "max_runtime_actions": [],
+            CONF_PENDING_ACTIONS: [],
+        }
+    )
+    assert created["options"][CONF_PENDING_DELAY_SECONDS] == 1200
+    assert created["options"][CONF_PENDING_INTERVAL_SECONDS] == 1800
+    assert created["options"][CONF_PENDING_REPEATS] == 2
+
+
+@pytest.mark.asyncio
+async def test_options_flow_edits_four_steps_and_clears_removed_door_settings(
     monkeypatch,
 ):
     entry = SimpleNamespace(
@@ -263,16 +519,18 @@ async def test_options_flow_edits_three_steps_and_clears_removed_door_settings(
     first_result = await flow.async_step_init()
     assert first_result["step_id"] == "init"
     assert first_result["data_schema"]({})["name"] == "Washer"
-    thresholds_result = await flow.async_step_init(
+    sensors_result = await flow.async_step_init(
         {
             "name": "Washer 2",
             "appliance_type": "washer",
-            "power_entity": "sensor.new_power",
-            "door_entity": None,
         }
     )
-    assert thresholds_result["step_id"] == "thresholds"
-    actions_result = await flow.async_step_thresholds(
+    assert sensors_result["step_id"] == "sensors"
+    parameters_result = await flow.async_step_sensors(
+        {"power_entity": "sensor.new_power", "door_entity": None}
+    )
+    assert parameters_result["step_id"] == "parameters"
+    actions_result = await flow.async_step_parameters(
         {
             "start_power_w": 5,
             "start_duration_seconds": 30,
@@ -287,15 +545,16 @@ async def test_options_flow_edits_three_steps_and_clears_removed_door_settings(
 
     assert [result["step_id"] for result in shown_steps] == [
         "init",
-        "thresholds",
+        "sensors",
+        "parameters",
         "actions",
     ]
     assert updated[0]["title"] == "Washer 2"
     assert updated[0]["data"]["power_entity"] == "sensor.new_power"
-    assert created["data"][CONF_PENDING_ACTIONS] == []
-    assert created["data"][CONF_PENDING_DELAY_SECONDS] == 900
-    assert created["data"][CONF_PENDING_INTERVAL_SECONDS] == 900
-    assert created["data"][CONF_PENDING_REPEATS] == 3
+    assert CONF_PENDING_ACTIONS not in created["data"]
+    assert CONF_PENDING_DELAY_SECONDS not in created["data"]
+    assert CONF_PENDING_INTERVAL_SECONDS not in created["data"]
+    assert CONF_PENDING_REPEATS not in created["data"]
 
 
 if __name__ == "__main__":

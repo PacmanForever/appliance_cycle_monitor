@@ -1,5 +1,6 @@
 """Component tests for the Home Assistant runtime."""
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -12,7 +13,17 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.plugins import enable_custom_integrations
 
 from custom_components.appliance_cycle_monitor.const import (
+    CONF_ALARM_REPEAT_COUNT,
+    CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+    CONF_APPLIANCE_TYPE,
+    CONF_COMPRESSOR_INACTIVE_ACTIONS,
+    CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_DOOR_ENTITY,
+    CONF_DOOR_OPEN_ACTIONS,
+    CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_MAIL_ARRIVAL_ACTIONS,
+    CONF_MAIL_MOTION_ENTITY,
+    CONF_MAIL_SLOT_ENTITY,
     CONF_MAX_RUNTIME_ACTIONS,
     CONF_MAX_RUNTIME_SECONDS,
     CONF_PENDING_ACTIONS,
@@ -21,6 +32,7 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_PENDING_REPEATS,
     CONF_PLUG_ENTITY,
     CONF_POWER_ENTITY,
+    CONF_RUNNING_ENTITY,
     CONF_START_ACTIONS,
     DOMAIN,
 )
@@ -593,3 +605,419 @@ async def test_restored_finish_deadline_waits_for_power_to_return(
     assert runtime.detector.last_cycle_duration is None
     assert runtime.detector.next_deadline is None
     await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_contact_profile_tracks_louver_sensor_without_power_entities(
+    hass, monkeypatch, enable_custom_integrations
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+        CONF_RUNNING_ENTITY: "binary_sensor.ac_louver",
+        "name": "Air conditioner",
+    }
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert entry.runtime_data.detector.is_running
+    current_time[0] += timedelta(seconds=12)
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert not entry.runtime_data.detector.is_running
+    assert entry.runtime_data.detector.last_cycle_duration == timedelta(seconds=12)
+
+    registry = er.async_get(hass)
+    unique_ids = {
+        entity.unique_id
+        for entity in registry.entities.values()
+        if entity.config_entry_id == entry.entry_id
+    }
+    assert unique_ids == {
+        f"{entry.entry_id}_last_cycle_duration",
+        f"{entry.entry_id}_running",
+    }
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.parametrize(
+    ("appliance_type", "source_key"),
+    (
+        ("mailbox_motion", CONF_MAIL_MOTION_ENTITY),
+        ("mailbox_slot", CONF_MAIL_SLOT_ENTITY),
+    ),
+)
+@pytest.mark.asyncio
+async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
+    hass, monkeypatch, appliance_type, source_key
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: appliance_type,
+        source_key: f"binary_sensor.{appliance_type}_trigger",
+        CONF_DOOR_ENTITY: f"binary_sensor.{appliance_type}_door",
+        CONF_MAIL_ARRIVAL_ACTIONS: [{"action": "test.mail_arrived"}],
+        CONF_PENDING_ACTIONS: [{"action": "test.mail_reminder"}],
+        CONF_PENDING_DELAY_SECONDS: 10,
+        CONF_PENDING_INTERVAL_SECONDS: 20,
+        CONF_PENDING_REPEATS: 1,
+        "name": "Mailbox",
+    }
+    hass.states.async_set(config[source_key], "off")
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    arrivals: list[str] = []
+    reminders: list[str] = []
+
+    monkeypatch.setattr(runtime, "_run_actions_in_background", arrivals.append)
+
+    async def record_reminder(key: str) -> None:
+        reminders.append(key)
+
+    monkeypatch.setattr(runtime, "_run_actions", record_reminder)
+    await runtime.async_setup()
+
+    current_time[0] += timedelta(seconds=1)
+    hass.states.async_set(config[source_key], "on")
+    await hass.async_block_till_done()
+    assert arrivals == [CONF_MAIL_ARRIVAL_ACTIONS]
+    assert runtime.pending_unload
+    assert runtime.next_pending_reminder == current_time[0] + timedelta(seconds=10)
+
+    current_time[0] += timedelta(seconds=10)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert reminders == [CONF_PENDING_ACTIONS]
+    assert runtime.pending_reminder_count == 1
+
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert not runtime.pending_unload
+    assert runtime.next_pending_reminder is None
+
+    hass.states.async_set(config[source_key], "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(config[source_key], "on")
+    await hass.async_block_till_done()
+    assert arrivals == [CONF_MAIL_ARRIVAL_ACTIONS, CONF_MAIL_ARRIVAL_ACTIONS]
+    assert runtime.pending_unload
+    assert runtime.pending_reminder_count == 0
+    assert runtime.next_pending_reminder is None
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert runtime.next_pending_reminder == current_time[0] + timedelta(seconds=10)
+    await runtime.async_unload()
+
+
+@pytest.mark.parametrize(
+    ("appliance_type", "source_key"),
+    (
+        ("mailbox_motion", CONF_MAIL_MOTION_ENTITY),
+        ("mailbox_slot", CONF_MAIL_SLOT_ENTITY),
+    ),
+)
+@pytest.mark.asyncio
+async def test_mailbox_starting_with_active_trigger_does_not_report_arrival(
+    hass, monkeypatch, appliance_type, source_key
+):
+    config = {
+        CONF_APPLIANCE_TYPE: appliance_type,
+        source_key: f"binary_sensor.{appliance_type}_trigger",
+        CONF_DOOR_ENTITY: f"binary_sensor.{appliance_type}_door",
+        CONF_MAIL_ARRIVAL_ACTIONS: [{"action": "test.mail_arrived"}],
+        "name": "Mailbox",
+    }
+    hass.states.async_set(config[source_key], "on")
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    arrivals: list[str] = []
+    monkeypatch.setattr(runtime, "_run_actions_in_background", arrivals.append)
+    await runtime.async_setup()
+
+    assert arrivals == []
+    assert not runtime.pending_unload
+    assert runtime.next_pending_reminder is None
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_refrigerator_creates_only_its_declared_entities(
+    hass, enable_custom_integrations
+):
+    config = {
+        CONF_APPLIANCE_TYPE: "refrigerator",
+        CONF_POWER_ENTITY: "sensor.fridge_power",
+        CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
+        "name": "Refrigerator",
+    }
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    store = runtime_module.Store(hass, 1, f"{DOMAIN}_{entry.entry_id}")
+    await store.async_save(
+        {
+            "pending_unload": True,
+            "pending_reminder_count": 2,
+            "next_pending_reminder": (
+                dt_util.utcnow() + timedelta(minutes=1)
+            ).isoformat(),
+        }
+    )
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert not entry.runtime_data.pending_unload
+
+    registry = er.async_get(hass)
+    unique_ids = {
+        entity.unique_id
+        for entity in registry.entities.values()
+        if entity.config_entry_id == entry.entry_id
+    }
+    assert unique_ids == {
+        f"{entry.entry_id}_power",
+        f"{entry.entry_id}_total_energy",
+        f"{entry.entry_id}_last_cycle_duration",
+        f"{entry.entry_id}_running",
+        f"{entry.entry_id}_door",
+    }
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_refrigerator_alarms_repeat_rearm_and_persist_independently(
+    hass, monkeypatch
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "refrigerator",
+        CONF_POWER_ENTITY: "sensor.fridge_power",
+        CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
+        CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door_alarm"}],
+        CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor_alarm"}],
+        CONF_DOOR_OPEN_DELAY_SECONDS: 2,
+        CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 4,
+        CONF_ALARM_REPEAT_INTERVAL_SECONDS: 3,
+        CONF_ALARM_REPEAT_COUNT: 1,
+        "name": "Refrigerator",
+    }
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    actions: list[str] = []
+
+    async def record_action(key: str) -> None:
+        actions.append(key)
+
+    monkeypatch.setattr(runtime, "_run_actions", record_action)
+    await runtime.async_setup()
+    assert runtime.next_compressor_alarm == current_time[0] + timedelta(seconds=4)
+
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert not runtime.pending_unload
+    current_time[0] += timedelta(seconds=2)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert actions == [CONF_DOOR_OPEN_ACTIONS]
+    current_time[0] += timedelta(seconds=2)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert actions == [CONF_DOOR_OPEN_ACTIONS, CONF_COMPRESSOR_INACTIVE_ACTIONS]
+
+    await runtime.async_unload()
+    restored = ApplianceRuntime(hass, entry, config)
+    monkeypatch.setattr(restored, "_run_actions", record_action)
+    await restored.async_setup()
+    assert restored.door_alarm_fired_count == 1
+    assert restored.compressor_alarm_fired_count == 1
+    assert restored.next_door_alarm == current_time[0] + timedelta(seconds=1)
+    assert restored.next_compressor_alarm == current_time[0] + timedelta(seconds=3)
+
+    current_time[0] += timedelta(seconds=1)
+    await _async_fire_deadline(restored, current_time[0])
+    assert actions[-1] == CONF_DOOR_OPEN_ACTIONS
+    assert restored.next_door_alarm is None
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert not restored.door_alarm_active
+    assert restored.door_alarm_fired_count == 0
+    await restored.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_unavailable_alarm_inputs_pause_without_clearing_or_false_alarm(
+    hass, monkeypatch
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "refrigerator",
+        CONF_POWER_ENTITY: "sensor.fridge_power",
+        CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
+        CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door_alarm"}],
+        CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor_alarm"}],
+        CONF_DOOR_OPEN_DELAY_SECONDS: 2,
+        CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 4,
+        CONF_ALARM_REPEAT_INTERVAL_SECONDS: 3,
+        CONF_ALARM_REPEAT_COUNT: 0,
+        "name": "Refrigerator",
+    }
+    hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    actions: list[str] = []
+
+    async def record_action(key: str) -> None:
+        actions.append(key)
+
+    monkeypatch.setattr(runtime, "_run_actions", record_action)
+    await runtime.async_setup()
+    door_deadline = runtime.next_door_alarm
+    assert door_deadline == current_time[0] + timedelta(seconds=2)
+    assert not runtime.compressor_alarm_active
+
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    assert runtime.door_alarm_active
+    assert runtime.next_door_alarm == door_deadline
+    current_time[0] += timedelta(seconds=3)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert actions == []
+
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
+    await hass.async_block_till_done()
+    await _async_fire_deadline(runtime, current_time[0])
+    assert actions == [CONF_DOOR_OPEN_ACTIONS]
+
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    await hass.async_block_till_done()
+    compressor_deadline = runtime.next_compressor_alarm
+    assert compressor_deadline == current_time[0] + timedelta(seconds=4)
+    current_time[0] += timedelta(seconds=1)
+    hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    current_time[0] += timedelta(seconds=4)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert actions == [CONF_DOOR_OPEN_ACTIONS]
+
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    await hass.async_block_till_done()
+    await _async_fire_deadline(runtime, current_time[0])
+    assert actions == [CONF_DOOR_OPEN_ACTIONS, CONF_COMPRESSOR_INACTIVE_ACTIONS]
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_compressor_alarm_rearms_after_activity_cycle(
+    hass, monkeypatch
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "refrigerator",
+        CONF_POWER_ENTITY: "sensor.fridge_power",
+        CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
+        CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor_alarm"}],
+        CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 60,
+        CONF_ALARM_REPEAT_INTERVAL_SECONDS: 10,
+        CONF_ALARM_REPEAT_COUNT: 0,
+        "name": "Refrigerator",
+    }
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    assert runtime.compressor_alarm_active
+
+    current_time[0] += timedelta(seconds=1)
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    await hass.async_block_till_done()
+    current_time[0] += timedelta(seconds=15)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert runtime.detector.is_running
+    assert not runtime.compressor_alarm_active
+    assert runtime.next_compressor_alarm is None
+
+    current_time[0] += timedelta(seconds=4)
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0.5", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    await hass.async_block_till_done()
+    current_time[0] += timedelta(seconds=60)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert not runtime.detector.is_running
+    assert runtime.compressor_alarm_active
+    assert runtime.next_compressor_alarm == current_time[0] + timedelta(seconds=60)
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_alarm_actions_do_not_overlap_on_duplicate_deadline(
+    hass, monkeypatch
+):
+    current_time = datetime.now(timezone.utc)
+    config = {
+        CONF_APPLIANCE_TYPE: "refrigerator",
+        CONF_POWER_ENTITY: "sensor.fridge_power",
+        CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
+        CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door_alarm"}],
+        CONF_ALARM_REPEAT_INTERVAL_SECONDS: 10,
+        CONF_ALARM_REPEAT_COUNT: 1,
+        "name": "Refrigerator",
+    }
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    runtime.door_open = True
+    runtime.door_alarm_active = True
+    runtime.next_door_alarm = current_time
+    started = asyncio.Event()
+    release = asyncio.Event()
+    action_calls = 0
+
+    async def hold_action(_key: str) -> None:
+        nonlocal action_calls
+        action_calls += 1
+        started.set()
+        await release.wait()
+
+    monkeypatch.setattr(runtime, "_run_actions", hold_action)
+    first_action = asyncio.create_task(
+        runtime._run_alarm_if_due("door", current_time)
+    )
+    await started.wait()
+    await runtime._run_alarm_if_due("door", current_time)
+    assert action_calls == 1
+
+    release.set()
+    await first_action
+    assert runtime.door_alarm_fired_count == 1
+    assert runtime.next_door_alarm == current_time + timedelta(seconds=10)
