@@ -237,5 +237,6 @@ El repositori ha de tenir workflows independents per als tests unitaris, els tes
 
 - Definir límits mínims i màxims dels controls numèrics; els valors inicials sí que queden fixats en aquest document.
 - Definir les versions mínimes de Home Assistant i Python quan s'iniciï la implementació.
+- **En estudi: entitat `climate` per a aire condicionat.** Valorar permetre seleccionar una entitat `climate` existent com a font de només lectura per detectar l'activitat i els cicles de l'AC. Cal determinar quins atributs són fiables (`hvac_action` quan existeixi i, si escau, l'estat HVAC com a alternativa). La proposta no reubica ni embolcalla la climate original i no crea una entitat `ClimateEntity` pròpia ni envia ordres. Un eventual proxy de control que delegui ordres a la climate original requereix una decisió i un abast separats.
 
 **Data d'actualització**: 2026-10-28

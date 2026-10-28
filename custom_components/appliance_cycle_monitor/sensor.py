@@ -63,11 +63,6 @@ class ApplianceSensor(SensorEntity):
         """Return the latest value from the appliance runtime."""
         return self._value_fn()
 
-    @property
-    def available(self) -> bool:
-        """Keep a power value available after at least one valid reading."""
-        return self._key != "power" or self._runtime.display_power_w is not None
-
     async def async_added_to_hass(self) -> None:
         """Subscribe to changes from the shared runtime."""
         await super().async_added_to_hass()

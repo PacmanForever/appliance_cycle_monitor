@@ -41,6 +41,10 @@ A local Home Assistant integration for washers, dishwashers, dryers, air conditi
 	- Run configured actions in order. Reminders and alarms wait for the previous run to finish before repeating.
 	- Configure an immediate smart-plug-off alarm with its own repeat interval and count; it pauses while the plug state is unavailable and rearms when switched on.
 
+## Under consideration
+
+- **Air conditioner climate input:** investigate selecting an existing `climate` entity as a read-only source for cycle detection. Reliable signals such as `hvac_action` and HVAC state need evaluation. This is not currently supported; wrapping climate controls or creating a controllable `ClimateEntity` is outside this investigation and would require a separate design.
+
 ## Installation
 
 ### HACS

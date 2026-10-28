@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.2 - 2026-10-28
+
+### Fixed
+
+- Keep the derived power sensor available before its first valid reading; it reports an unknown value until a reading is available.
+
+### Documentation
+
+- Record read-only `climate` input for air-conditioner cycle detection as an area under consideration.
+
 ## 0.5.1 - 2026-10-28
 
 ### Changed

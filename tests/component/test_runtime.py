@@ -452,6 +452,27 @@ async def test_removing_door_sensor_clears_restored_pending_state(hass, config):
 
 
 @pytest.mark.asyncio
+async def test_power_entity_is_available_before_first_valid_reading(hass, config):
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    power = ApplianceSensor(
+        runtime,
+        entry,
+        "power",
+        lambda: runtime.display_power_w,
+        UnitOfPower.WATT,
+        SensorDeviceClass.POWER,
+        SensorStateClass.MEASUREMENT,
+    )
+
+    assert power.available
+    assert power.native_value is None
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
 async def test_power_entity_keeps_last_reading_when_input_is_unavailable(
     hass, config
 ):
