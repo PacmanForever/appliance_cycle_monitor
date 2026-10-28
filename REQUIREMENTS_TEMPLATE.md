@@ -6,7 +6,7 @@ Crear una integració local de Home Assistant per centralitzar en un únic dispo
 
 L'usuari no ha de necessitar crear automatitzacions o blueprints externs per detectar l'inici o el final del cicle ni per executar les accions configurades.
 
-Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat detectat per contacte de pala o per potència, nevera detectada per potència amb switch opcional o per interruptor intel·ligent obligatori, i bústia detectada per moviment interior o per contacte de portella. L'estructura ha de permetre afegir tipus futurs sense repartir condicions específiques per tipus entre els fluxos, el runtime i les plataformes d'entitats.
+Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat detectat per contacte de pala, potència o una entitat `climate` existent, nevera detectada per potència amb switch opcional o per interruptor intel·ligent obligatori, i bústia detectada per moviment interior o per contacte de portella. L'estructura ha de permetre afegir tipus futurs sense repartir condicions específiques per tipus entre els fluxos, el runtime i les plataformes d'entitats.
 
 ## 2. Identitat del projecte
 
@@ -85,6 +85,7 @@ Els tipus s'han de definir en un registre de perfils extensible. Cada perfil dec
 
 - **Aire condicionat per contacte** (`air_conditioner_contact`): el contacte de pala és la font binària de funcionament. Les transicions `off`→`on` i `on`→`off` inicien i finalitzen respectivament el període actiu. No es creen potència, energia, «pendent de buidar» ni temps restant estimat.
 - **Aire condicionat per potència** (`air_conditioner_power`): usa llindars/histèresi de potència per detectar activitat. No es creen «pendent de buidar» ni temps restant estimat.
+- **Aire condicionat per entitat `climate`** (`air_conditioner_climate`): requereix una entitat `climate` existent sense dispositiu pare. L'entitat original s'associa directament al dispositiu creat per la integració, sense wrapper; conserva el seu identificador, la integració propietària i els controls. L'activitat segueix `hvac_action` quan existeix i, si no, l'estat de la climate. En deseleccionar-la, substituir-la o eliminar l'entrada, torna a quedar sense dispositiu si encara està associada al dispositiu d'aquest aparell.
 - **Nevera per potència** (`refrigerator`): requereix sensor de potència i contacte de porta. La potència detecta activitat del compressor i el contacte detecta l'obertura. Pot incloure opcionalment un switch intel·ligent controlable: aquest no substitueix ni canvia la detecció per potència, però apagar-lo talla l'alimentació i finalitza immediatament el període actiu. No s'hi creen «pendent de buidar» ni temps restant estimat. Hi ha dos grups independents d'alarma: porta oberta durant un temps configurable i compressor sense activitat durant un temps configurable.
 - **Nevera per interruptor** (`refrigerator_switch`): requereix un interruptor intel·ligent que controla l'alimentació i és la font binària d'activitat; també requereix un contacte separat de porta. `on` inicia i `off` finalitza el període actiu. No es creen potència, energia, temps restant, ni alarma de compressor inactiu, perquè aquest perfil no mesura l'activitat del compressor. Manté l'alarma configurable de porta oberta.
 - **Bústia amb moviment** (`mailbox_motion`): el moviment interior detecta l'arribada de correu. La porta principal és independent del sensor d'arribada i neteja l'estat pendent quan s'obre.
@@ -237,6 +238,5 @@ El repositori ha de tenir workflows independents per als tests unitaris, els tes
 
 - Definir límits mínims i màxims dels controls numèrics; els valors inicials sí que queden fixats en aquest document.
 - Definir les versions mínimes de Home Assistant i Python quan s'iniciï la implementació.
-- **En estudi: entitat `climate` per a aire condicionat.** Valorar permetre seleccionar una entitat `climate` existent com a font de només lectura per detectar l'activitat i els cicles de l'AC. Cal determinar quins atributs són fiables (`hvac_action` quan existeixi i, si escau, l'estat HVAC com a alternativa). La proposta no reubica ni embolcalla la climate original i no crea una entitat `ClimateEntity` pròpia ni envia ordres. Un eventual proxy de control que delegui ordres a la climate original requereix una decisió i un abast separats.
 
 **Data d'actualització**: 2026-10-28

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 - 2026-10-28
+
+### Added
+
+- Add an air-conditioner profile that uses an existing unparented `climate` entity for activity detection and associates the original entity with the appliance device without creating a wrapper.
+- Preserve the climate entity's original integration and controls, and return it to no device when deselected, replaced, or when the appliance is removed.
+
+### Changed
+
+- Use appliance-specific icons for laundry door states.
+- Document the climate-backed air-conditioner profile and remove its obsolete under-consideration proposal.
+
 ## 0.5.2 - 2026-10-28
 
 ### Fixed

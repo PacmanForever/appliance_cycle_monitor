@@ -28,6 +28,16 @@ _RUNNING_ICONS = {
     "refrigerator_switch": ("mdi:fridge", "mdi:fridge-off"),
 }
 
+_DOOR_ICONS = {
+    "washer": ("mdi:washing-machine-alert", "mdi:washing-machine", "mdi:washing-machine"),
+    "dishwasher": ("mdi:dishwasher-alert", "mdi:dishwasher", "mdi:dishwasher"),
+    "dryer": ("mdi:tumble-dryer-alert", "mdi:tumble-dryer", "mdi:tumble-dryer"),
+    "refrigerator": ("mdi:fridge-alert", "mdi:fridge", "mdi:fridge-alert-outline"),
+    "refrigerator_switch": ("mdi:fridge-alert", "mdi:fridge", "mdi:fridge-alert-outline"),
+    "mailbox_motion": ("mdi:mailbox-open", "mdi:mailbox", "mdi:mailbox-outline"),
+    "mailbox_slot": ("mdi:mailbox-open", "mdi:mailbox", "mdi:mailbox-outline"),
+}
+
 
 class ApplianceBinarySensor(BinarySensorEntity):
     """A binary sensor backed by one runtime value."""
@@ -70,14 +80,11 @@ class ApplianceBinarySensor(BinarySensorEntity):
                 return "mdi:power-cycle"
             return icons[1] if self.is_on is False else icons[0]
         if self._key == "door":
-            if appliance_type in ("refrigerator", "refrigerator_switch"):
+            icons = _DOOR_ICONS.get(appliance_type)
+            if icons is not None:
                 if self.is_on is None:
-                    return "mdi:fridge-alert-outline"
-                return "mdi:fridge-alert" if self.is_on else "mdi:fridge"
-            if appliance_type in ("mailbox_motion", "mailbox_slot"):
-                if self.is_on is None:
-                    return "mdi:mailbox-outline"
-                return "mdi:mailbox-open" if self.is_on else "mdi:mailbox"
+                    return icons[2]
+                return icons[0] if self.is_on else icons[1]
             if self.is_on is None:
                 return "mdi:door"
             return "mdi:door-open" if self.is_on else "mdi:door-closed"

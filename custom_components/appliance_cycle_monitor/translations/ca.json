@@ -17,6 +17,7 @@
       "sensors": {
         "title": "Sensors d’entrada",
         "data": {
+          "climate_entity": "Entitat climate original de l’aire condicionat (sense dispositiu pare)",
           "power_entity": "Sensor de potència de l’aparell (ha d’indicar watts)",
           "running_entity": "Contacte binari actiu quan la pala de l’aire condicionat és oberta",
           "mail_motion_entity": "Sensor de moviment interior que detecta l’arribada de correu",
@@ -32,6 +33,7 @@
           "plug_entity": "Endoll intel·ligent de l’aparell (opcional)"
         },
         "data_description": {
+          "climate_entity": "Aquesta opció associa l’entitat climate original al dispositiu de l’aparell; no és un wrapper. Es conserven els controls originals. Tria una climate sense dispositiu pare; en deseleccionar-la o eliminar l’aparell, tornarà a quedar sense dispositiu.",
           "running_entity": "Munta el contacte a la pala de l’aire condicionat. La pala oberta indica que funciona.",
           "mail_motion_entity": "El moviment dins de la bústia indica que ha arribat una carta.",
           "mail_slot_entity": "L’obertura de la portella indica que ha arribat una carta.",
@@ -89,7 +91,8 @@
       "invalid_alarm_settings": "Els retards i l’interval han de ser enters positius; les repeticions addicionals han de ser un enter no negatiu.",
       "invalid_plug_off_alarm_settings": "L’interval de repetició amb l’endoll apagat ha de ser un enter positiu i les alarmes addicionals, un enter no negatiu.",
       "appliance_type_immutable": "No es pot canviar el tipus d’aparell després de configurar-lo. Afegeix-ne un de nou amb el tipus desitjat.",
-      "mailbox_sensors_must_be_distinct": "El sensor d’arribada de correu i el sensor de la porta principal han de ser entitats diferents."
+      "mailbox_sensors_must_be_distinct": "El sensor d’arribada de correu i el sensor de la porta principal han de ser entitats diferents.",
+      "climate_entity_requires_no_device": "Tria una entitat climate sense dispositiu pare, o l’entitat climate que ja estigui assignada a aquest aparell."
     }
   },
   "options": {
@@ -104,6 +107,7 @@
       "sensors": {
         "title": "Sensors d’entrada",
         "data": {
+          "climate_entity": "Entitat climate original de l’aire condicionat (sense dispositiu pare)",
           "power_entity": "Sensor de potència de l’aparell (ha d’indicar watts)",
           "running_entity": "Contacte binari actiu quan la pala de l’aire condicionat és oberta",
           "mail_motion_entity": "Sensor de moviment interior que detecta l’arribada de correu",
@@ -119,6 +123,7 @@
           "plug_entity": "Endoll intel·ligent de l’aparell (opcional)"
         },
         "data_description": {
+          "climate_entity": "Aquesta opció associa l’entitat climate original al dispositiu de l’aparell; no és un wrapper. Es conserven els controls originals. Tria una climate sense dispositiu pare; en deseleccionar-la o eliminar l’aparell, tornarà a quedar sense dispositiu.",
           "running_entity": "Munta el contacte a la pala de l’aire condicionat. La pala oberta indica que funciona.",
           "mail_motion_entity": "El moviment dins de la bústia indica que ha arribat una carta.",
           "mail_slot_entity": "L’obertura de la portella indica que ha arribat una carta.",
@@ -176,7 +181,8 @@
       "invalid_alarm_settings": "Els retards i l’interval han de ser enters positius; les repeticions addicionals han de ser un enter no negatiu.",
       "invalid_plug_off_alarm_settings": "L’interval de repetició amb l’endoll apagat ha de ser un enter positiu i les alarmes addicionals, un enter no negatiu.",
       "appliance_type_immutable": "No es pot canviar el tipus d’aparell després de configurar-lo. Afegeix-ne un de nou amb el tipus desitjat.",
-      "mailbox_sensors_must_be_distinct": "El sensor d’arribada de correu i el sensor de la porta principal han de ser entitats diferents."
+      "mailbox_sensors_must_be_distinct": "El sensor d’arribada de correu i el sensor de la porta principal han de ser entitats diferents.",
+      "climate_entity_requires_no_device": "Tria una entitat climate sense dispositiu pare, o l’entitat climate que ja estigui assignada a aquest aparell."
     }
   },
   "selector": {
@@ -185,6 +191,7 @@
         "washer": "Rentadora",
         "dishwasher": "Rentaplats",
         "dryer": "Assecadora",
+        "air_conditioner_climate": "Aire condicionat (entitat climate)",
         "air_conditioner_contact": "Aire condicionat (contacte de pala)",
         "air_conditioner_power": "Aire condicionat (sensor de potència)",
         "refrigerator": "Nevera (sensor de potència)",

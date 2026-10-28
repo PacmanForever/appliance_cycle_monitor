@@ -7,7 +7,7 @@ import pytest
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfPower
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.issue_registry import async_get as async_get_issue_registry
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -19,6 +19,7 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_APPLIANCE_TYPE,
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+    CONF_CLIMATE_ENTITY,
     CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
@@ -48,6 +49,7 @@ from custom_components.appliance_cycle_monitor import (
 from custom_components.appliance_cycle_monitor import runtime as runtime_module
 from custom_components.appliance_cycle_monitor.appliance import ApplianceCycleDetector
 from custom_components.appliance_cycle_monitor.runtime import ApplianceRuntime
+from custom_components.appliance_cycle_monitor.binary_sensor import ApplianceBinarySensor
 from custom_components.appliance_cycle_monitor.sensor import ApplianceSensor
 from custom_components.appliance_cycle_monitor.button import (
     ClearPendingButton,
@@ -809,6 +811,29 @@ async def test_mailbox_slot_exposes_flap_open_and_closed_state(
 
 
 @pytest.mark.parametrize(
+    ("appliance_type", "closed_icon", "open_icon"),
+    (
+        ("washer", "mdi:washing-machine", "mdi:washing-machine-alert"),
+        ("dishwasher", "mdi:dishwasher", "mdi:dishwasher-alert"),
+        ("dryer", "mdi:tumble-dryer", "mdi:tumble-dryer-alert"),
+    ),
+)
+def test_laundry_door_icons_follow_appliance_type(
+    appliance_type, closed_icon, open_icon
+):
+    runtime = type("Runtime", (), {"config": {CONF_APPLIANCE_TYPE: appliance_type}})()
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    door_open = False
+    sensor = ApplianceBinarySensor(
+        runtime, entry, "door", lambda: door_open
+    )
+
+    assert sensor.icon == closed_icon
+    door_open = True
+    assert sensor.icon == open_icon
+
+
+@pytest.mark.parametrize(
     ("appliance_type", "source_key"),
     (
         ("mailbox_motion", CONF_MAIL_MOTION_ENTITY),
@@ -1218,6 +1243,126 @@ async def test_plug_off_alarm_repeats_pauses_persists_and_rearms(
         CONF_PLUG_OFF_ACTIONS,
     ]
     await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_climate_entity_is_assigned_reassociated_and_released(
+    hass, enable_custom_integrations
+):
+    climate_entry = MockConfigEntry(domain="climate_source")
+    climate_entry.add_to_hass(hass)
+    climate_entity = er.async_get(hass).async_get_or_create(
+        "climate", climate_entry.domain, "air_conditioner", config_entry=climate_entry
+    )
+    replacement_entry = MockConfigEntry(domain="climate_source")
+    replacement_entry.add_to_hass(hass)
+    replacement_climate = er.async_get(hass).async_get_or_create(
+        "climate", replacement_entry.domain, "replacement", config_entry=replacement_entry
+    )
+    hass.states.async_set(
+        climate_entity.entity_id, "cool", {"hvac_action": "cooling"}
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_APPLIANCE_TYPE: "air_conditioner_climate",
+            CONF_CLIMATE_ENTITY: climate_entity.entity_id,
+            "name": "Air conditioner",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    device = dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, entry.entry_id)}
+    )
+    assert device is not None
+    registered_climate = er.async_get(hass).async_get(climate_entity.entity_id)
+    assert registered_climate is not None
+    assert registered_climate.config_entry_id == climate_entry.entry_id
+    assert registered_climate.device_id == device.id
+    assert entry.runtime_data.detector.is_running
+
+    hass.states.async_set(
+        climate_entity.entity_id, "cool", {"hvac_action": "idle"}
+    )
+    await hass.async_block_till_done()
+    assert not entry.runtime_data.detector.is_running
+    assert entry.runtime_data.detector.last_cycle_duration is not None
+
+    hass.states.async_set(climate_entity.entity_id, "cool")
+    await hass.async_block_till_done()
+    assert entry.runtime_data.detector.is_running
+    hass.states.async_set(climate_entity.entity_id, "unavailable")
+    await hass.async_block_till_done()
+    assert entry.runtime_data.detector.is_running
+
+    er.async_get(hass).async_update_entity(climate_entity.entity_id, device_id=None)
+    assert (
+        er.async_get(hass).async_get(climate_entity.entity_id).device_id == device.id
+    )
+
+    updated_data = dict(entry.data)
+    updated_data[CONF_CLIMATE_ENTITY] = replacement_climate.entity_id
+    hass.config_entries.async_update_entry(entry, data=updated_data)
+    await hass.async_block_till_done()
+    assert er.async_get(hass).async_get(climate_entity.entity_id).device_id is None
+    assert (
+        er.async_get(hass).async_get(replacement_climate.entity_id).device_id
+        == device.id
+    )
+
+    updated_data = dict(entry.data)
+    updated_data.pop(CONF_CLIMATE_ENTITY)
+    hass.config_entries.async_update_entry(entry, data=updated_data)
+    await hass.async_block_till_done()
+    assert er.async_get(hass).async_get(replacement_climate.entity_id).device_id is None
+    assert er.async_get(hass).async_get(climate_entity.entity_id).device_id is None
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert (
+        er.async_get(hass).async_get(replacement_climate.entity_id).device_id is None
+    )
+    assert er.async_get(hass).async_get(climate_entity.entity_id).device_id is None
+    assert er.async_get(hass).async_get(climate_entity.entity_id).config_entry_id == climate_entry.entry_id
+
+
+@pytest.mark.asyncio
+async def test_climate_entity_with_existing_parent_is_not_reassigned(
+    hass, enable_custom_integrations
+):
+    climate_entry = MockConfigEntry(domain="climate_source")
+    climate_entry.add_to_hass(hass)
+    existing_device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=climate_entry.entry_id,
+        identifiers={(climate_entry.domain, "existing_device")},
+        name="Existing climate device",
+    )
+    climate_entity = er.async_get(hass).async_get_or_create(
+        "climate",
+        climate_entry.domain,
+        "air_conditioner",
+        config_entry=climate_entry,
+        device_id=existing_device.id,
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_APPLIANCE_TYPE: "air_conditioner_climate",
+            CONF_CLIMATE_ENTITY: climate_entity.entity_id,
+            "name": "Air conditioner",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    assert er.async_get(hass).async_get(climate_entity.entity_id).device_id == (
+        existing_device.id
+    )
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert er.async_get(hass).async_get(climate_entity.entity_id).device_id == (
+        existing_device.id
+    )
 
 
 @pytest.mark.asyncio

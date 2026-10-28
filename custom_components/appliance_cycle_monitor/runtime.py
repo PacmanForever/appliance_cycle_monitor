@@ -38,6 +38,7 @@ from .const import (
     CONF_APPLIANCE_TYPE,
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+    CONF_CLIMATE_ENTITY,
     CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
@@ -156,6 +157,7 @@ class ApplianceRuntime:
         self._action_locks: dict[str, asyncio.Lock] = {}
         self._unsubscribe_states: Callable[[], None] | None = None
         self._unsubscribe_timer: Callable[[], None] | None = None
+        self._unsubscribe_entity_registry: Callable[[], None] | None = None
         self._is_unloading = False
         self._pending_action_running = False
         self._restoring_detector_state = False
@@ -179,6 +181,7 @@ class ApplianceRuntime:
 
         source_key = {
             "power": CONF_POWER_ENTITY,
+            "climate": CONF_CLIMATE_ENTITY,
             "running_sensor": CONF_RUNNING_ENTITY,
             "mail_motion": CONF_MAIL_MOTION_ENTITY,
             "mail_slot": CONF_MAIL_SLOT_ENTITY,
@@ -194,8 +197,13 @@ class ApplianceRuntime:
             )
 
         now = dt_util.utcnow()
-        source_state = self.hass.states.get(self.config[source_key])
-        if "running_sensor" in self.profile.detection_sources:
+        source_entity_id = self.config.get(source_key)
+        source_state = (
+            self.hass.states.get(source_entity_id) if source_entity_id else None
+        )
+        if "climate" in self.profile.detection_sources:
+            self._apply_climate_state(source_state, now, initialize=True)
+        elif "running_sensor" in self.profile.detection_sources:
             self._apply_running_state(source_state, now, initialize=True)
         elif "smart_plug" in self.profile.detection_sources:
             self._apply_running_state(source_state, now, initialize=True)
@@ -286,6 +294,11 @@ class ApplianceRuntime:
         now = dt_util.utcnow()
 
         if (
+            "climate" in self.profile.detection_sources
+            and entity_id == self.config.get(CONF_CLIMATE_ENTITY)
+        ):
+            self._apply_climate_state(new_state, now)
+        elif (
             "running_sensor" in self.profile.detection_sources
             and entity_id == self.config.get(CONF_RUNNING_ENTITY)
         ):
@@ -379,6 +392,33 @@ class ApplianceRuntime:
         self, state: Any, now: datetime, initialize: bool = False
     ) -> None:
         value = state.state if state is not None else None
+        self._apply_running_value(value, now, initialize)
+
+    def _apply_climate_state(
+        self, state: Any, now: datetime, initialize: bool = False
+    ) -> None:
+        value = None
+        if state is not None and state.state not in ("unknown", "unavailable"):
+            hvac_action = state.attributes.get("hvac_action")
+            if hvac_action in ("off", "idle"):
+                value = "off"
+            elif hvac_action in {
+                "cooling",
+                "drying",
+                "fan",
+                "defrosting",
+                "heating",
+                "preheating",
+            }:
+                value = "on"
+            elif hvac_action is None:
+                value = "off" if state.state == "off" else "on"
+
+        self._apply_running_value(value, now, initialize)
+
+    def _apply_running_value(
+        self, value: str | None, now: datetime, initialize: bool = False
+    ) -> None:
         if initialize or self._restoring_detector_state:
             events = self.detector.reconcile_state(value, now)
             self._restoring_detector_state = False

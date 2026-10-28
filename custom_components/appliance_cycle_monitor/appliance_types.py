@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .const import (
     CONF_DOOR_ENTITY,
+    CONF_CLIMATE_ENTITY,
     CONF_MAIL_MOTION_ENTITY,
     CONF_MAIL_SLOT_ENTITY,
     CONF_PLUG_ENTITY,
@@ -66,6 +67,23 @@ class ApplianceTypeProfile:
 
 
 APPLIANCE_PROFILES = {
+    "air_conditioner_climate": ApplianceTypeProfile(
+        sensor_inputs=(
+            SensorInput(
+                form_key=CONF_CLIMATE_ENTITY,
+                config_key=CONF_CLIMATE_ENTITY,
+                domain="climate",
+                required=False,
+                detection_source="climate",
+            ),
+        ),
+        parameter_groups=(),
+        action_groups=("cycle_start", "cycle_finish"),
+        output_entities=("last_cycle_duration", "running"),
+        supports_pending_unload=False,
+        estimates_remaining=False,
+        supports_max_runtime=False,
+    ),
     "washer": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
@@ -308,6 +326,7 @@ APPLIANCE_PROFILES = {
 # Keep the selector alphabetized by its Catalan display labels.
 APPLIANCE_TYPES = (
     "air_conditioner_contact",
+    "air_conditioner_climate",
     "air_conditioner_power",
     "dryer",
     "mailbox_slot",
@@ -320,6 +339,7 @@ APPLIANCE_TYPES = (
 
 
 APPLIANCE_MODEL_NAMES = {
+    "air_conditioner_climate": "Air conditioner (climate entity)",
     "washer": "Washer",
     "dishwasher": "Dishwasher",
     "dryer": "Dryer",

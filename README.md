@@ -11,7 +11,7 @@
 [![Home Assistant](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPacmanForever%2Fappliance_cycle_monitor%2Fmain%2Fdocs%2Fhome_assistant_compatibility.json&query=%24.tested_version&suffix=%20tested&label=home%20assistant&color=blue)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml)
 [![Daily HA compatibility](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml/badge.svg?branch=main)](https://github.com/PacmanForever/appliance_cycle_monitor/actions/workflows/daily-ha.yml)
 
-A local Home Assistant integration for washers, dishwashers, dryers, air conditioners, refrigerators, and mailboxes. Refrigerator activity can be detected from power readings or a required smart-switch state. The power-based refrigerator profile requires a power sensor and door contact, and can optionally include a controllable smart plug; the smart-switch profile requires the switch as its activity source and a separate door contact. Other appliance activity comes from power or, for an air conditioner's louver, a binary contact. Mail is detected from an interior motion sensor or mail-slot flap contact. Each device has its own configurable actions, with no external service or credentials.
+A local Home Assistant integration for washers, dishwashers, dryers, air conditioners, refrigerators, and mailboxes. Refrigerator activity can be detected from power readings or a required smart-switch state. The power-based refrigerator profile requires a power sensor and door contact, and can optionally include a controllable smart plug; the smart-switch profile requires the switch as its activity source and a separate door contact. Other appliance activity comes from power, an air-conditioner's louver contact, or an existing climate entity. Mail is detected from an interior motion sensor or mail-slot flap contact. Each device has its own configurable actions, with no external service or credentials.
 
 ## Features
 
@@ -25,6 +25,7 @@ A local Home Assistant integration for washers, dishwashers, dryers, air conditi
 	- Detect cycles from power thresholds and configurable confirmation times.
 	- Optionally monitor the door and control a smart plug; track pending unloading and reminders.
 - **Air conditioner**
+	- **Climate-entity option:** use an existing climate entity with no parent device as the activity source. The original entity and controls are assigned directly to the appliance device; no wrapper is created. Activity follows `hvac_action` when available and falls back to the climate state. Deselecting or replacing the entity, or removing the appliance, returns it to no device if it is still assigned to this appliance.
 	- **Louver-contact option:** detect activity from a binary contact on the louver; no power or energy entities are created.
 	- **Power option:** detect activity from power readings and configurable thresholds. When both sources are available, choose this profile to use power.
 - **Refrigerator**
@@ -40,10 +41,6 @@ A local Home Assistant integration for washers, dishwashers, dryers, air conditi
 	- Get a Repairs issue when a configured input is missing or unavailable; the issue clears when the input recovers.
 	- Run configured actions in order. Reminders and alarms wait for the previous run to finish before repeating.
 	- Configure an immediate smart-plug-off alarm with its own repeat interval and count; it pauses while the plug state is unavailable and rearms when switched on.
-
-## Under consideration
-
-- **Air conditioner climate input:** investigate selecting an existing `climate` entity as a read-only source for cycle detection. Reliable signals such as `hvac_action` and HVAC state need evaluation. This is not currently supported; wrapping climate controls or creating a controllable `ClimateEntity` is outside this investigation and would require a separate design.
 
 ## Installation
 
@@ -79,18 +76,6 @@ Outputs depend on the selected profile. Power-based profiles provide power and l
 External automations can react to state changes of the running and pending-unload binary sensors. The integration does not currently fire custom events on the Home Assistant event bus. Pending unload clears when the door opens or when the clear button is pressed.
 
 Runtime state is restored after Home Assistant restarts. The integration does not create external helpers, scripts, or automations, and it does not remove selected external entities when an appliance entry is deleted.
-
-## Development and tests
-
-Install `requirements-test.txt`, then run:
-
-```sh
-python3 -m pytest -q --cov=custom_components.appliance_cycle_monitor --cov-report=term-missing --cov-fail-under=95
-```
-
-GitHub Actions runs unit and component tests with combined coverage enforcement, HACS validation, Hassfest, and a daily component test against the latest stable Home Assistant release. Checks run on pushes and pull requests to `main`, and can also be started manually.
-
-The Home Assistant badge shows the latest stable version that passed the daily component tests and updates automatically after a successful run.
 
 ## License
 

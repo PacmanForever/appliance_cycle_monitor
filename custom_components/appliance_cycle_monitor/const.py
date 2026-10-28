@@ -4,6 +4,7 @@ DOMAIN = "appliance_cycle_monitor"
 
 CONF_APPLIANCE_TYPE = "appliance_type"
 CONF_POWER_ENTITY = "power_entity"
+CONF_CLIMATE_ENTITY = "climate_entity"
 CONF_RUNNING_ENTITY = "running_entity"
 CONF_MAIL_MOTION_ENTITY = "mail_motion_entity"
 CONF_MAIL_SLOT_ENTITY = "mail_slot_entity"

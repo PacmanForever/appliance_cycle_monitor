@@ -8,13 +8,15 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
-from homeassistant.helpers import selector
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
 
 from .appliance_types import APPLIANCE_TYPES, ApplianceTypeProfile, get_appliance_profile
 from .const import (
     CONF_APPLIANCE_TYPE,
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
+    CONF_CLIMATE_ENTITY,
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_DOOR_ENTITY,
@@ -62,6 +64,7 @@ _ENTRY_DATA_KEYS = {
     CONF_NAME,
     CONF_APPLIANCE_TYPE,
     CONF_POWER_ENTITY,
+    CONF_CLIMATE_ENTITY,
     CONF_RUNNING_ENTITY,
     CONF_DOOR_ENTITY,
     CONF_PLUG_ENTITY,
@@ -357,6 +360,24 @@ def _validate_sensor_values(
     return arrival_entity is None or door_entity is None or arrival_entity != door_entity
 
 
+def _validate_climate_entity(
+    hass: HomeAssistant, entity_id: str | None, config_entry_id: str | None = None
+) -> bool:
+    if entity_id is None:
+        return False
+    entity_entry = er.async_get(hass).async_get(entity_id)
+    if entity_entry is None or entity_entry.domain != "climate":
+        return False
+    if entity_entry.device_id is None:
+        return True
+    if config_entry_id is None:
+        return False
+    appliance_device = dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, config_entry_id)}
+    )
+    return appliance_device is not None and entity_entry.device_id == appliance_device.id
+
+
 def _validate_pending(values: dict[str, Any]) -> bool:
     try:
         delay = float(values[CONF_PENDING_DELAY_SECONDS])
@@ -447,6 +468,7 @@ def _entry_data(values: dict[str, Any]) -> dict[str, Any]:
     keys = _ENTRY_DATA_KEYS.copy()
     source_keys = {
         "power": CONF_POWER_ENTITY,
+        "climate": CONF_CLIMATE_ENTITY,
         "running_sensor": CONF_RUNNING_ENTITY,
         "mail_motion": CONF_MAIL_MOTION_ENTITY,
         "mail_slot": CONF_MAIL_SLOT_ENTITY,
@@ -547,6 +569,17 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                         _sensor_form_values(self._draft, profile), profile
                     ),
                     errors={"base": "mailbox_sensors_must_be_distinct"},
+                    last_step=False,
+                )
+            if "climate" in profile.detection_sources and not _validate_climate_entity(
+                self.hass, self._draft.get(CONF_CLIMATE_ENTITY)
+            ):
+                return self.async_show_form(
+                    step_id="sensors",
+                    data_schema=_sensor_schema(
+                        _sensor_form_values(self._draft, profile), profile
+                    ),
+                    errors={"base": "climate_entity_requires_no_device"},
                     last_step=False,
                 )
             return await self.async_step_parameters()
@@ -667,6 +700,23 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                         _sensor_form_values(values, profile), profile
                     ),
                     errors={"base": "mailbox_sensors_must_be_distinct"},
+                    last_step=False,
+                )
+            if (
+                "climate" in profile.detection_sources
+                and values.get(CONF_CLIMATE_ENTITY) is not None
+                and not _validate_climate_entity(
+                    self.hass,
+                    values.get(CONF_CLIMATE_ENTITY),
+                    self.config_entry.entry_id,
+                )
+            ):
+                return self.async_show_form(
+                    step_id="sensors",
+                    data_schema=_sensor_schema(
+                        _sensor_form_values(values, profile), profile
+                    ),
+                    errors={"base": "climate_entity_requires_no_device"},
                     last_step=False,
                 )
             return await self.async_step_parameters()

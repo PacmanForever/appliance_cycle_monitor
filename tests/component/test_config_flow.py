@@ -3,7 +3,7 @@
 import pytest
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers import selector
+from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.plugins import enable_custom_integrations
 
@@ -13,6 +13,7 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
     CONF_APPLIANCE_TYPE,
+    CONF_CLIMATE_ENTITY,
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_DOOR_ENTITY,
@@ -165,6 +166,130 @@ async def test_add_air_conditioner_with_opening_sensor(hass, enable_custom_integ
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_RUNNING_ENTITY] == "binary_sensor.ac_vane"
     assert CONF_POWER_ENTITY not in result["data"]
+
+
+@pytest.mark.asyncio
+async def test_air_conditioner_climate_requires_unparented_entity(
+    hass, enable_custom_integrations
+):
+    climate_entry = MockConfigEntry(domain="climate_source")
+    climate_entry.add_to_hass(hass)
+    entity_registry = er.async_get(hass)
+    parentless_entity = entity_registry.async_get_or_create(
+        "climate", climate_entry.domain, "parentless", config_entry=climate_entry
+    )
+    climate_device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=climate_entry.entry_id,
+        identifiers={(climate_entry.domain, "device")},
+        name="Existing climate device",
+    )
+    parented_entity = entity_registry.async_get_or_create(
+        "climate",
+        climate_entry.domain,
+        "parented",
+        config_entry=climate_entry,
+        device_id=climate_device.id,
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    flow_id = result["flow_id"]
+    sensor_step = await hass.config_entries.flow.async_configure(
+        flow_id,
+        {"name": "Climate AC", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
+    )
+    climate_selector = next(
+        value
+        for marker, value in sensor_step["data_schema"].schema.items()
+        if marker.schema == CONF_CLIMATE_ENTITY
+    )
+    sensor_form = await hass.config_entries.flow.async_configure(
+        flow_id, {CONF_CLIMATE_ENTITY: parentless_entity.entity_id}
+    )
+    assert sensor_form["step_id"] == "parameters"
+    assert isinstance(climate_selector, selector.EntitySelector)
+    assert climate_selector.config["domain"] == ["climate"]
+    actions_form = await hass.config_entries.flow.async_configure(flow_id, {})
+    result = await hass.config_entries.flow.async_configure(
+        flow_id, {CONF_START_ACTIONS: [], CONF_FINISH_ACTIONS: []}
+    )
+    assert actions_form["step_id"] == "actions"
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_CLIMATE_ENTITY] == parentless_entity.entity_id
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    flow_id = result["flow_id"]
+    await hass.config_entries.flow.async_configure(
+        flow_id,
+        {"name": "Climate AC 2", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        flow_id, {CONF_CLIMATE_ENTITY: parented_entity.entity_id}
+    )
+    assert result["step_id"] == "sensors"
+    assert result["errors"] == {"base": "climate_entity_requires_no_device"}
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    flow_id = result["flow_id"]
+    await hass.config_entries.flow.async_configure(
+        flow_id,
+        {"name": "Climate AC 3", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
+    )
+    result = await hass.config_entries.flow.async_configure(flow_id, {})
+    assert result["step_id"] == "sensors"
+    assert result["errors"] == {"base": "climate_entity_requires_no_device"}
+
+
+@pytest.mark.asyncio
+async def test_climate_entity_can_be_deselected_in_options(
+    hass, enable_custom_integrations
+):
+    climate_entry = MockConfigEntry(domain="climate_source")
+    climate_entry.add_to_hass(hass)
+    climate_entity = er.async_get(hass).async_get_or_create(
+        "climate", climate_entry.domain, "air_conditioner", config_entry=climate_entry
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Climate AC",
+        data={
+            "name": "Climate AC",
+            CONF_APPLIANCE_TYPE: "air_conditioner_climate",
+            CONF_CLIMATE_ENTITY: climate_entity.entity_id,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    flow_id = result["flow_id"]
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {"name": "Climate AC"}
+    )
+    assert result["step_id"] == "sensors"
+    climate_selector = next(
+        value
+        for marker, value in result["data_schema"].schema.items()
+        if marker.schema == CONF_CLIMATE_ENTITY
+    )
+    assert isinstance(climate_selector, selector.EntitySelector)
+
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {CONF_CLIMATE_ENTITY: None}
+    )
+    assert result["step_id"] == "parameters"
+    result = await hass.config_entries.options.async_configure(flow_id, {})
+    assert result["step_id"] == "actions"
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {CONF_START_ACTIONS: [], CONF_FINISH_ACTIONS: []}
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data.get(CONF_CLIMATE_ENTITY) is None
 
 
 @pytest.mark.asyncio
@@ -367,6 +492,16 @@ async def test_every_profile_supports_config_entry_crud(
                 entity_id = f"switch.{revision}_plug"
             elif sensor_input.config_key == CONF_RUNNING_ENTITY:
                 entity_id = f"binary_sensor.{revision}_activity"
+            elif sensor_input.config_key == CONF_CLIMATE_ENTITY:
+                climate_source = MockConfigEntry(domain="climate_source")
+                climate_source.add_to_hass(hass)
+                entity_entry = er.async_get(hass).async_get_or_create(
+                    "climate",
+                    climate_source.domain,
+                    revision,
+                    config_entry=climate_source,
+                )
+                entity_id = entity_entry.entity_id
             elif sensor_input.config_key in {
                 CONF_MAIL_MOTION_ENTITY,
                 CONF_MAIL_SLOT_ENTITY,
