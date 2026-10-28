@@ -20,6 +20,9 @@ from .const import (
     CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_PLUG_OFF_ACTIONS,
+    CONF_PLUG_OFF_REPEAT_COUNT,
+    CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     CONF_FINISH_ACTIONS,
     CONF_FINISH_DURATION_SECONDS,
     CONF_FINISH_POWER_W,
@@ -47,6 +50,8 @@ from .const import (
     DEFAULT_PENDING_DELAY_SECONDS,
     DEFAULT_PENDING_INTERVAL_SECONDS,
     DEFAULT_PENDING_REPEATS,
+    DEFAULT_PLUG_OFF_REPEAT_COUNT,
+    DEFAULT_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     DEFAULT_START_DURATION_SECONDS,
     DEFAULT_START_POWER_W,
     DOMAIN,
@@ -124,6 +129,10 @@ def _identity_schema(
         ),
         }
     )
+
+
+def _options_identity_schema(values: dict[str, Any]) -> vol.Schema:
+    return vol.Schema({_required(CONF_NAME, values): selector.TextSelector()})
 
 
 def _sensor_form_values(
@@ -252,6 +261,20 @@ def _threshold_schema(
             CONF_ALARM_REPEAT_COUNT,
             default=values.get(CONF_ALARM_REPEAT_COUNT, DEFAULT_ALARM_REPEAT_COUNT),
         )] = _number_selector("", step=1)
+    if "plug_off_alarm" in profile.parameter_groups and values.get(CONF_PLUG_ENTITY):
+        schema[vol.Required(
+            CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+            default=values.get(
+                CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+                DEFAULT_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+            ),
+        )] = _number_selector("s", step=1)
+        schema[vol.Required(
+            CONF_PLUG_OFF_REPEAT_COUNT,
+            default=values.get(
+                CONF_PLUG_OFF_REPEAT_COUNT, DEFAULT_PLUG_OFF_REPEAT_COUNT
+            ),
+        )] = _number_selector("", step=1)
     return vol.Schema(schema)
 
 
@@ -265,10 +288,13 @@ def _action_schema(
         "pending_unload": CONF_PENDING_ACTIONS,
         "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
         "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
+        "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
         "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
     }
     schema: dict[Any, Any] = {}
     for group in profile.action_groups:
+        if group == "plug_off_alarm" and not values.get(CONF_PLUG_ENTITY):
+            continue
         if group == "pending_unload" and not values.get(CONF_DOOR_ENTITY):
             continue
         key = action_keys[group]
@@ -387,6 +413,28 @@ def _validate_alarm_settings(
     )
 
 
+def _validate_plug_off_alarm_settings(
+    values: dict[str, Any], profile: ApplianceTypeProfile
+) -> bool:
+    if "plug_off_alarm" not in profile.parameter_groups or not values.get(
+        CONF_PLUG_ENTITY
+    ):
+        return True
+    try:
+        interval = float(values[CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS])
+        repeats = float(values[CONF_PLUG_OFF_REPEAT_COUNT])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    return (
+        math.isfinite(interval)
+        and interval > 0
+        and interval.is_integer()
+        and math.isfinite(repeats)
+        and repeats >= 0
+        and repeats.is_integer()
+    )
+
+
 def _clear_pending_settings(values: dict[str, Any]) -> None:
     values[CONF_PENDING_ACTIONS] = []
     values[CONF_PENDING_DELAY_SECONDS] = DEFAULT_PENDING_DELAY_SECONDS
@@ -444,6 +492,16 @@ def _entry_options(values: dict[str, Any]) -> dict[str, Any]:
         for group in ("door_open_alarm", "compressor_inactive_alarm")
     ):
         unsupported.update({CONF_ALARM_REPEAT_COUNT, CONF_ALARM_REPEAT_INTERVAL_SECONDS})
+    if "plug_off_alarm" not in profile.action_groups or not values.get(
+        CONF_PLUG_ENTITY
+    ):
+        unsupported.update(
+            {
+                CONF_PLUG_OFF_ACTIONS,
+                CONF_PLUG_OFF_REPEAT_COUNT,
+                CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+            }
+        )
     if "pending_unload" not in profile.parameter_groups or not values.get(
         CONF_DOOR_ENTITY
     ):
@@ -518,6 +576,10 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 and not _validate_alarm_settings(user_input, profile)
             ):
                 errors["base"] = "invalid_alarm_settings"
+            elif not _validate_plug_off_alarm_settings(
+                {**self._draft, **user_input}, profile
+            ):
+                errors["base"] = "invalid_plug_off_alarm_settings"
             else:
                 self._draft.update(user_input)
                 return await self.async_step_actions()
@@ -569,22 +631,24 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
             self._saved = {**self.config_entry.data, **self.config_entry.options}
             self._saved.setdefault(CONF_NAME, self.config_entry.title)
         if user_input is not None:
-            if user_input[CONF_APPLIANCE_TYPE] != self._saved[CONF_APPLIANCE_TYPE]:
+            appliance_type = user_input.get(
+                CONF_APPLIANCE_TYPE, self._saved[CONF_APPLIANCE_TYPE]
+            )
+            if appliance_type != self._saved[CONF_APPLIANCE_TYPE]:
                 return self.async_show_form(
                     step_id="init",
-                    data_schema=_identity_schema(
-                        self._saved, (self._saved[CONF_APPLIANCE_TYPE],)
-                    ),
+                    data_schema=_options_identity_schema(self._saved),
                     errors={"base": "appliance_type_immutable"},
                     last_step=False,
                 )
-            self._draft = dict(user_input)
+            self._draft = {
+                **user_input,
+                CONF_APPLIANCE_TYPE: self._saved[CONF_APPLIANCE_TYPE],
+            }
             return await self.async_step_sensors()
         return self.async_show_form(
             step_id="init",
-            data_schema=_identity_schema(
-                self._saved, (self._saved[CONF_APPLIANCE_TYPE],)
-            ),
+            data_schema=_options_identity_schema(self._saved),
             last_step=False,
         )
 
@@ -633,6 +697,10 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 and not _validate_alarm_settings(user_input, profile)
             ):
                 errors["base"] = "invalid_alarm_settings"
+            elif not _validate_plug_off_alarm_settings(
+                {**values, **user_input}, profile
+            ):
+                errors["base"] = "invalid_plug_off_alarm_settings"
             else:
                 self._draft.update(user_input)
                 return await self.async_step_actions()

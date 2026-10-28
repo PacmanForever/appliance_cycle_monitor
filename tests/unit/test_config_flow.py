@@ -20,12 +20,15 @@ from custom_components.appliance_cycle_monitor.config_flow import (
     _threshold_schema,
     _clear_pending_settings,
     _validate_alarm_settings,
+    _validate_plug_off_alarm_settings,
     _validate_pending,
     _validate_thresholds,
 )
 from custom_components.appliance_cycle_monitor.appliance_types import (
+    APPLIANCE_MODEL_NAMES,
     APPLIANCE_PROFILES,
     APPLIANCE_TYPES,
+    get_appliance_model,
     get_appliance_profile,
 )
 from custom_components.appliance_cycle_monitor.const import (
@@ -46,6 +49,10 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_PENDING_DELAY_SECONDS,
     CONF_PENDING_INTERVAL_SECONDS,
     CONF_PENDING_REPEATS,
+    CONF_PLUG_ENTITY,
+    CONF_PLUG_OFF_ACTIONS,
+    CONF_PLUG_OFF_REPEAT_COUNT,
+    CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     CONF_POWER_ENTITY,
     CONF_RUNNING_ENTITY,
     CONF_START_ACTIONS,
@@ -56,6 +63,21 @@ from custom_components.appliance_cycle_monitor.const import (
 
 
 class ConfigFlowSchemaTests(unittest.TestCase):
+    def test_device_models_cover_and_distinguish_all_profiles(self) -> None:
+        self.assertEqual(set(APPLIANCE_MODEL_NAMES), set(APPLIANCE_PROFILES))
+        self.assertEqual(
+            get_appliance_model("air_conditioner_contact"),
+            "Air conditioner (louver contact)",
+        )
+        self.assertEqual(
+            get_appliance_model("air_conditioner_power"),
+            "Air conditioner (power sensor)",
+        )
+        self.assertEqual(
+            get_appliance_model("mailbox_slot"),
+            "Mailbox (mail-slot flap contact)",
+        )
+
     def test_identity_schema_requires_name_and_type(self) -> None:
         schema = _identity_schema({})
         with self.assertRaises(vol.Invalid):
@@ -121,6 +143,10 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                 CONF_ALARM_REPEAT_INTERVAL_SECONDS,
                 CONF_ALARM_REPEAT_COUNT,
             },
+            "plug_off_alarm": {
+                CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+                CONF_PLUG_OFF_REPEAT_COUNT,
+            },
         }
         action_keys = {
             "cycle_start": "start_actions",
@@ -129,6 +155,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "pending_unload": CONF_PENDING_ACTIONS,
             "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
             "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
+            "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
             "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
         }
         for appliance_type, profile in APPLIANCE_PROFILES.items():
@@ -138,6 +165,8 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                     CONF_RUNNING_ENTITY: "binary_sensor.appliance_activity",
                     "door_entity": "binary_sensor.appliance_door",
                 }
+                if profile.supports_smart_plug:
+                    values[CONF_PLUG_ENTITY] = "switch.appliance_plug"
                 sensor_schema = _sensor_schema(_sensor_form_values(values, profile), profile)
                 parameter_schema = _threshold_schema(values, profile)
                 action_schema = _action_schema(values, profile)
@@ -182,9 +211,43 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                         )
                 for group, key in action_keys.items():
                     self.assertEqual(
-                        group in profile.action_groups,
+                        group in profile.action_groups
+                        and (group != "plug_off_alarm" or profile.supports_smart_plug),
                         key in action_schema.schema,
                     )
+
+                if profile.supports_smart_plug:
+                    no_plug_parameters = _threshold_schema(
+                        {CONF_POWER_ENTITY: "sensor.appliance_power"}, profile
+                    )
+                    no_plug_actions = _action_schema(
+                        {CONF_POWER_ENTITY: "sensor.appliance_power"}, profile
+                    )
+                    self.assertNotIn(
+                        CONF_PLUG_OFF_REPEAT_COUNT, no_plug_parameters.schema
+                    )
+                    self.assertNotIn(CONF_PLUG_OFF_ACTIONS, no_plug_actions.schema)
+
+    def test_plug_off_alarm_settings_validation(self) -> None:
+        profile = get_appliance_profile("washer")
+        valid = {
+            CONF_PLUG_ENTITY: "switch.washer",
+            CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS: 900,
+            CONF_PLUG_OFF_REPEAT_COUNT: 3,
+        }
+
+        self.assertTrue(_validate_plug_off_alarm_settings(valid, profile))
+        self.assertFalse(
+            _validate_plug_off_alarm_settings(
+                {**valid, CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS: 0}, profile
+            )
+        )
+        self.assertFalse(
+            _validate_plug_off_alarm_settings(
+                {**valid, CONF_PLUG_OFF_REPEAT_COUNT: -1}, profile
+            )
+        )
+        self.assertTrue(_validate_plug_off_alarm_settings({}, profile))
 
     def test_sensor_selectors_filter_by_domain_and_device_class(self) -> None:
         for profile in APPLIANCE_PROFILES.values():

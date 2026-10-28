@@ -61,7 +61,9 @@
           "door_open_delay_seconds": "Seconds the refrigerator door may stay open before the alarm",
           "compressor_inactive_delay_seconds": "Seconds without compressor activity before the alarm",
           "alarm_repeat_interval_seconds": "Interval between repeated refrigerator alarms (seconds)",
-          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)"
+          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)",
+          "plug_off_repeat_interval_seconds": "Interval between plug-off alarm repeats (seconds)",
+          "plug_off_repeat_count": "Additional plug-off alarms after the first one (3 means 4 total)"
         },
         "data_description": {
           "max_runtime_seconds": "Optional. Leave blank to disable. If the cycle is still running after this time, the actions you configure for this limit run once; the appliance is not stopped."
@@ -76,6 +78,7 @@
           "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
           "door_open_actions": "Actions to run while the refrigerator door alarm is active",
           "compressor_inactive_actions": "Actions to run while the compressor inactivity alarm is active",
+          "plug_off_actions": "Actions to run while the selected smart plug is off",
           "mail_arrival_actions": "Actions to run when mail is detected"
         }
       }
@@ -84,6 +87,7 @@
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
       "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
+      "invalid_plug_off_alarm_settings": "The plug-off repeat interval must be a positive whole number and additional alarms a non-negative whole number.",
       "appliance_type_immutable": "The appliance type cannot be changed after setup. Add a new appliance with the desired type.",
       "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities."
     }
@@ -144,7 +148,9 @@
           "door_open_delay_seconds": "Seconds the refrigerator door may stay open before the alarm",
           "compressor_inactive_delay_seconds": "Seconds without compressor activity before the alarm",
           "alarm_repeat_interval_seconds": "Interval between repeated refrigerator alarms (seconds)",
-          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)"
+          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)",
+          "plug_off_repeat_interval_seconds": "Interval between plug-off alarm repeats (seconds)",
+          "plug_off_repeat_count": "Additional plug-off alarms after the first one (3 means 4 total)"
         },
         "data_description": {
           "max_runtime_seconds": "Optional. Leave blank to disable. If the cycle is still running after this time, the actions you configure for this limit run once; the appliance is not stopped."
@@ -159,6 +165,7 @@
           "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
           "door_open_actions": "Actions to run while the refrigerator door alarm is active",
           "compressor_inactive_actions": "Actions to run while the compressor inactivity alarm is active",
+          "plug_off_actions": "Actions to run while the selected smart plug is off",
           "mail_arrival_actions": "Actions to run when mail is detected"
         }
       }
@@ -167,6 +174,7 @@
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
       "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
+      "invalid_plug_off_alarm_settings": "The plug-off repeat interval must be a positive whole number and additional alarms a non-negative whole number.",
       "appliance_type_immutable": "The appliance type cannot be changed after setup. Add a new appliance with the desired type.",
       "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities."
     }
@@ -188,7 +196,7 @@
   },
   "entity": {
     "sensor": {
-      "power": {"name": "Power"},
+      "power": {"name": "Current Power"},
       "total_energy": {"name": "Total energy"},
       "last_cycle_duration": {"name": "Last cycle duration"},
       "estimated_remaining": {"name": "Estimated remaining time"}
@@ -196,6 +204,7 @@
     "binary_sensor": {
       "running": {"name": "Running"},
       "door": {"name": "Door"},
+      "mail_slot": {"name": "Mail slot"},
       "pending_unload": {"name": "Pending to unload"}
     },
     "switch": {

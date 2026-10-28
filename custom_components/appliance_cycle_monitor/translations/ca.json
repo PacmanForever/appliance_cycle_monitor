@@ -61,7 +61,9 @@
           "door_open_delay_seconds": "Segons que la porta de la nevera pot estar oberta abans de l’alarma",
           "compressor_inactive_delay_seconds": "Segons sense activitat del compressor abans de l’alarma",
           "alarm_repeat_interval_seconds": "Interval entre alarmes repetides de la nevera (segons)",
-          "alarm_repeat_count": "Alarmes addicionals després de la inicial (3 vol dir 4 en total)"
+          "alarm_repeat_count": "Alarmes addicionals després de la inicial (3 vol dir 4 en total)",
+          "plug_off_repeat_interval_seconds": "Interval entre alarmes repetides amb l’endoll apagat (segons)",
+          "plug_off_repeat_count": "Alarmes addicionals després de la inicial (3 vol dir 4 en total)"
         },
         "data_description": {
           "max_runtime_seconds": "Opcional. Deixa-ho buit per desactivar-ho. Si el cicle encara està en marxa quan s’esgoti aquest temps, s’executaran una vegada les accions que configuris per a aquest límit; l’aparell no s’aturarà."
@@ -76,6 +78,7 @@
           "pending_actions": "Accions que es repeteixen mentre està pendent de buidar (requereix sensor de porta)",
           "door_open_actions": "Accions per a l’alarma de porta oberta de la nevera",
           "compressor_inactive_actions": "Accions per a l’alarma d’inactivitat del compressor",
+          "plug_off_actions": "Accions mentre l’endoll intel·ligent seleccionat estigui apagat",
           "mail_arrival_actions": "Accions que s’executen quan es detecta correu"
         }
       }
@@ -84,6 +87,7 @@
       "invalid_thresholds": "Comprova que la potència de finalització sigui inferior a la d’inici i que els temps siguin vàlids.",
       "invalid_pending_settings": "El retard ha de ser un enter positiu i les repeticions un enter no negatiu.",
       "invalid_alarm_settings": "Els retards i l’interval han de ser enters positius; les repeticions addicionals han de ser un enter no negatiu.",
+      "invalid_plug_off_alarm_settings": "L’interval de repetició amb l’endoll apagat ha de ser un enter positiu i les alarmes addicionals, un enter no negatiu.",
       "appliance_type_immutable": "No es pot canviar el tipus d’aparell després de configurar-lo. Afegeix-ne un de nou amb el tipus desitjat.",
       "mailbox_sensors_must_be_distinct": "El sensor d’arribada de correu i el sensor de la porta principal han de ser entitats diferents."
     }
@@ -144,7 +148,9 @@
           "door_open_delay_seconds": "Segons que la porta de la nevera pot estar oberta abans de l’alarma",
           "compressor_inactive_delay_seconds": "Segons sense activitat del compressor abans de l’alarma",
           "alarm_repeat_interval_seconds": "Interval entre alarmes repetides de la nevera (segons)",
-          "alarm_repeat_count": "Alarmes addicionals després de la inicial (3 vol dir 4 en total)"
+          "alarm_repeat_count": "Alarmes addicionals després de la inicial (3 vol dir 4 en total)",
+          "plug_off_repeat_interval_seconds": "Interval entre alarmes repetides amb l’endoll apagat (segons)",
+          "plug_off_repeat_count": "Alarmes addicionals després de la inicial (3 vol dir 4 en total)"
         },
         "data_description": {
           "max_runtime_seconds": "Opcional. Deixa-ho buit per desactivar-ho. Si el cicle encara està en marxa quan s’esgoti aquest temps, s’executaran una vegada les accions que configuris per a aquest límit; l’aparell no s’aturarà."
@@ -159,6 +165,7 @@
           "pending_actions": "Accions que es repeteixen mentre està pendent de buidar (requereix sensor de porta)",
           "door_open_actions": "Accions per a l’alarma de porta oberta de la nevera",
           "compressor_inactive_actions": "Accions per a l’alarma d’inactivitat del compressor",
+          "plug_off_actions": "Accions mentre l’endoll intel·ligent seleccionat estigui apagat",
           "mail_arrival_actions": "Accions que s’executen quan es detecta correu"
         }
       }
@@ -167,6 +174,7 @@
       "invalid_thresholds": "Comprova que la potència de finalització sigui inferior a la d’inici i que els temps siguin vàlids.",
       "invalid_pending_settings": "El retard ha de ser un enter positiu i les repeticions un enter no negatiu.",
       "invalid_alarm_settings": "Els retards i l’interval han de ser enters positius; les repeticions addicionals han de ser un enter no negatiu.",
+      "invalid_plug_off_alarm_settings": "L’interval de repetició amb l’endoll apagat ha de ser un enter positiu i les alarmes addicionals, un enter no negatiu.",
       "appliance_type_immutable": "No es pot canviar el tipus d’aparell després de configurar-lo. Afegeix-ne un de nou amb el tipus desitjat.",
       "mailbox_sensors_must_be_distinct": "El sensor d’arribada de correu i el sensor de la porta principal han de ser entitats diferents."
     }
@@ -188,7 +196,7 @@
   },
   "entity": {
     "sensor": {
-      "power": {"name": "Potència"},
+      "power": {"name": "Potència actual"},
       "total_energy": {"name": "Energia total"},
       "last_cycle_duration": {"name": "Durada de l’últim cicle"},
       "estimated_remaining": {"name": "Temps restant estimat"}
@@ -196,6 +204,7 @@
     "binary_sensor": {
       "running": {"name": "En funcionament"},
       "door": {"name": "Porta"},
+      "mail_slot": {"name": "Portella"},
       "pending_unload": {"name": "Pendent de buidar"}
     },
     "switch": {

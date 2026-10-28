@@ -28,6 +28,9 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_PENDING_REPEATS,
     CONF_POWER_ENTITY,
     CONF_PLUG_ENTITY,
+    CONF_PLUG_OFF_ACTIONS,
+    CONF_PLUG_OFF_REPEAT_COUNT,
+    CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     CONF_RUNNING_ENTITY,
     CONF_START_ACTIONS,
     CONF_MAX_RUNTIME_ACTIONS,
@@ -226,13 +229,16 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
+    assert all(
+        marker.schema != CONF_APPLIANCE_TYPE
+        for marker in result["data_schema"].schema
+    )
     flow_id = result["flow_id"]
 
     result = await hass.config_entries.options.async_configure(
         flow_id,
         {
             "name": "Washer 2",
-            CONF_APPLIANCE_TYPE: "washer",
         },
     )
     assert result["step_id"] == "sensors"
@@ -262,6 +268,7 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.title == "Washer 2"
+    assert entry.data[CONF_APPLIANCE_TYPE] == "washer"
     assert entry.data[CONF_POWER_ENTITY] == "sensor.new_power"
     assert entry.data[CONF_DOOR_ENTITY] is None
     assert CONF_PENDING_ACTIONS not in entry.options
@@ -271,7 +278,7 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
 
 
 @pytest.mark.asyncio
-async def test_options_flow_rejects_appliance_type_changes(
+async def test_options_flow_hides_appliance_type(
     hass, enable_custom_integrations
 ):
     entry = MockConfigEntry(
@@ -286,20 +293,17 @@ async def test_options_flow_rejects_appliance_type_changes(
     entry.add_to_hass(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert all(
+        marker.schema != CONF_APPLIANCE_TYPE
+        for marker in result["data_schema"].schema
+    )
     flow_id = result["flow_id"]
     result = await hass.config_entries.options.async_configure(
         flow_id,
-        {"name": "Washer", CONF_APPLIANCE_TYPE: "refrigerator"},
+        {"name": "Washer"},
     )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "init"
-    assert result["errors"] == {"base": "appliance_type_immutable"}
-
-    result = await hass.config_entries.options.async_configure(
-        flow_id,
-        {"name": "Washer", CONF_APPLIANCE_TYPE: "washer"},
-    )
     assert result["step_id"] == "sensors"
 
 
@@ -403,6 +407,9 @@ async def test_every_profile_supports_config_entry_crud(
         if "alarm_repeats" in profile.parameter_groups:
             values[CONF_ALARM_REPEAT_INTERVAL_SECONDS] = 900
             values[CONF_ALARM_REPEAT_COUNT] = 3
+        if "plug_off_alarm" in profile.parameter_groups:
+            values[CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS] = 900
+            values[CONF_PLUG_OFF_REPEAT_COUNT] = 3
         return values
 
     action_keys = {
@@ -413,6 +420,7 @@ async def test_every_profile_supports_config_entry_crud(
         "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
         "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
         "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
+        "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
     }
     action_values = {action_keys[group]: [] for group in profile.action_groups}
 
@@ -441,10 +449,14 @@ async def test_every_profile_supports_config_entry_crud(
     assert entry in hass.config_entries.async_entries(DOMAIN)
 
     options_result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert all(
+        marker.schema != CONF_APPLIANCE_TYPE
+        for marker in options_result["data_schema"].schema
+    )
     options_flow_id = options_result["flow_id"]
     result = await hass.config_entries.options.async_configure(
         options_flow_id,
-        {"name": f"{appliance_type} updated", CONF_APPLIANCE_TYPE: appliance_type},
+        {"name": f"{appliance_type} updated"},
     )
     assert result["step_id"] == "sensors"
     second_sensor_form, second_sensor_storage = sensor_values(

@@ -86,8 +86,8 @@ APPLIANCE_PROFILES = {
                 form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
             ),
         ),
-        parameter_groups=("power_cycle", "max_runtime", "pending_unload"),
-        action_groups=("cycle_start", "cycle_finish", "max_runtime", "pending_unload"),
+        parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
+        action_groups=("cycle_start", "cycle_finish", "max_runtime", "pending_unload", "plug_off_alarm"),
         output_entities=(
             "power", "total_energy", "last_cycle_duration", "estimated_remaining",
             "running", "door", "pending_unload", "clear_pending", "plug",
@@ -115,8 +115,8 @@ APPLIANCE_PROFILES = {
                 form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
             ),
         ),
-        parameter_groups=("power_cycle", "max_runtime", "pending_unload"),
-        action_groups=("cycle_start", "cycle_finish", "max_runtime", "pending_unload"),
+        parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
+        action_groups=("cycle_start", "cycle_finish", "max_runtime", "pending_unload", "plug_off_alarm"),
         output_entities=(
             "power", "total_energy", "last_cycle_duration", "estimated_remaining",
             "running", "door", "pending_unload", "clear_pending", "plug",
@@ -144,8 +144,8 @@ APPLIANCE_PROFILES = {
                 form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
             ),
         ),
-        parameter_groups=("power_cycle", "max_runtime", "pending_unload"),
-        action_groups=("cycle_start", "cycle_finish", "max_runtime", "pending_unload"),
+        parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
+        action_groups=("cycle_start", "cycle_finish", "max_runtime", "pending_unload", "plug_off_alarm"),
         output_entities=(
             "power", "total_energy", "last_cycle_duration", "estimated_remaining",
             "running", "door", "pending_unload", "clear_pending", "plug",
@@ -167,8 +167,8 @@ APPLIANCE_PROFILES = {
                 form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
             ),
         ),
-        parameter_groups=(),
-        action_groups=("cycle_start", "cycle_finish"),
+        parameter_groups=("plug_off_alarm",),
+        action_groups=("cycle_start", "cycle_finish", "plug_off_alarm"),
         output_entities=("last_cycle_duration", "running", "plug"),
         supports_pending_unload=False,
         estimates_remaining=False,
@@ -188,8 +188,8 @@ APPLIANCE_PROFILES = {
                 form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
             ),
         ),
-        parameter_groups=("power_cycle",),
-        action_groups=("cycle_start", "cycle_finish"),
+        parameter_groups=("power_cycle", "plug_off_alarm"),
+        action_groups=("cycle_start", "cycle_finish", "plug_off_alarm"),
         output_entities=("power", "total_energy", "last_cycle_duration", "running", "plug"),
         supports_pending_unload=False,
         estimates_remaining=False,
@@ -221,8 +221,9 @@ APPLIANCE_PROFILES = {
             "door_alarm",
             "compressor_alarm",
             "alarm_repeats",
+            "plug_off_alarm",
         ),
-        action_groups=("door_open_alarm", "compressor_inactive_alarm"),
+        action_groups=("door_open_alarm", "compressor_inactive_alarm", "plug_off_alarm"),
         output_entities=("power", "total_energy", "last_cycle_duration", "running", "door", "plug"),
         supports_pending_unload=False,
         estimates_remaining=False,
@@ -245,8 +246,8 @@ APPLIANCE_PROFILES = {
                     required=True,
                 ),
             ),
-            parameter_groups=("door_alarm", "alarm_repeats"),
-            action_groups=("door_open_alarm",),
+            parameter_groups=("door_alarm", "alarm_repeats", "plug_off_alarm"),
+            action_groups=("door_open_alarm", "plug_off_alarm"),
             output_entities=("last_cycle_duration", "running", "door", "plug"),
             supports_pending_unload=False,
             estimates_remaining=False,
@@ -297,7 +298,7 @@ APPLIANCE_PROFILES = {
         ),
         parameter_groups=("pending_unload",),
         action_groups=("mail_arrival", "pending_unload"),
-        output_entities=("door", "pending_unload", "clear_pending"),
+        output_entities=("door", "mail_slot", "pending_unload", "clear_pending"),
         supports_pending_unload=True,
         estimates_remaining=False,
         supports_max_runtime=False,
@@ -316,6 +317,26 @@ APPLIANCE_TYPES = (
         "washer",
         "dishwasher",
 )
+
+
+APPLIANCE_MODEL_NAMES = {
+    "washer": "Washer",
+    "dishwasher": "Dishwasher",
+    "dryer": "Dryer",
+    "air_conditioner_contact": "Air conditioner (louver contact)",
+    "air_conditioner_power": "Air conditioner (power sensor)",
+    "refrigerator": "Refrigerator (power sensor)",
+    "refrigerator_switch": "Refrigerator (smart switch)",
+    "mailbox_motion": "Mailbox (interior motion sensor)",
+    "mailbox_slot": "Mailbox (mail-slot flap contact)",
+}
+
+
+def get_appliance_model(appliance_type: str | None) -> str | None:
+    """Return the English device model name for an appliance profile."""
+    if appliance_type is None:
+        return None
+    return APPLIANCE_MODEL_NAMES.get(appliance_type)
 
 
 def get_appliance_profile(appliance_type: str) -> ApplianceTypeProfile:

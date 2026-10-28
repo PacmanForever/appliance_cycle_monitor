@@ -41,6 +41,9 @@ from .const import (
     CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_PLUG_OFF_ACTIONS,
+    CONF_PLUG_OFF_REPEAT_COUNT,
+    CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     CONF_MAIL_ARRIVAL_ACTIONS,
     CONF_MAIL_MOTION_ENTITY,
     CONF_MAIL_SLOT_ENTITY,
@@ -65,6 +68,8 @@ from .const import (
     DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS,
     DEFAULT_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     DEFAULT_DOOR_OPEN_DELAY_SECONDS,
+    DEFAULT_PLUG_OFF_REPEAT_COUNT,
+    DEFAULT_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     DEFAULT_PENDING_DELAY_SECONDS,
     DEFAULT_PENDING_INTERVAL_SECONDS,
     DEFAULT_PENDING_REPEATS,
@@ -123,6 +128,7 @@ class ApplianceRuntime:
             else ApplianceCycleDetector(thresholds)
         )
         self._mail_sensor_ready = False
+        self.mail_slot_open: bool | None = None
         self.energy_kwh = 0.0
         self.door_open: bool | None = None
         self.pending_unload = False
@@ -133,11 +139,16 @@ class ApplianceRuntime:
         self.door_alarm_fired_count = 0
         self.next_door_alarm: datetime | None = None
         self._door_alarm_action_running = False
-        self._alarm_generation = {"door": 0, "compressor": 0}
+        self._alarm_generation = {"door": 0, "compressor": 0, "plug_off": 0}
         self.compressor_alarm_active = False
         self.compressor_alarm_fired_count = 0
         self.next_compressor_alarm: datetime | None = None
         self._compressor_alarm_action_running = False
+        self.plug_off_alarm_active = False
+        self.plug_off_alarm_fired_count = 0
+        self.next_plug_off_alarm: datetime | None = None
+        self._plug_off_alarm_action_running = False
+        self._plug_is_off: bool | None = None
         self.max_runtime_fired = False
         self._energy_power_w: float | None = None
         self._energy_updated_at: datetime | None = None
@@ -149,6 +160,7 @@ class ApplianceRuntime:
         self._pending_action_running = False
         self._restoring_detector_state = False
         self._power_available = False
+        self._last_valid_power_w: float | None = None
         self._store = Store(hass, _STORE_VERSION, f"{DOMAIN}_{entry.entry_id}")
 
     async def async_setup(self) -> None:
@@ -196,6 +208,12 @@ class ApplianceRuntime:
         if door_entity:
             door_state = self.hass.states.get(door_entity)
             self._apply_door_state(door_state, now)
+        plug_entity = self.config.get(CONF_PLUG_ENTITY)
+        if plug_entity:
+            self._update_plug_off_alarm_state(
+                self.hass.states.get(plug_entity), now
+            )
+            self._schedule_alarm_if_due("plug_off", now)
 
         self._schedule_deadline()
         self._schedule_save()
@@ -243,6 +261,11 @@ class ApplianceRuntime:
     def power_available(self) -> bool:
         """Return whether the selected power sensor currently has a valid reading."""
         return self._power_available
+
+    @property
+    def display_power_w(self) -> float | None:
+        """Return the last valid power reading for display during source outages."""
+        return self._last_valid_power_w
 
     @property
     def remaining_seconds(self) -> float | None:
@@ -296,7 +319,23 @@ class ApplianceRuntime:
                 self._schedule_deadline()
             self._notify()
 
+        if entity_id == self.config.get(CONF_PLUG_ENTITY):
+            self._update_plug_off_alarm_state(new_state, now)
         self._update_input_availability(entity_id, new_state)
+
+    def _update_plug_off_alarm_state(self, state: Any, now: datetime) -> None:
+        value = state.state if state is not None else None
+        if value not in ("on", "off"):
+            self._plug_is_off = None
+            self._schedule_save()
+            self._schedule_deadline()
+            return
+
+        self._plug_is_off = value == "off"
+        self._update_alarm_condition("plug_off", self._plug_is_off, now)
+        self._schedule_save()
+        self._schedule_deadline()
+        self._notify()
 
     def _input_issue_id(self, entity_id: str) -> str:
         return f"{self.entry.entry_id}_{entity_id}"
@@ -351,10 +390,20 @@ class ApplianceRuntime:
         self._notify()
 
     def _initialize_mail_sensor(self, state: Any) -> None:
-        self._mail_sensor_ready = state is not None and state.state == "off"
+        value = state.state if state is not None else None
+        self._mail_sensor_ready = value == "off"
+        if "mail_slot" in self.profile.detection_sources:
+            self.mail_slot_open = (
+                value == "on" if value in ("on", "off") else None
+            )
 
     def _apply_mail_sensor_state(self, state: Any, now: datetime) -> None:
         value = state.state if state is not None else None
+        previous_mail_slot_open = self.mail_slot_open
+        if "mail_slot" in self.profile.detection_sources:
+            self.mail_slot_open = (
+                value == "on" if value in ("on", "off") else None
+            )
         if value == "off":
             self._mail_sensor_ready = True
         elif value == "on":
@@ -363,6 +412,11 @@ class ApplianceRuntime:
                 self._handle_mail_arrival(now)
         else:
             self._mail_sensor_ready = False
+        if (
+            "mail_slot" in self.profile.detection_sources
+            and previous_mail_slot_open != self.mail_slot_open
+        ):
+            self._notify()
 
     def _handle_mail_arrival(self, now: datetime) -> None:
         self._pending_generation += 1
@@ -402,6 +456,7 @@ class ApplianceRuntime:
             self._power_available = True
             self._energy_power_w = watts
             self._energy_updated_at = now
+            self._last_valid_power_w = watts
 
         if initialize_energy or self._restoring_detector_state:
             events = self.detector.reconcile_power(value, unit, now)
@@ -519,6 +574,8 @@ class ApplianceRuntime:
             deadlines.append(self.next_door_alarm)
         if self._power_available and self.next_compressor_alarm is not None:
             deadlines.append(self.next_compressor_alarm)
+        if self._plug_is_off is True and self.next_plug_off_alarm is not None:
+            deadlines.append(self.next_plug_off_alarm)
         if self.detector.power_w is not None or self.detector.is_running:
             deadlines.append(
                 dt_util.utcnow() + _ENERGY_UPDATE_INTERVAL
@@ -582,6 +639,7 @@ class ApplianceRuntime:
 
         self._schedule_alarm_if_due("door", now)
         self._schedule_alarm_if_due("compressor", now)
+        self._schedule_alarm_if_due("plug_off", now)
 
         self._integrate_energy_to(now)
         self._schedule_save()
@@ -663,11 +721,11 @@ class ApplianceRuntime:
     def _update_alarm_condition(
         self, alarm: str, active: bool, now: datetime
     ) -> None:
-        action_key = (
-            CONF_DOOR_OPEN_ACTIONS
-            if alarm == "door"
-            else CONF_COMPRESSOR_INACTIVE_ACTIONS
-        )
+        action_key = {
+            "door": CONF_DOOR_OPEN_ACTIONS,
+            "compressor": CONF_COMPRESSOR_INACTIVE_ACTIONS,
+            "plug_off": CONF_PLUG_OFF_ACTIONS,
+        }[alarm]
         active = active and bool(self.config.get(action_key))
         active_key = f"{alarm}_alarm_active"
         count_key = f"{alarm}_alarm_fired_count"
@@ -676,23 +734,25 @@ class ApplianceRuntime:
 
         if active and not currently_active:
             self._alarm_generation[alarm] += 1
-            delay_key = (
-                CONF_DOOR_OPEN_DELAY_SECONDS
-                if alarm == "door"
-                else CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS
-            )
-            default_delay = (
-                DEFAULT_DOOR_OPEN_DELAY_SECONDS
-                if alarm == "door"
-                else DEFAULT_COMPRESSOR_INACTIVE_DELAY_SECONDS
-            )
+            if alarm == "door":
+                delay = int(
+                    self.config.get(
+                        CONF_DOOR_OPEN_DELAY_SECONDS,
+                        DEFAULT_DOOR_OPEN_DELAY_SECONDS,
+                    )
+                )
+            elif alarm == "compressor":
+                delay = int(
+                    self.config.get(
+                        CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+                        DEFAULT_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+                    )
+                )
+            else:
+                delay = 0
             setattr(self, active_key, True)
             setattr(self, count_key, 0)
-            setattr(
-                self,
-                deadline_key,
-                now + timedelta(seconds=int(self.config.get(delay_key, default_delay))),
-            )
+            setattr(self, deadline_key, now + timedelta(seconds=delay))
         elif not active and currently_active:
             self._alarm_generation[alarm] += 1
             setattr(self, active_key, False)
@@ -712,7 +772,7 @@ class ApplianceRuntime:
             return False
         return (alarm != "door" or self.door_open is not None) and (
             alarm != "compressor" or self._power_available
-        )
+        ) and (alarm != "plug_off" or self._plug_is_off is True)
 
     def _schedule_alarm_if_due(self, alarm: str, now: datetime) -> None:
         if self._is_unloading:
@@ -738,11 +798,11 @@ class ApplianceRuntime:
         active_key = f"{alarm}_alarm_active"
         count_key = f"{alarm}_alarm_fired_count"
         deadline_key = f"next_{alarm}_alarm"
-        action_key = (
-            CONF_DOOR_OPEN_ACTIONS
-            if alarm == "door"
-            else CONF_COMPRESSOR_INACTIVE_ACTIONS
-        )
+        action_key = {
+            "door": CONF_DOOR_OPEN_ACTIONS,
+            "compressor": CONF_COMPRESSOR_INACTIVE_ACTIONS,
+            "plug_off": CONF_PLUG_OFF_ACTIONS,
+        }[alarm]
         try:
             await self._run_actions_serialized(
                 action_key,
@@ -762,14 +822,32 @@ class ApplianceRuntime:
 
         fired_count = getattr(self, count_key) + 1
         setattr(self, count_key, fired_count)
-        repeat_count = int(
-            self.config.get(CONF_ALARM_REPEAT_COUNT, DEFAULT_ALARM_REPEAT_COUNT)
+        repeat_count_key = (
+            CONF_PLUG_OFF_REPEAT_COUNT
+            if alarm == "plug_off"
+            else CONF_ALARM_REPEAT_COUNT
         )
+        repeat_count_default = (
+            DEFAULT_PLUG_OFF_REPEAT_COUNT
+            if alarm == "plug_off"
+            else DEFAULT_ALARM_REPEAT_COUNT
+        )
+        repeat_count = int(self.config.get(repeat_count_key, repeat_count_default))
         if fired_count < 1 + repeat_count:
+            repeat_interval_key = (
+                CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS
+                if alarm == "plug_off"
+                else CONF_ALARM_REPEAT_INTERVAL_SECONDS
+            )
+            repeat_interval_default = (
+                DEFAULT_PLUG_OFF_REPEAT_INTERVAL_SECONDS
+                if alarm == "plug_off"
+                else DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS
+            )
             interval = int(
                 self.config.get(
-                    CONF_ALARM_REPEAT_INTERVAL_SECONDS,
-                    DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS,
+                    repeat_interval_key,
+                    repeat_interval_default,
                 )
             )
             setattr(
@@ -789,6 +867,7 @@ class ApplianceRuntime:
     def _export_state(self) -> dict[str, Any]:
         return {
             "detector": self.detector.export_state(),
+            "last_valid_power_w": self._last_valid_power_w,
             "energy_kwh": self.energy_kwh,
             "door_open": self.door_open,
             "pending_unload": self.pending_unload,
@@ -812,6 +891,14 @@ class ApplianceRuntime:
                 if self.next_compressor_alarm is not None
                 else None
             ),
+            "plug_off_alarm_entity": self.config.get(CONF_PLUG_ENTITY),
+            "plug_off_alarm_active": self.plug_off_alarm_active,
+            "plug_off_alarm_fired_count": self.plug_off_alarm_fired_count,
+            "next_plug_off_alarm": (
+                self.next_plug_off_alarm.isoformat()
+                if self.next_plug_off_alarm is not None
+                else None
+            ),
             "max_runtime_fired": self.max_runtime_fired,
         }
 
@@ -820,6 +907,16 @@ class ApplianceRuntime:
             detector_state = stored.get("detector")
             if isinstance(detector_state, dict):
                 self.detector.restore_state(detector_state)
+            last_valid_power = stored.get(
+                "last_valid_power_w", self.detector.power_w
+            )
+            if last_valid_power is not None:
+                if isinstance(last_valid_power, bool):
+                    raise ValueError("Invalid stored power reading")
+                last_valid_power = float(last_valid_power)
+                if not math.isfinite(last_valid_power) or last_valid_power < 0:
+                    raise ValueError("Invalid stored power reading")
+                self._last_valid_power_w = last_valid_power
             energy = float(stored.get("energy_kwh", 0))
             if not math.isfinite(energy) or energy < 0:
                 raise ValueError("Invalid stored energy")
@@ -853,6 +950,18 @@ class ApplianceRuntime:
             self.next_compressor_alarm = self._parse_timestamp(
                 stored.get("next_compressor_alarm")
             )
+            if stored.get("plug_off_alarm_entity") == self.config.get(
+                CONF_PLUG_ENTITY
+            ):
+                self.plug_off_alarm_active = bool(
+                    stored.get("plug_off_alarm_active", False)
+                )
+                self.plug_off_alarm_fired_count = max(
+                    0, int(stored.get("plug_off_alarm_fired_count", 0))
+                )
+                self.next_plug_off_alarm = self._parse_timestamp(
+                    stored.get("next_plug_off_alarm")
+                )
             self.max_runtime_fired = bool(stored.get("max_runtime_fired", False))
         except (TypeError, ValueError, OverflowError):
             _LOGGER.warning("Stored appliance state is invalid; starting fresh")
@@ -861,6 +970,7 @@ class ApplianceRuntime:
                 if "power" not in self.profile.detection_sources
                 else ApplianceCycleDetector(self.detector.thresholds)
             )
+            self._last_valid_power_w = None
             self.energy_kwh = 0.0
             self.door_open = None
             self.pending_unload = False
@@ -873,6 +983,9 @@ class ApplianceRuntime:
             self.compressor_alarm_active = False
             self.compressor_alarm_fired_count = 0
             self.next_compressor_alarm = None
+            self.plug_off_alarm_active = False
+            self.plug_off_alarm_fired_count = 0
+            self.next_plug_off_alarm = None
 
     @staticmethod
     def _parse_timestamp(value: Any) -> datetime | None:

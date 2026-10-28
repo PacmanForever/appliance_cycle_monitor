@@ -82,6 +82,14 @@ class ApplianceCycleDetectorTests(unittest.TestCase):
         self.assertEqual(detector.power_w, 5)
         self.assertEqual(detector.next_deadline, START + timedelta(seconds=15))
 
+    def test_zero_watts_is_a_valid_reading(self) -> None:
+        detector = ApplianceCycleDetector()
+
+        self.assertEqual(detector.observe_power(0, "W", START), [])
+
+        self.assertEqual(detector.power_w, 0)
+        self.assertIsNone(detector.next_deadline)
+
     def test_invalid_reading_clears_candidate_but_keeps_active_cycle(self) -> None:
         detector = ApplianceCycleDetector()
         detector.observe_power(5, "W", START)

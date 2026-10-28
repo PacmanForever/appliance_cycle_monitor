@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 - 2026-10-28
+
+### Added
+
+- Add an immediate smart-plug-off alarm to every compatible appliance profile, with independent actions, repeat interval, repeat count, persistence, and rearming when the plug turns on.
+- Distinguish appliance profile variants in the Home Assistant device model and expose the mail-slot flap state as a separate entity.
+
+### Changed
+
+- Keep the last valid power reading available through temporary sensor outages, including a valid reading of 0 W.
+- Keep the configured appliance type fixed and omit it from the options form after setup.
+
 ## 0.4.0 - 2026-10-28
 
 ### Added

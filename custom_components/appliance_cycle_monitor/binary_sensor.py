@@ -13,7 +13,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_DOOR_ENTITY, DOMAIN
+from .appliance_types import get_appliance_model
+from .const import CONF_DOOR_ENTITY, CONF_MAIL_SLOT_ENTITY, DOMAIN
 from .runtime import ApplianceRuntime
 
 
@@ -39,10 +40,7 @@ class ApplianceBinarySensor(BinarySensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=runtime.config.get("name", entry.title),
-            model=(runtime.config.get("appliance_type") or "").replace(
-                "_", " "
-            ).title()
-            or None,
+            model=get_appliance_model(runtime.config.get("appliance_type")),
         )
 
     @property
@@ -99,6 +97,19 @@ async def async_setup_entry(
                 entry,
                 "pending_unload",
                 lambda: runtime.pending_unload,
+            )
+        )
+    if (
+        "mail_slot" in runtime.profile.output_entities
+        and runtime.config.get(CONF_MAIL_SLOT_ENTITY)
+    ):
+        entities.append(
+            ApplianceBinarySensor(
+                runtime,
+                entry,
+                "mail_slot",
+                lambda: runtime.mail_slot_open,
+                BinarySensorDeviceClass.DOOR,
             )
         )
     async_add_entities(entities)

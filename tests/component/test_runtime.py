@@ -32,6 +32,9 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_PENDING_INTERVAL_SECONDS,
     CONF_PENDING_REPEATS,
     CONF_PLUG_ENTITY,
+    CONF_PLUG_OFF_ACTIONS,
+    CONF_PLUG_OFF_REPEAT_COUNT,
+    CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
     CONF_POWER_ENTITY,
     CONF_RUNNING_ENTITY,
     CONF_START_ACTIONS,
@@ -449,23 +452,48 @@ async def test_removing_door_sensor_clears_restored_pending_state(hass, config):
 
 
 @pytest.mark.asyncio
-async def test_power_entity_availability_tracks_input_validity(hass, config):
+async def test_power_entity_keeps_last_reading_when_input_is_unavailable(
+    hass, config
+):
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
     power = ApplianceSensor(
         runtime,
         entry,
         "power",
-        lambda: runtime.detector.power_w,
+        lambda: runtime.display_power_w,
         UnitOfPower.WATT,
         SensorDeviceClass.POWER,
         SensorStateClass.MEASUREMENT,
     )
 
-    assert not power.available
-    runtime._power_available = True
     assert power.available
+    assert power.native_value == 0
+
+    hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+
+    assert not runtime.power_available
+    assert runtime.detector.power_w is None
+    assert power.available
+    assert power.native_value == 0
+
+    restored_runtime = ApplianceRuntime(hass, entry, config)
+    restored_runtime._restore(runtime._export_state())
+    assert restored_runtime.display_power_w == 0
+
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "11", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    await hass.async_block_till_done()
+    assert runtime.power_available
+    assert power.native_value == 11
+    await runtime.async_unload()
 
 
 @pytest.mark.asyncio
@@ -643,6 +671,44 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
         f"{entry.entry_id}_last_cycle_duration",
         f"{entry.entry_id}_running",
     }
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_mailbox_slot_exposes_flap_open_and_closed_state(
+    hass, enable_custom_integrations
+):
+    config = {
+        CONF_APPLIANCE_TYPE: "mailbox_slot",
+        CONF_MAIL_SLOT_ENTITY: "binary_sensor.mail_flap",
+        CONF_DOOR_ENTITY: "binary_sensor.mailbox_door",
+        "name": "Mailbox",
+    }
+    hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "off")
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    registry = er.async_get(hass)
+    mail_slot_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_mail_slot"
+    )
+
+    assert mail_slot_entity_id is not None
+    assert hass.states.get(mail_slot_entity_id).state == "off"
+    assert hass.states.get(mail_slot_entity_id).attributes["device_class"] == "door"
+    assert entry.runtime_data.door_open is False
+
+    hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(mail_slot_entity_id).state == "on"
+    assert entry.runtime_data.door_open is False
+
+    hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert hass.states.get(mail_slot_entity_id).state == "off"
+    assert entry.runtime_data.door_open is False
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -943,6 +1009,109 @@ async def test_refrigerator_alarms_repeat_rearm_and_persist_independently(
     assert not restored.door_alarm_active
     assert restored.door_alarm_fired_count == 0
     await restored.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_plug_off_alarm_fires_immediately_when_setup_starts_off(
+    hass, monkeypatch
+):
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+        CONF_RUNNING_ENTITY: "binary_sensor.ac_louver",
+        CONF_PLUG_ENTITY: "switch.ac_plug",
+        CONF_PLUG_OFF_ACTIONS: [{"action": "test.plug_off_alarm"}],
+        "name": "Air conditioner",
+    }
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    actions: list[str] = []
+
+    async def record_action(key: str) -> None:
+        actions.append(key)
+
+    monkeypatch.setattr(runtime, "_run_actions", record_action)
+    await runtime.async_setup()
+    await hass.async_block_till_done()
+
+    assert actions == [CONF_PLUG_OFF_ACTIONS]
+    assert runtime.plug_off_alarm_fired_count == 1
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_plug_off_alarm_repeats_pauses_persists_and_rearms(
+    hass, monkeypatch
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+        CONF_RUNNING_ENTITY: "binary_sensor.ac_louver",
+        CONF_PLUG_ENTITY: "switch.ac_plug",
+        CONF_PLUG_OFF_ACTIONS: [{"action": "test.plug_off_alarm"}],
+        CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS: 10,
+        CONF_PLUG_OFF_REPEAT_COUNT: 1,
+        "name": "Air conditioner",
+    }
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "on")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    actions: list[str] = []
+
+    async def record_action(key: str) -> None:
+        actions.append(key)
+
+    monkeypatch.setattr(runtime, "_run_actions", record_action)
+    await runtime.async_setup()
+    monkeypatch.setattr(runtime, "_schedule_deadline", lambda: None)
+
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert runtime.plug_off_alarm_active
+    assert runtime.next_plug_off_alarm == current_time[0]
+    await runtime._run_alarm_if_due("plug_off", current_time[0])
+    assert actions == [CONF_PLUG_OFF_ACTIONS]
+    assert runtime.plug_off_alarm_fired_count == 1
+    assert runtime.next_plug_off_alarm == current_time[0] + timedelta(seconds=10)
+
+    restored = ApplianceRuntime(hass, entry, config)
+    restored._restore(runtime._export_state())
+    assert restored.plug_off_alarm_active
+    assert restored.plug_off_alarm_fired_count == 1
+    assert restored.next_plug_off_alarm == runtime.next_plug_off_alarm
+
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    current_time[0] += timedelta(seconds=20)
+    await runtime._run_alarm_if_due("plug_off", current_time[0])
+    assert actions == [CONF_PLUG_OFF_ACTIONS]
+
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
+    await hass.async_block_till_done()
+    await runtime._run_alarm_if_due("plug_off", current_time[0])
+    assert actions == [CONF_PLUG_OFF_ACTIONS, CONF_PLUG_OFF_ACTIONS]
+    assert runtime.next_plug_off_alarm is None
+
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert not runtime.plug_off_alarm_active
+    assert runtime.plug_off_alarm_fired_count == 0
+    assert runtime.next_plug_off_alarm is None
+
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
+    await hass.async_block_till_done()
+    await runtime._run_alarm_if_due("plug_off", current_time[0])
+    assert actions == [
+        CONF_PLUG_OFF_ACTIONS,
+        CONF_PLUG_OFF_ACTIONS,
+        CONF_PLUG_OFF_ACTIONS,
+    ]
+    await runtime.async_unload()
 
 
 @pytest.mark.asyncio

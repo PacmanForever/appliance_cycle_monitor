@@ -32,12 +32,14 @@ A local Home Assistant integration for washers, dishwashers, dryers, air conditi
 	- **Smart-switch option:** requires a smart switch and separate door contact. The switch detects activity; no power, energy, or compressor-inactivity alarm is provided. A door-open alarm is available.
 - **Mailbox**
 	- **Interior-motion option:** detect incoming mail with a motion sensor inside the mailbox.
-	- **Mail-slot option:** detect incoming mail with a contact on the letter flap.
+	- **Mail-slot option:** detect incoming mail with a contact on the letter flap and expose its open/closed state as **Mail slot**.
 	- Both options track pending collection, support arrival actions and reminders, and use a separate main-door contact to clear pending status.
-- **Shared features**
-	- Provide per-device Home Assistant actions and restore cycle, reminder, and alarm state after Home Assistant restarts.
-	- Expose running state and last-active duration; power-based profiles also track lifetime energy, while estimated remaining time is limited to laundry profiles.
-	- Serialize each action group, report unavailable configured inputs through Repairs, and clear the repair issue when an input recovers.
+- **Across all profiles**
+	- Configure Home Assistant actions per device and restore cycle, reminder, and alarm state after Home Assistant restarts.
+	- See running state and last-active duration; power-based profiles also track lifetime energy, while estimated remaining time is limited to laundry profiles.
+	- Get a Repairs issue when a configured input is missing or unavailable; the issue clears when the input recovers.
+	- Run configured actions in order. Reminders and alarms wait for the previous run to finish before repeating.
+	- Configure an immediate smart-plug-off alarm with its own repeat interval and count; it pauses while the plug state is unavailable and rearms when switched on.
 
 ## Installation
 
@@ -64,7 +66,7 @@ Each appliance has a separate config entry and device. Setup and editing use fou
 3. Configure the selected profile's thresholds, delays, and reminder parameters.
 4. Configure the available actions for that profile.
 
-Power-cycle defaults are 4 W for 15 seconds to start and 1 W for 60 seconds to finish. All configurable durations use seconds. Turning off a configured plug cuts appliance power and ends an active period immediately. On a power-based refrigerator, the power sensor remains the activity detector; the optional plug can still end a detected period when switched off. Laundry pending-unload reminders and refrigerator alarms run once, then repeat up to the configured number of additional repetitions.
+Power-cycle defaults are 4 W for 15 seconds to start and 1 W for 60 seconds to finish. All configurable durations use seconds. Turning off a configured plug cuts appliance power and ends an active period immediately. On a power-based refrigerator, the power sensor remains the activity detector; the optional plug can still end a detected period when switched off. Laundry pending-unload reminders and refrigerator alarms run once, then repeat up to the configured number of additional repetitions. The plug-off alarm runs its configured actions immediately, then repeats on its own interval (900 seconds and 3 additional repetitions by default) while the plug remains off. Switching it on cancels pending repetitions and resets the count; an unavailable state delays alarms until the plug state is known again.
 
 ## Entities and automations
 

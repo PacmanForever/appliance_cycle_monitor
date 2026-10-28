@@ -100,12 +100,13 @@ Cada dispositiu pot tenir llistes d'accions de Home Assistant configurables i ed
 - **Accions en finalitzar el cicle**: grup general «Accions» de la captura. Exemples: enviar notificació, anunciar un missatge de veu i finalitzar un temporitzador.
 - **Accions en iniciar el cicle**: s'executen quan se supera el llindar d'inici durant el temps d'histèresi. Exemples: enviar notificació, anunciar un missatge de veu i iniciar un temporitzador.
 - **Accions en superar el temps màxim**: s'executen una sola vegada quan un cicle actiu supera el temps màxim configurat. Exemple: enviar una notificació. Aquest grup és independent de les accions de finalització.
-- **Accions mentre està pendent de buidar**: grup opcional disponible quan s'ha configurat un sensor de porta. En finalitzar el cicle, si «pendent de buidar» continua `on`, s'espera l'interval configurat abans de la primera execució. Després es repeteixen cada X segons mentre la porta continuï tancada i no s'hagi assolit el màxim. L'interval X ha de ser un nombre enter positiu i el nombre màxim de repeticions un enter no negatiu; els valors per defecte són 900 segons (15 minuts) i 3 repeticions. El límit compta només les execucions posteriors a la inicial; amb 3 repeticions, hi ha com a màxim 4 execucions en total. En obrir-se la porta, l'estat es neteja i les accions pendents es cancel·len immediatament. En assolir el màxim, les repeticions s'aturen encara que la porta continuï tancada i «pendent de buidar» es manté `on` fins que s'obri.
+- **Accions mentre està pendent de buidar**: grup opcional disponible quan s'ha configurat un sensor de porta. En finalitzar el cicle, si «pendent de buidar» continua `on`, s'espera l'interval configurat abans de la primera execució. Després es repeteixen cada X segons mentre la porta continuï tancada i no s'hagi assolit el màxim; cada interval de repetició es compta des que acaba l'execució anterior. L'interval X ha de ser un nombre enter positiu i el nombre màxim de repeticions un enter no negatiu; els valors per defecte són 900 segons (15 minuts) i 3 repeticions. El límit compta només les execucions posteriors a la inicial; amb 3 repeticions, hi ha com a màxim 4 execucions en total. En obrir-se la porta, l'estat es neteja i les accions pendents es cancel·len immediatament. En assolir el màxim, les repeticions s'aturen encara que la porta continuï tancada i «pendent de buidar» es manté `on` fins que s'obri.
+- **Alarma d'endoll apagat**: disponible en qualsevol perfil que admeti un endoll intel·ligent seleccionat. En passar a `off`, executa immediatament les accions configurades i les repeteix cada interval propi mentre continuï apagat, fins al nombre màxim de repeticions. El valor per defecte de l'interval és 900 segons i el de repeticions addicionals és 3. En tornar a `on`, cancel·la el proper avís i rearma el recompte. Si la font queda temporalment no disponible, conserva l'estat i el venciment sense enviar avisos fins que es torni a confirmar `off`.
 - **Alarma de porta de nevera**: acció pròpia del tipus nevera, disponible amb contacte configurat; s'executa després del retard de porta oberta i repeteix segons els paràmetres del perfil fins al màxim. Tancar la porta rearma el grup.
 - **Alarma de compressor de nevera**: només al perfil `refrigerator`, que mesura potència; s'executa quan no s'ha detectat activitat del compressor durant el retard configurat i repeteix fins al màxim. Tornar a detectar activitat rearma el grup. No existeix al perfil `refrigerator_switch`.
 - **Arribada de correu**: acció pròpia dels perfils de bústia, executada en detectar una arribada. Les accions de «pendent de recollir» segueixen el retard, interval i màxim de repeticions configurats, i es cancel·len en obrir-se la porta principal.
 
-Les accions són configuració de cada dispositiu; no s'han de codificar com a scripts fixos ni compartir automàticament entre aparells. La integració les ha d'executar directament en l'ordre configurat quan detecti els canvis de cicle o de porta, sense dependre d'una automatització o blueprint extern. No s'han de solapar dues execucions del mateix grup si una acció triga més que l'interval configurat. Es poden invocar scripts existents si l'usuari els selecciona, però no són obligatoris. Els errors d'una acció s'han de registrar sense interrompre la resta d'accions ni la detecció de cicles, i sense exposar dades sensibles.
+Les accions són configuració de cada dispositiu; no s'han de codificar com a scripts fixos ni compartir automàticament entre aparells. La integració les ha d'executar directament en l'ordre configurat quan detecti els canvis de cicle o de porta, sense dependre d'una automatització o blueprint extern. No s'han de solapar dues execucions del mateix grup. Es poden invocar scripts existents si l'usuari els selecciona, però no són obligatoris. Els errors d'una acció s'han de registrar sense interrompre la resta d'accions ni la detecció de cicles, i sense exposar dades sensibles.
 
 ## 5. Entitats i associació amb el dispositiu
 
@@ -116,6 +117,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 - **Temps restant estimat**: només es crea per perfils de cicle que en poden oferir una estimació útil. No es crea per AC ni nevera.
 - **Estat (funcionament)**: entitat binària que indica si hi ha activitat segons l'estratègia declarada pel perfil.
 - **Porta**: si el perfil usa un contacte de porta, entitat binària de sortida que en reflecteix l'estat.
+- **Portella de bústia**: només per a `mailbox_slot`, entitat binària de sortida que reflecteix si el contacte de la portella d'arribada és obert o tancat. És diferent de l'entitat Porta, que representa l'obertura de la porta principal per recollir el correu.
 - **Pendent de buidar/recollir**: per als perfils de bugaderia amb sensor de porta i per als perfils de bústia; mai per AC o nevera.
 - **Neteja manual de l'estat pendent**: quan un dispositiu té un estat «pendent de buidar», la integració ha de crear-hi també un botó propi per posar-lo manualment a `off`, independentment dels sensors. Aquesta acció de recuperació ha de funcionar encara que el sensor associat falli o no estigui disponible, i ha de cancel·lar els recordatoris pendents i reiniciar-ne el recompte.
 - **Endoll**: si el perfil admet un switch intel·ligent i se n'ha seleccionat un, entitat de switch associada que en reflecteix l'estat i permet activar-lo o desactivar-lo. Al perfil `refrigerator`, és opcional i no substitueix la detecció per potència; al perfil `refrigerator_switch`, és obligatori i també és la font de detecció d'activitat.
@@ -139,7 +141,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 - El temps màxim configurat i l'estat d'avís ja executat del cicle actual s'han de conservar després d'un reinici, per evitar perdre el límit o repetir l'acció d'avís.
 - Modificar una opció ha d'actualitzar només el dispositiu afectat i les seves entitats.
 - La integració ha d'actualitzar-se davant de canvis de les entitats d'entrada sense fer sondeig de xarxa innecessari.
-- Si una entitat seleccionada desapareix o queda no disponible, el dispositiu ha de continuar carregat i registrar un avís recuperable.
+- Si una entitat seleccionada desapareix o queda no disponible, el dispositiu ha de continuar carregat i crear un issue de Repairs per a l'entitat. En recuperar-se, l'issue s'ha d'eliminar.
 
 ## 7. Seguretat i privadesa
 
@@ -163,14 +165,14 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 11. En iniciar un nou cicle després d'haver-ne completat un, el temps restant comença a partir de la durada de l'últim cicle i es redueix segons el temps transcorregut del cicle actual.
 12. Abans de disposar d'un cicle completat, el temps restant és desconegut/no disponible; no es mostra una estimació fictícia.
 13. Si Home Assistant es reinicia durant un cicle, l'estat de funcionament continua actiu, la durada i el temps restant es calculen des de les marques temporals originals i no es repeteixen les accions d'inici ja executades.
-14. Una lectura de potència invàlida o una entitat d'entrada no disponible no provoca una fallada de la integració.
+14. Una lectura de potència invàlida no provoca una fallada de la integració. Si una entitat d'entrada configurada falta o és `unknown`/`unavailable`, la integració continua carregada i crea un avís de Repairs per a aquella entitat; quan torna a estar disponible, elimina l'avís.
 15. Els canvis breus de potència no generen inicis o finalitzacions falsos si no es compleix la histèresi corresponent.
 16. Quan s'ha configurat un temps màxim, en superar-lo s'executen una sola vegada les accions específiques d'avís; el cicle no es dona per acabat ni l'endoll s'apaga automàticament.
 17. Si hi ha accions de «pendent de buidar», la primera s'executa 900 segons (15 minuts) després de finalitzar el cicle, només si l'estat continua actiu; després es repeteixen cada X segons fins al màxim o fins que s'obre la porta.
 18. El nombre màxim compta les repeticions posteriors a l'execució immediata inicial; amb el valor per defecte de 3, les accions s'executen com a màxim 4 vegades.
 19. El retard inicial per defecte i l'interval per defecte entre repeticions són de 900 segons (15 minuts), modificables per dispositiu.
 20. En assolir el màxim, les repeticions s'aturen però «pendent de buidar» continua actiu fins que s'obre la porta.
-21. Si una acció periòdica dura més que X segons, no s'inicia una segona execució del mateix grup fins que acabi la primera.
+21. Si una acció periòdica dura més que l'interval configurat, no se solapa una segona execució del mateix grup; el següent interval comença quan acaba l'execució anterior. La finalització d'una acció de recordatori o alarma obsoleta no modifica l'estat ni els venciments d'una condició posterior.
 22. Si Home Assistant es reinicia mentre «pendent de buidar» és actiu, l'estat i el nombre de repeticions es restauren; es respecta el proper venciment i, si ja ha passat, s'executa com a màxim un avís de recuperació sense superar el límit ni crear una ràfega.
 23. Es pot completar la configuració amb nom, tipus i sensor de potència, sense sensor de porta ni switch, deixant el temps màxim i les accions buits i mantenint els llindars per defecte.
 24. La creació i l'edició mostren exactament quatre pantalles: tipus/nom, sensors del perfil, paràmetres del perfil i accions del perfil.
@@ -189,6 +191,9 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 37. Obrir la porta principal neteja «Pendent de recollir» i cancel·la recordatoris. Si arriba correu amb la porta oberta, l'estat queda pendent però els recordatoris esperen que la porta es tanqui.
 38. La nevera per interruptor (`refrigerator_switch`) exigeix switch i contacte de porta; el switch és la font d'activitat. No crea potència, energia ni alarma de compressor inactiu, i sí l'alarma de porta oberta. L'apagada del switch de control opcional de `refrigerator` finalitza immediatament un període actiu.
 39. En editar una entrada existent, el tipus configurat es mostra però no es pot canviar; el nom, les fonts, els paràmetres i les accions es poden editar. Per canviar de perfil cal crear una entrada nova.
+40. En crear o editar un perfil de bústia, el sensor d'arribada i el contacte de la porta principal han de ser entitats diferents; si se selecciona la mateixa entitat, el flux mostra un error i no desa la configuració.
+41. El perfil `mailbox_slot` exposa l'estat obert/tancat del contacte de portella com una entitat «Portella» separada de «Porta». El perfil `mailbox_motion` no crea aquesta entitat.
+42. Tots els perfils que admeten un endoll intel·ligent exposen, quan n'hi ha un de seleccionat, un grup d'accions i paràmetres independents per a l'endoll apagat. El primer avís és immediat, se'n poden configurar N repeticions addicionals, no s'envien repeticions després de `on` i l'estat, recompte i venciment es restauren després d'un reinici.
 
 ## 9. Qualitat i proves
 
@@ -233,4 +238,4 @@ El repositori ha de tenir workflows independents per als tests unitaris, els tes
 - Definir límits mínims i màxims dels controls numèrics; els valors inicials sí que queden fixats en aquest document.
 - Definir les versions mínimes de Home Assistant i Python quan s'iniciï la implementació.
 
-**Data d'actualització**: 2026-10-26
+**Data d'actualització**: 2026-10-28

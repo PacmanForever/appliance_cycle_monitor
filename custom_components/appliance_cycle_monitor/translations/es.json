@@ -61,7 +61,9 @@
           "door_open_delay_seconds": "Segundos que la puerta del frigorífico puede estar abierta antes del aviso",
           "compressor_inactive_delay_seconds": "Segundos sin actividad del compresor antes del aviso",
           "alarm_repeat_interval_seconds": "Intervalo entre avisos repetidos del frigorífico (segundos)",
-          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
+          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)",
+          "plug_off_repeat_interval_seconds": "Intervalo entre avisos repetidos con el enchufe apagado (segundos)",
+          "plug_off_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
         },
         "data_description": {
           "max_runtime_seconds": "Opcional. Déjalo vacío para desactivarlo. Si el ciclo sigue en marcha al cumplirse este tiempo, se ejecutarán una vez las acciones que configures para este límite; el aparato no se detendrá."
@@ -76,6 +78,7 @@
           "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
           "door_open_actions": "Acciones para la alarma de puerta abierta del frigorífico",
           "compressor_inactive_actions": "Acciones para la alarma de inactividad del compresor",
+          "plug_off_actions": "Acciones mientras el enchufe inteligente seleccionado esté apagado",
           "mail_arrival_actions": "Acciones que se ejecutan cuando se detecta correo"
         }
       }
@@ -84,6 +87,7 @@
       "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
       "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
       "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo.",
+      "invalid_plug_off_alarm_settings": "El intervalo de repetición con el enchufe apagado debe ser un entero positivo y los avisos adicionales, un entero no negativo.",
       "appliance_type_immutable": "No se puede cambiar el tipo de aparato después de configurarlo. Añade uno nuevo con el tipo deseado.",
       "mailbox_sensors_must_be_distinct": "El sensor de llegada de correo y el sensor de la puerta principal deben ser entidades diferentes."
     }
@@ -144,7 +148,9 @@
           "door_open_delay_seconds": "Segundos que la puerta del frigorífico puede estar abierta antes del aviso",
           "compressor_inactive_delay_seconds": "Segundos sin actividad del compresor antes del aviso",
           "alarm_repeat_interval_seconds": "Intervalo entre avisos repetidos del frigorífico (segundos)",
-          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
+          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)",
+          "plug_off_repeat_interval_seconds": "Intervalo entre avisos repetidos con el enchufe apagado (segundos)",
+          "plug_off_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
         },
         "data_description": {
           "max_runtime_seconds": "Opcional. Déjalo vacío para desactivarlo. Si el ciclo sigue en marcha al cumplirse este tiempo, se ejecutarán una vez las acciones que configures para este límite; el aparato no se detendrá."
@@ -159,6 +165,7 @@
           "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
           "door_open_actions": "Acciones para la alarma de puerta abierta del frigorífico",
           "compressor_inactive_actions": "Acciones para la alarma de inactividad del compresor",
+          "plug_off_actions": "Acciones mientras el enchufe inteligente seleccionado esté apagado",
           "mail_arrival_actions": "Acciones que se ejecutan cuando se detecta correo"
         }
       }
@@ -167,6 +174,7 @@
       "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
       "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
       "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo.",
+      "invalid_plug_off_alarm_settings": "El intervalo de repetición con el enchufe apagado debe ser un entero positivo y los avisos adicionales, un entero no negativo.",
       "appliance_type_immutable": "No se puede cambiar el tipo de aparato después de configurarlo. Añade uno nuevo con el tipo deseado.",
       "mailbox_sensors_must_be_distinct": "El sensor de llegada de correo y el sensor de la puerta principal deben ser entidades diferentes."
     }
@@ -188,7 +196,7 @@
   },
   "entity": {
     "sensor": {
-      "power": {"name": "Potencia"},
+      "power": {"name": "Potencia actual"},
       "total_energy": {"name": "Energía total"},
       "last_cycle_duration": {"name": "Duración del último ciclo"},
       "estimated_remaining": {"name": "Tiempo restante estimado"}
@@ -196,6 +204,7 @@
     "binary_sensor": {
       "running": {"name": "En funcionamiento"},
       "door": {"name": "Puerta"},
+      "mail_slot": {"name": "Portilla"},
       "pending_unload": {"name": "Pendiente de vaciar"}
     },
     "switch": {

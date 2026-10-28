@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .appliance_types import get_appliance_model
 from .const import CONF_PLUG_ENTITY, DOMAIN
 from .runtime import ApplianceRuntime
 
@@ -28,10 +29,7 @@ class AppliancePlugSwitch(SwitchEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=runtime.config.get("name", entry.title),
-            model=(runtime.config.get("appliance_type") or "").replace(
-                "_", " "
-            ).title()
-            or None,
+            model=get_appliance_model(runtime.config.get("appliance_type")),
         )
 
     @property
