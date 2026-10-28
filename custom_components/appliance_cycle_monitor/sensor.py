@@ -43,6 +43,12 @@ class ApplianceSensor(SensorEntity):
         self._value_fn = value_fn
         self._attr_unique_id = f"{entry.entry_id}_{key}"
         self._attr_translation_key = key
+        self._attr_icon = {
+            "power": "mdi:flash",
+            "total_energy": "mdi:lightning-bolt",
+            "last_cycle_duration": "mdi:timer-check-outline",
+            "estimated_remaining": "mdi:timer-sand",
+        }[key]
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_state_class = state_class

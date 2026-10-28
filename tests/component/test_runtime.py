@@ -497,6 +497,36 @@ async def test_power_entity_keeps_last_reading_when_input_is_unavailable(
 
 
 @pytest.mark.asyncio
+async def test_power_entity_restores_last_reading_after_reload_during_outage(
+    hass, config, enable_custom_integrations
+):
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "42", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    registry = er.async_get(hass)
+    power_entity_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_power"
+    )
+    assert hass.states.get(power_entity_id).state == "42.0"
+
+    hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    assert hass.states.get(power_entity_id).state == "42.0"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+
+    power_state = hass.states.get(power_entity_id)
+    assert power_state.state == "42.0"
+    assert power_state.state not in ("unknown", "unavailable")
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.asyncio
 async def test_config_entry_loads_power_only_entities_and_unloads(
     hass, enable_custom_integrations
 ):
@@ -530,6 +560,20 @@ async def test_config_entry_loads_power_only_entities_and_unloads(
     }
     created_entity_ids = [entity.entity_id for entity in entry_entities]
     assert all(hass.states.get(entity_id) is not None for entity_id in created_entity_ids)
+    for key, icon in {
+        "power": "mdi:flash",
+        "total_energy": "mdi:lightning-bolt",
+        "last_cycle_duration": "mdi:timer-check-outline",
+        "estimated_remaining": "mdi:timer-sand",
+    }.items():
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_{key}"
+        )
+        assert hass.states.get(entity_id).attributes["icon"] == icon
+    running_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
+    )
+    assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:washing-machine-off"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
@@ -560,6 +604,13 @@ async def test_optional_plug_and_pending_button_controls(
     plug.hass = hass
     assert plug.available
     assert not plug.is_on
+    assert plug.icon == "mdi:power-plug-off"
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert plug.icon == "mdi:power-plug"
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert plug.icon == "mdi:power-plug-off"
 
     calls = []
 
@@ -581,6 +632,7 @@ async def test_optional_plug_and_pending_button_controls(
     hass.states.async_set(config[CONF_PLUG_ENTITY], "unavailable")
     assert not plug.available
     assert not plug.is_on
+    assert plug.icon == "mdi:power-plug-off-outline"
     updates = []
     monkeypatch.setattr(plug, "async_write_ha_state", lambda: updates.append(True))
     plug._handle_runtime_update()
@@ -592,7 +644,14 @@ async def test_optional_plug_and_pending_button_controls(
     runtime.pending_unload = True
     runtime.pending_reminder_count = 2
     runtime.next_pending_reminder = dt_util.utcnow() + timedelta(minutes=1)
+    pending_entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_pending_unload"
+    )
+    runtime._notify()
+    assert hass.states.get(pending_entity_id).attributes["icon"] == "mdi:bell-alert"
     await button_entities[0].async_press()
+    assert button_entities[0].icon == "mdi:notification-clear-all"
+    assert hass.states.get(pending_entity_id).attributes["icon"] == "mdi:bell-outline"
     assert not runtime.pending_unload
     assert runtime.pending_reminder_count == 0
     assert runtime.next_pending_reminder is None
@@ -698,16 +757,32 @@ async def test_mailbox_slot_exposes_flap_open_and_closed_state(
     assert mail_slot_entity_id is not None
     assert hass.states.get(mail_slot_entity_id).state == "off"
     assert hass.states.get(mail_slot_entity_id).attributes["device_class"] == "door"
+    assert hass.states.get(mail_slot_entity_id).attributes["icon"] == "mdi:mailbox-up"
     assert entry.runtime_data.door_open is False
+    door_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_door"
+    )
+    assert hass.states.get(door_entity_id).attributes["icon"] == "mdi:mailbox"
 
     hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "on")
     await hass.async_block_till_done()
     assert hass.states.get(mail_slot_entity_id).state == "on"
+    assert hass.states.get(mail_slot_entity_id).attributes["icon"] == "mdi:mailbox-open-up"
     assert entry.runtime_data.door_open is False
 
     hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "off")
     await hass.async_block_till_done()
     assert hass.states.get(mail_slot_entity_id).state == "off"
+    hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    assert hass.states.get(mail_slot_entity_id).attributes["icon"] == "mdi:mailbox-outline"
+    hass.states.async_set(config[CONF_MAIL_SLOT_ENTITY], "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(door_entity_id).attributes["icon"] == "mdi:mailbox-open"
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    await hass.async_block_till_done()
     assert entry.runtime_data.door_open is False
     assert await hass.config_entries.async_unload(entry.entry_id)
 
@@ -860,6 +935,16 @@ async def test_refrigerator_creates_only_its_declared_entities(
         f"{entry.entry_id}_running",
         f"{entry.entry_id}_door",
     }
+    door_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_door"
+    )
+    assert hass.states.get(door_entity_id).attributes["icon"] == "mdi:fridge"
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(door_entity_id).attributes["icon"] == "mdi:fridge-alert"
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    assert hass.states.get(door_entity_id).attributes["icon"] == "mdi:fridge-alert-outline"
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 

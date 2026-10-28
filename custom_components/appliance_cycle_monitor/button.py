@@ -18,6 +18,7 @@ class ClearPendingButton(ButtonEntity):
 
     _attr_has_entity_name = True
     _attr_translation_key = "clear_pending"
+    _attr_icon = "mdi:notification-clear-all"
 
     def __init__(self, runtime: ApplianceRuntime, entry: ConfigEntry) -> None:
         self._runtime = runtime

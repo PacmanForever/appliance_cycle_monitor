@@ -39,6 +39,13 @@ class AppliancePlugSwitch(SwitchEntity):
         return state is not None and state.state == "on"
 
     @property
+    def icon(self) -> str:
+        """Reflect whether the selected smart plug is on or off."""
+        if not self.available:
+            return "mdi:power-plug-off-outline"
+        return "mdi:power-plug" if self.is_on else "mdi:power-plug-off"
+
+    @property
     def available(self) -> bool:
         """Return whether the selected plug is available."""
         state = self.hass.states.get(self._entity_id)

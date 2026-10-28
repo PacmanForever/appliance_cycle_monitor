@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 - 2026-10-28
+
+### Changed
+
+- Add state-aware MDI icons for appliance activity, doors, mailbox flap, pending status, and smart plugs, plus specific icons for sensors and the clear-pending button.
+
 ## 0.5.0 - 2026-10-28
 
 ### Added
