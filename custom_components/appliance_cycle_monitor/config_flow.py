@@ -161,7 +161,11 @@ def _normalize_sensor_values(
     return normalized
 
 
-def _sensor_schema(values: dict[str, Any], profile: ApplianceTypeProfile) -> vol.Schema:
+def _sensor_schema(
+    values: dict[str, Any],
+    profile: ApplianceTypeProfile,
+    hass: HomeAssistant | None = None,
+) -> vol.Schema:
     schema: dict[Any, Any] = {}
     for sensor_input in profile.sensor_inputs:
         marker = (
@@ -175,6 +179,22 @@ def _sensor_schema(values: dict[str, Any], profile: ApplianceTypeProfile) -> vol
                 for device_class in sensor_input.device_classes
             ]
             selector_config = selector.EntitySelectorConfig(filter=entity_filter)
+        elif sensor_input.domain == "climate":
+            selected_entity_id = values.get(sensor_input.config_key)
+            excluded_entities = (
+                [
+                    entity.entity_id
+                    for entity in er.async_get(hass).entities.values()
+                    if entity.domain == "climate"
+                    and entity.device_id is not None
+                    and entity.entity_id != selected_entity_id
+                ]
+                if hass is not None
+                else []
+            )
+            selector_config = selector.EntitySelectorConfig(
+                domain=sensor_input.domain, exclude_entities=excluded_entities
+            )
         else:
             selector_config = selector.EntitySelectorConfig(domain=sensor_input.domain)
         entity_selector = selector.EntitySelector(selector_config)
@@ -566,7 +586,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_show_form(
                     step_id="sensors",
                     data_schema=_sensor_schema(
-                        _sensor_form_values(self._draft, profile), profile
+                        _sensor_form_values(self._draft, profile), profile, self.hass
                     ),
                     errors={"base": "mailbox_sensors_must_be_distinct"},
                     last_step=False,
@@ -577,7 +597,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_show_form(
                     step_id="sensors",
                     data_schema=_sensor_schema(
-                        _sensor_form_values(self._draft, profile), profile
+                        _sensor_form_values(self._draft, profile), profile, self.hass
                     ),
                     errors={"base": "climate_entity_requires_no_device"},
                     last_step=False,
@@ -586,7 +606,9 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
         profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
             step_id="sensors",
-            data_schema=_sensor_schema(_sensor_form_values(self._draft, profile), profile),
+            data_schema=_sensor_schema(
+                _sensor_form_values(self._draft, profile), profile, self.hass
+            ),
             last_step=False,
         )
 
@@ -697,7 +719,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 return self.async_show_form(
                     step_id="sensors",
                     data_schema=_sensor_schema(
-                        _sensor_form_values(values, profile), profile
+                        _sensor_form_values(values, profile), profile, self.hass
                     ),
                     errors={"base": "mailbox_sensors_must_be_distinct"},
                     last_step=False,
@@ -714,7 +736,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 return self.async_show_form(
                     step_id="sensors",
                     data_schema=_sensor_schema(
-                        _sensor_form_values(values, profile), profile
+                        _sensor_form_values(values, profile), profile, self.hass
                     ),
                     errors={"base": "climate_entity_requires_no_device"},
                     last_step=False,
@@ -723,7 +745,9 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
         profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
             step_id="sensors",
-            data_schema=_sensor_schema(_sensor_form_values(values, profile), profile),
+            data_schema=_sensor_schema(
+                _sensor_form_values(values, profile), profile, self.hass
+            ),
             last_step=False,
         )
 

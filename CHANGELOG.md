@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 - 2026-10-28
+
+### Fixed
+
+- Exclude climate entities with a parent device from the air-conditioner climate selector.
+
 ## 0.6.0 - 2026-10-28
 
 ### Added

@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.plugins import enable_custom_integrat
 
 from custom_components.appliance_cycle_monitor import async_migrate_entry
 from custom_components.appliance_cycle_monitor.appliance_types import APPLIANCE_PROFILES
+from custom_components.appliance_cycle_monitor.config_flow import _validate_climate_entity
 from custom_components.appliance_cycle_monitor.const import (
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
@@ -190,6 +191,7 @@ async def test_air_conditioner_climate_requires_unparented_entity(
         config_entry=climate_entry,
         device_id=climate_device.id,
     )
+    assert not _validate_climate_entity(hass, parented_entity.entity_id)
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -210,6 +212,8 @@ async def test_air_conditioner_climate_requires_unparented_entity(
     assert sensor_form["step_id"] == "parameters"
     assert isinstance(climate_selector, selector.EntitySelector)
     assert climate_selector.config["domain"] == ["climate"]
+    assert parented_entity.entity_id in climate_selector.config["exclude_entities"]
+    assert parentless_entity.entity_id not in climate_selector.config["exclude_entities"]
     actions_form = await hass.config_entries.flow.async_configure(flow_id, {})
     result = await hass.config_entries.flow.async_configure(
         flow_id, {CONF_START_ACTIONS: [], CONF_FINISH_ACTIONS: []}
@@ -225,20 +229,6 @@ async def test_air_conditioner_climate_requires_unparented_entity(
     await hass.config_entries.flow.async_configure(
         flow_id,
         {"name": "Climate AC 2", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
-    )
-    result = await hass.config_entries.flow.async_configure(
-        flow_id, {CONF_CLIMATE_ENTITY: parented_entity.entity_id}
-    )
-    assert result["step_id"] == "sensors"
-    assert result["errors"] == {"base": "climate_entity_requires_no_device"}
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    flow_id = result["flow_id"]
-    await hass.config_entries.flow.async_configure(
-        flow_id,
-        {"name": "Climate AC 3", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
     )
     result = await hass.config_entries.flow.async_configure(flow_id, {})
     assert result["step_id"] == "sensors"
