@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 import logging
 import math
@@ -13,6 +14,11 @@ from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import (
     async_track_point_in_time,
     async_track_state_change_event,
+)
+from homeassistant.helpers.issue_registry import (
+    IssueSeverity,
+    async_create_issue,
+    async_delete_issue,
 )
 from homeassistant.helpers.script import Script
 from homeassistant.helpers.storage import Store
@@ -83,6 +89,12 @@ class ApplianceRuntime:
         self.entry = entry
         self.config = config
         self.profile = get_appliance_profile(config.get(CONF_APPLIANCE_TYPE, "washer"))
+        self._configured_inputs = {
+            item.config_key: config[item.config_key]
+            for item in self.profile.sensor_inputs
+            if config.get(item.config_key)
+        }
+        self._unavailable_inputs: set[str] = set()
         thresholds = CycleThresholds(
             start_power_w=float(config.get(CONF_START_POWER_W, DEFAULT_START_POWER_W)),
             start_duration=timedelta(
@@ -116,10 +128,12 @@ class ApplianceRuntime:
         self.pending_unload = False
         self.pending_reminder_count = 0
         self.next_pending_reminder: datetime | None = None
+        self._pending_generation = 0
         self.door_alarm_active = False
         self.door_alarm_fired_count = 0
         self.next_door_alarm: datetime | None = None
         self._door_alarm_action_running = False
+        self._alarm_generation = {"door": 0, "compressor": 0}
         self.compressor_alarm_active = False
         self.compressor_alarm_fired_count = 0
         self.next_compressor_alarm: datetime | None = None
@@ -128,8 +142,10 @@ class ApplianceRuntime:
         self._energy_power_w: float | None = None
         self._energy_updated_at: datetime | None = None
         self._listeners: set[Callable[[], None]] = set()
+        self._action_locks: dict[str, asyncio.Lock] = {}
         self._unsubscribe_states: Callable[[], None] | None = None
         self._unsubscribe_timer: Callable[[], None] | None = None
+        self._is_unloading = False
         self._pending_action_running = False
         self._restoring_detector_state = False
         self._power_available = False
@@ -156,14 +172,14 @@ class ApplianceRuntime:
             "mail_slot": CONF_MAIL_SLOT_ENTITY,
             "smart_plug": CONF_PLUG_ENTITY,
         }[self.profile.detection_sources[0]]
-        entity_ids = [self.config[source_key]]
-        for key in (CONF_DOOR_ENTITY, CONF_PLUG_ENTITY):
-            entity_id = self.config.get(key)
-            if entity_id and entity_id not in entity_ids:
-                entity_ids.append(entity_id)
+        entity_ids = list(dict.fromkeys(self._configured_inputs.values()))
         self._unsubscribe_states = async_track_state_change_event(
             self.hass, entity_ids, self._async_handle_state_change
         )
+        for entity_id in entity_ids:
+            self._update_input_availability(
+                entity_id, self.hass.states.get(entity_id)
+            )
 
         now = dt_util.utcnow()
         source_state = self.hass.states.get(self.config[source_key])
@@ -186,6 +202,7 @@ class ApplianceRuntime:
 
     async def async_unload(self) -> None:
         """Cancel listeners and timers, then persist the final runtime state."""
+        self._is_unloading = True
         self._integrate_energy_to(dt_util.utcnow())
         if self._unsubscribe_states is not None:
             self._unsubscribe_states()
@@ -193,6 +210,9 @@ class ApplianceRuntime:
         if self._unsubscribe_timer is not None:
             self._unsubscribe_timer()
             self._unsubscribe_timer = None
+        for entity_id in self._configured_inputs.values():
+            async_delete_issue(self.hass, DOMAIN, self._input_issue_id(entity_id))
+        self._unavailable_inputs.clear()
         await self._store.async_save(self._export_state())
 
     def subscribe(self, listener: Callable[[], None]) -> Callable[[], None]:
@@ -202,9 +222,11 @@ class ApplianceRuntime:
 
     def clear_pending_unload(self) -> None:
         """Clear the unload state and cancel all scheduled reminders."""
+        self._pending_generation += 1
         self.pending_unload = False
         self.pending_reminder_count = 0
         self.next_pending_reminder = None
+        self._pending_action_running = False
         self._schedule_save()
         self._schedule_deadline()
         self._notify()
@@ -234,6 +256,8 @@ class ApplianceRuntime:
         )
 
     async def _async_handle_state_change(self, event: Event) -> None:
+        if self._is_unloading:
+            return
         entity_id = event.data["entity_id"]
         new_state = event.data.get("new_state")
         now = dt_util.utcnow()
@@ -272,6 +296,46 @@ class ApplianceRuntime:
                 self._schedule_deadline()
             self._notify()
 
+        self._update_input_availability(entity_id, new_state)
+
+    def _input_issue_id(self, entity_id: str) -> str:
+        return f"{self.entry.entry_id}_{entity_id}"
+
+    def _update_input_availability(self, entity_id: str, state: Any) -> None:
+        if entity_id not in self._configured_inputs.values():
+            return
+        unavailable = state is None or state.state in ("unknown", "unavailable")
+        issue_id = self._input_issue_id(entity_id)
+        if unavailable:
+            if entity_id in self._unavailable_inputs:
+                return
+            self._unavailable_inputs.add(entity_id)
+            _LOGGER.warning(
+                "Configured %s input is unavailable",
+                self._input_config_key(entity_id),
+            )
+            async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                is_persistent=True,
+                severity=IssueSeverity.WARNING,
+                translation_key="input_unavailable",
+                translation_placeholders={"entity_id": entity_id},
+            )
+            return
+
+        self._unavailable_inputs.discard(entity_id)
+        async_delete_issue(self.hass, DOMAIN, issue_id)
+
+    def _input_config_key(self, entity_id: str) -> str:
+        return next(
+            key
+            for key, configured_entity in self._configured_inputs.items()
+            if configured_entity == entity_id
+        )
+
     def _apply_running_state(
         self, state: Any, now: datetime, initialize: bool = False
     ) -> None:
@@ -301,9 +365,11 @@ class ApplianceRuntime:
             self._mail_sensor_ready = False
 
     def _handle_mail_arrival(self, now: datetime) -> None:
+        self._pending_generation += 1
         self.pending_unload = True
         self.pending_reminder_count = 0
         self.next_pending_reminder = None
+        self._pending_action_running = False
         self._run_actions_in_background(CONF_MAIL_ARRIVAL_ACTIONS)
         if self.door_open is False and self.config.get(CONF_PENDING_ACTIONS):
             self.next_pending_reminder = now + timedelta(
@@ -383,9 +449,11 @@ class ApplianceRuntime:
                 if "pending_unload" in self.profile.parameter_groups and self.config.get(
                     CONF_DOOR_ENTITY
                 ):
+                    self._pending_generation += 1
                     self.pending_unload = self.door_open is not True
                     self.pending_reminder_count = 0
                     self.next_pending_reminder = None
+                    self._pending_action_running = False
                 if "cycle_start" in self.profile.action_groups:
                     self._run_actions_in_background(CONF_START_ACTIONS)
             else:
@@ -429,6 +497,8 @@ class ApplianceRuntime:
         return 1 + int(self.config.get(CONF_PENDING_REPEATS, DEFAULT_PENDING_REPEATS))
 
     def _schedule_deadline(self) -> None:
+        if self._is_unloading:
+            return
         if self._unsubscribe_timer is not None:
             self._unsubscribe_timer()
             self._unsubscribe_timer = None
@@ -459,6 +529,8 @@ class ApplianceRuntime:
             )
 
     async def _async_handle_deadline(self, _: datetime) -> None:
+        if self._is_unloading:
+            return
         self._unsubscribe_timer = None
         now = dt_util.utcnow()
         if self.detector.next_deadline is not None and self._power_available:
@@ -492,16 +564,15 @@ class ApplianceRuntime:
             if not self.config.get(CONF_PENDING_ACTIONS):
                 self.next_pending_reminder = None
             elif self.door_open is False and not self._pending_action_running:
+                pending_generation = self._pending_generation
                 self.pending_reminder_count += 1
                 self._pending_action_running = True
-                await self._run_actions(CONF_PENDING_ACTIONS)
-                self._pending_action_running = False
-                if self.pending_unload and self.pending_reminder_count < self._pending_maximum:
-                    self.next_pending_reminder = now + timedelta(
-                        seconds=self._pending_interval_seconds
-                    )
-                else:
-                    self.next_pending_reminder = None
+                self.next_pending_reminder = None
+                self.entry.async_create_background_task(
+                    self.hass,
+                    self._run_pending_reminder(pending_generation),
+                    name=f"{DOMAIN} {self.entry.entry_id} pending reminder",
+                )
             elif self.door_open is None:
                 self.next_pending_reminder = now + timedelta(
                     seconds=self._pending_interval_seconds
@@ -509,13 +580,40 @@ class ApplianceRuntime:
             else:
                 self.next_pending_reminder = None
 
-        await self._run_alarm_if_due("door", now)
-        await self._run_alarm_if_due("compressor", now)
+        self._schedule_alarm_if_due("door", now)
+        self._schedule_alarm_if_due("compressor", now)
 
         self._integrate_energy_to(now)
         self._schedule_save()
         self._schedule_deadline()
         self._notify()
+
+    async def _run_pending_reminder(self, generation: int) -> None:
+        try:
+            await self._run_actions_serialized(
+                CONF_PENDING_ACTIONS,
+                lambda: (
+                    self.pending_unload
+                    and self.door_open is False
+                    and generation == self._pending_generation
+                ),
+            )
+        finally:
+            if generation == self._pending_generation and not self._is_unloading:
+                self._pending_action_running = False
+                if (
+                    self.pending_unload
+                    and self.door_open is False
+                    and self.pending_reminder_count < self._pending_maximum
+                ):
+                    self.next_pending_reminder = dt_util.utcnow() + timedelta(
+                        seconds=self._pending_interval_seconds
+                    )
+                else:
+                    self.next_pending_reminder = None
+                self._schedule_save()
+                self._schedule_deadline()
+                self._notify()
 
     def _integrate_energy_to(self, now: datetime) -> None:
         if self._energy_power_w is None or self._energy_updated_at is None:
@@ -525,11 +623,24 @@ class ApplianceRuntime:
         self._energy_updated_at = now
 
     def _run_actions_in_background(self, key: str) -> None:
+        if self._is_unloading:
+            return
         self.entry.async_create_background_task(
             self.hass,
-            self._run_actions(key),
+            self._run_actions_serialized(key),
             name=f"{DOMAIN} {self.entry.entry_id} {key}",
         )
+
+    async def _run_actions_serialized(
+        self, key: str, should_run: Callable[[], bool] | None = None
+    ) -> None:
+        if should_run is not None and not should_run():
+            return
+        lock = self._action_locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            if should_run is not None and not should_run():
+                return
+            await self._run_actions(key)
 
     async def _run_actions(self, key: str) -> None:
         actions = self.config.get(key, [])
@@ -564,6 +675,7 @@ class ApplianceRuntime:
         currently_active = getattr(self, active_key)
 
         if active and not currently_active:
+            self._alarm_generation[alarm] += 1
             delay_key = (
                 CONF_DOOR_OPEN_DELAY_SECONDS
                 if alarm == "door"
@@ -582,39 +694,70 @@ class ApplianceRuntime:
                 now + timedelta(seconds=int(self.config.get(delay_key, default_delay))),
             )
         elif not active and currently_active:
+            self._alarm_generation[alarm] += 1
             setattr(self, active_key, False)
             setattr(self, count_key, 0)
             setattr(self, deadline_key, None)
 
-    async def _run_alarm_if_due(self, alarm: str, now: datetime) -> None:
-        active_key = f"{alarm}_alarm_active"
-        count_key = f"{alarm}_alarm_fired_count"
-        deadline_key = f"next_{alarm}_alarm"
-        running_key = f"_{alarm}_alarm_action_running"
-        deadline = getattr(self, deadline_key)
+    def _alarm_is_due(self, alarm: str, now: datetime) -> bool:
+        if self._is_unloading:
+            return False
+        deadline = getattr(self, f"next_{alarm}_alarm")
         if (
-            not getattr(self, active_key)
-            or getattr(self, running_key)
+            not getattr(self, f"{alarm}_alarm_active")
+            or getattr(self, f"_{alarm}_alarm_action_running")
             or deadline is None
             or now < deadline
         ):
-            return
-        if (alarm == "door" and self.door_open is None) or (
-            alarm == "compressor" and not self._power_available
-        ):
-            return
+            return False
+        return (alarm != "door" or self.door_open is not None) and (
+            alarm != "compressor" or self._power_available
+        )
 
+    def _schedule_alarm_if_due(self, alarm: str, now: datetime) -> None:
+        if self._is_unloading:
+            return
+        if not self._alarm_is_due(alarm, now):
+            return
+        setattr(self, f"_{alarm}_alarm_action_running", True)
+        generation = self._alarm_generation[alarm]
+        self.entry.async_create_background_task(
+            self.hass,
+            self._execute_alarm(alarm, now, generation),
+            name=f"{DOMAIN} {self.entry.entry_id} {alarm} alarm",
+        )
+
+    async def _run_alarm_if_due(self, alarm: str, now: datetime) -> None:
+        if not self._alarm_is_due(alarm, now):
+            return
+        generation = self._alarm_generation[alarm]
+        setattr(self, f"_{alarm}_alarm_action_running", True)
+        await self._execute_alarm(alarm, now, generation)
+
+    async def _execute_alarm(self, alarm: str, now: datetime, generation: int) -> None:
+        active_key = f"{alarm}_alarm_active"
+        count_key = f"{alarm}_alarm_fired_count"
+        deadline_key = f"next_{alarm}_alarm"
         action_key = (
             CONF_DOOR_OPEN_ACTIONS
             if alarm == "door"
             else CONF_COMPRESSOR_INACTIVE_ACTIONS
         )
-        setattr(self, running_key, True)
         try:
-            await self._run_actions(action_key)
+            await self._run_actions_serialized(
+                action_key,
+                lambda: (
+                    getattr(self, active_key)
+                    and generation == self._alarm_generation[alarm]
+                ),
+            )
         finally:
-            setattr(self, running_key, False)
-        if not getattr(self, active_key):
+            setattr(self, f"_{alarm}_alarm_action_running", False)
+        if (
+            self._is_unloading
+            or not getattr(self, active_key)
+            or generation != self._alarm_generation[alarm]
+        ):
             return
 
         fired_count = getattr(self, count_key) + 1
@@ -629,9 +772,16 @@ class ApplianceRuntime:
                     DEFAULT_ALARM_REPEAT_INTERVAL_SECONDS,
                 )
             )
-            setattr(self, deadline_key, now + timedelta(seconds=interval))
+            setattr(
+                self,
+                deadline_key,
+                dt_util.utcnow() + timedelta(seconds=interval),
+            )
         else:
             setattr(self, deadline_key, None)
+        self._schedule_save()
+        self._schedule_deadline()
+        self._notify()
 
     def _schedule_save(self) -> None:
         self._store.async_delay_save(self._export_state, _SAVE_DELAY_SECONDS)

@@ -26,7 +26,7 @@ El domini es manté diferenciat de `appliance_cycle`, que ja l'utilitza una altr
 La integració ha de permetre:
 
 - **Crear** un dispositiu per a cada electrodomèstic, amb nom i tipus propis.
-- **Modificar** la configuració d'un dispositiu existent sense crear-ne un duplicat. Els valors i accions s'han de poder canviar després de la configuració inicial.
+- **Modificar** la configuració d'un dispositiu existent sense crear-ne un duplicat. El nom, les fonts, els valors i les accions s'han de poder canviar després de la configuració inicial, però el tipus del dispositiu és immutable; per usar un perfil diferent cal crear un dispositiu nou.
 - **Eliminar** un dispositiu de la integració i retirar-ne les entitats del registre de Home Assistant quan ja no hi hagi cap entrada que les utilitzi.
 - Mantenir cada aparell i la seva configuració aïllats dels altres, encara que comparteixin la mateixa integració.
 - Recuperar les entrades configurades després d'un reinici de Home Assistant.
@@ -39,7 +39,7 @@ Cada dispositiu ha de tenir una configuració pròpia amb els camps següents.
 
 ### 4.1 Flux de configuració en quatre pantalles
 
-La creació i l'edició d'un dispositiu han de presentar exactament aquests quatre passos, en aquest ordre:
+La creació i l'edició d'un dispositiu han de presentar exactament aquests quatre passos, en aquest ordre. En editar, el tipus existent es mostra fix i no es pot canviar; el nom continua sent editable.
 
 1. **Tipus i nom**: seleccionar el tipus de dispositiu i definir-ne el nom.
 2. **Sensors**: mostrar només els selectors d'entrada que admet el perfil. La font necessària per detectar l'activitat és obligatòria; la resta d'entrades depenen del tipus.
@@ -188,6 +188,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 36. Després d'observar el sensor d'arribada apagat, cada transició a `on` executa les accions d'arribada i activa «Pendent de recollir»; l'estat inicial `on` o un estat no disponible no genera una arribada falsa.
 37. Obrir la porta principal neteja «Pendent de recollir» i cancel·la recordatoris. Si arriba correu amb la porta oberta, l'estat queda pendent però els recordatoris esperen que la porta es tanqui.
 38. La nevera per interruptor (`refrigerator_switch`) exigeix switch i contacte de porta; el switch és la font d'activitat. No crea potència, energia ni alarma de compressor inactiu, i sí l'alarma de porta oberta. L'apagada del switch de control opcional de `refrigerator` finalitza immediatament un període actiu.
+39. En editar una entrada existent, el tipus configurat es mostra però no es pot canviar; el nom, les fonts, els paràmetres i les accions es poden editar. Per canviar de perfil cal crear una entrada nova.
 
 ## 9. Qualitat i proves
 

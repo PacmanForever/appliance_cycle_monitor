@@ -84,6 +84,11 @@ class _OptionalEntitySelector(selector.EntitySelector):
         return super().__call__(data)
 
 
+class _LockedSelectSelector(selector.SelectSelector):
+    def __call__(self, data: Any) -> Any:
+        return data
+
+
 def _number_selector(unit: str, step: float = 0.1) -> selector.NumberSelector:
     return selector.NumberSelector(
         selector.NumberSelectorConfig(
@@ -94,15 +99,27 @@ def _number_selector(unit: str, step: float = 0.1) -> selector.NumberSelector:
     )
 
 
-def _identity_schema(values: dict[str, Any]) -> vol.Schema:
+def _identity_schema(
+    values: dict[str, Any], appliance_types: tuple[str, ...] = APPLIANCE_TYPES
+) -> vol.Schema:
     return vol.Schema(
         {
         _required(CONF_NAME, values): selector.TextSelector(),
-        _required(CONF_APPLIANCE_TYPE, values): selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=list(APPLIANCE_TYPES),
-                mode=selector.SelectSelectorMode.DROPDOWN,
-                translation_key=CONF_APPLIANCE_TYPE,
+        _required(CONF_APPLIANCE_TYPE, values): (
+            _LockedSelectSelector(
+                selector.SelectSelectorConfig(
+                    options=list(appliance_types),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key=CONF_APPLIANCE_TYPE,
+                )
+            )
+            if len(appliance_types) == 1
+            else selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=list(appliance_types),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key=CONF_APPLIANCE_TYPE,
+                )
             )
         ),
         }
@@ -296,6 +313,24 @@ def _validate_thresholds(
     )
 
 
+def _validate_sensor_values(
+    values: dict[str, Any], profile: ApplianceTypeProfile
+) -> bool:
+    arrival_input = next(
+        (
+            item
+            for item in profile.sensor_inputs
+            if item.detection_source in ("mail_motion", "mail_slot")
+        ),
+        None,
+    )
+    if arrival_input is None:
+        return True
+    arrival_entity = values.get(arrival_input.config_key)
+    door_entity = values.get(CONF_DOOR_ENTITY)
+    return arrival_entity is None or door_entity is None or arrival_entity != door_entity
+
+
 def _validate_pending(values: dict[str, Any]) -> bool:
     try:
         delay = float(values[CONF_PENDING_DELAY_SECONDS])
@@ -447,6 +482,15 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
             self._draft.update(_normalize_sensor_values(user_input, profile))
+            if not _validate_sensor_values(self._draft, profile):
+                return self.async_show_form(
+                    step_id="sensors",
+                    data_schema=_sensor_schema(
+                        _sensor_form_values(self._draft, profile), profile
+                    ),
+                    errors={"base": "mailbox_sensors_must_be_distinct"},
+                    last_step=False,
+                )
             return await self.async_step_parameters()
         profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
@@ -525,10 +569,23 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
             self._saved = {**self.config_entry.data, **self.config_entry.options}
             self._saved.setdefault(CONF_NAME, self.config_entry.title)
         if user_input is not None:
+            if user_input[CONF_APPLIANCE_TYPE] != self._saved[CONF_APPLIANCE_TYPE]:
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=_identity_schema(
+                        self._saved, (self._saved[CONF_APPLIANCE_TYPE],)
+                    ),
+                    errors={"base": "appliance_type_immutable"},
+                    last_step=False,
+                )
             self._draft = dict(user_input)
             return await self.async_step_sensors()
         return self.async_show_form(
-            step_id="init", data_schema=_identity_schema(self._saved), last_step=False
+            step_id="init",
+            data_schema=_identity_schema(
+                self._saved, (self._saved[CONF_APPLIANCE_TYPE],)
+            ),
+            last_step=False,
         )
 
     async def async_step_sensors(
@@ -538,6 +595,16 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
         if user_input is not None:
             profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
             self._draft.update(_normalize_sensor_values(user_input, profile))
+            values = {**self._saved, **self._draft}
+            if not _validate_sensor_values(values, profile):
+                return self.async_show_form(
+                    step_id="sensors",
+                    data_schema=_sensor_schema(
+                        _sensor_form_values(values, profile), profile
+                    ),
+                    errors={"base": "mailbox_sensors_must_be_distinct"},
+                    last_step=False,
+                )
             return await self.async_step_parameters()
         profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
         return self.async_show_form(

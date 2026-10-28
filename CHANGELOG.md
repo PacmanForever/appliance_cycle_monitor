@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 - 2026-10-28
+
+### Added
+
+- Report configured input entities that are missing or unavailable as Home Assistant Repairs issues, and clear the issues when inputs recover.
+- Keep the appliance profile fixed after setup; create a new device to use a different profile.
+- Validate that mailbox arrival and main-door detection use separate entities.
+
+### Changed
+
+- Serialize actions within each event group and run reminder and alarm actions outside the deadline callback.
+- Prevent stale alarm and reminder actions from changing a later state, and avoid catch-up bursts after slow actions or runtime unload.
+- Start repeat intervals after the previous action completes.
+
 ## 0.3.0 - 2026-10-27
 
 ### Added

@@ -1,4 +1,10 @@
 {
+  "issues": {
+    "input_unavailable": {
+      "title": "Configured input unavailable",
+      "description": "The configured input entity {entity_id} is missing or unavailable. Restore the entity or edit this appliance to select a replacement."
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -77,7 +83,9 @@
     "error": {
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
-      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number."
+      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
+      "appliance_type_immutable": "The appliance type cannot be changed after setup. Add a new appliance with the desired type.",
+      "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities."
     }
   },
   "options": {
@@ -158,7 +166,9 @@
     "error": {
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
-      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number."
+      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
+      "appliance_type_immutable": "The appliance type cannot be changed after setup. Add a new appliance with the desired type.",
+      "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities."
     }
   },
   "selector": {

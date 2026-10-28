@@ -15,15 +15,29 @@ A local Home Assistant integration for washers, dishwashers, dryers, air conditi
 
 ## Features
 
-- Detect cycle start and finish from power thresholds with configurable confirmation times.
-- Detect an air conditioner's activity either from its louver contact or from power; choose the power profile when both sensors are available.
-- Monitor compressor activity and door-open duration with independent, configurable alarms on power-based refrigerators.
-- Alternatively, detect refrigerator activity from a required smart switch and monitor its door; this profile has no compressor-inactivity alarm.
-- Optionally add a controllable smart plug to a power-based refrigerator without changing its power-based detection source.
-- Detect mail through mailbox interior motion or a mail-slot flap contact, run arrival actions, and track mail pending collection.
-- Track lifetime energy, last-cycle duration, estimated remaining time, and running state.
-- Optionally monitor laundry-appliance doors and smart plugs, and track pending unloading.
-- Configure profile-specific Home Assistant actions and persist cycle, reminder, and alarm state across Home Assistant restarts.
+- **Washer**
+	- Detect cycles from power thresholds and configurable confirmation times.
+	- Optionally monitor the door and control a smart plug; track pending unloading and reminders.
+- **Dishwasher**
+	- Detect cycles from power thresholds and configurable confirmation times.
+	- Optionally monitor the door and control a smart plug; track pending unloading and reminders.
+- **Dryer**
+	- Detect cycles from power thresholds and configurable confirmation times.
+	- Optionally monitor the door and control a smart plug; track pending unloading and reminders.
+- **Air conditioner**
+	- **Louver-contact option:** detect activity from a binary contact on the louver; no power or energy entities are created.
+	- **Power option:** detect activity from power readings and configurable thresholds. When both sources are available, choose this profile to use power.
+- **Refrigerator**
+	- **Power option:** requires a power sensor and door contact. A controllable smart plug is optional; compressor-activity and door-open alarms are available.
+	- **Smart-switch option:** requires a smart switch and separate door contact. The switch detects activity; no power, energy, or compressor-inactivity alarm is provided. A door-open alarm is available.
+- **Mailbox**
+	- **Interior-motion option:** detect incoming mail with a motion sensor inside the mailbox.
+	- **Mail-slot option:** detect incoming mail with a contact on the letter flap.
+	- Both options track pending collection, support arrival actions and reminders, and use a separate main-door contact to clear pending status.
+- **Shared features**
+	- Provide per-device Home Assistant actions and restore cycle, reminder, and alarm state after Home Assistant restarts.
+	- Expose running state and last-active duration; power-based profiles also track lifetime energy, while estimated remaining time is limited to laundry profiles.
+	- Serialize each action group, report unavailable configured inputs through Repairs, and clear the repair issue when an input recovers.
 
 ## Installation
 
@@ -43,7 +57,7 @@ The integration works on supported Home Assistant versions; displaying its local
 
 ## Configuration
 
-Each appliance has a separate config entry and device. Setup and editing use four steps:
+Each appliance has a separate config entry and device. Setup and editing use four steps. The appliance type is fixed after setup; create a new device to use a different profile.
 
 1. Select the appliance type and enter a name.
 2. Select the sensors required or supported by that profile. Laundry doors and smart plugs are optional. A power-based refrigerator requires a power sensor and door contact; its controllable smart plug is optional and does not replace power detection. A smart-switch refrigerator requires the switch and a separate door contact. An AC uses either its louver contact or power; a mailbox uses an arrival sensor and its main-door contact.

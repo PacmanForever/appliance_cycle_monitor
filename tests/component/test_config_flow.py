@@ -165,6 +165,39 @@ async def test_add_air_conditioner_with_opening_sensor(hass, enable_custom_integ
 
 
 @pytest.mark.asyncio
+async def test_mailbox_slot_requires_a_separate_main_door_sensor(
+    hass, enable_custom_integrations
+):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    flow_id = result["flow_id"]
+    await hass.config_entries.flow.async_configure(
+        flow_id,
+        {"name": "Mailbox", CONF_APPLIANCE_TYPE: "mailbox_slot"},
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        flow_id,
+        {
+            CONF_MAIL_SLOT_ENTITY: "binary_sensor.mailbox_contact",
+            "mailbox_slot_door_entity": "binary_sensor.mailbox_contact",
+        },
+    )
+    assert result["step_id"] == "sensors"
+    assert result["errors"] == {"base": "mailbox_sensors_must_be_distinct"}
+
+    result = await hass.config_entries.flow.async_configure(
+        flow_id,
+        {
+            CONF_MAIL_SLOT_ENTITY: "binary_sensor.mail_slot",
+            "mailbox_slot_door_entity": "binary_sensor.mailbox_door",
+        },
+    )
+    assert result["step_id"] == "parameters"
+
+
+@pytest.mark.asyncio
 async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
     hass, enable_custom_integrations
 ):
@@ -235,6 +268,39 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
     assert CONF_PENDING_DELAY_SECONDS not in entry.options
     assert CONF_PENDING_INTERVAL_SECONDS not in entry.options
     assert CONF_PENDING_REPEATS not in entry.options
+
+
+@pytest.mark.asyncio
+async def test_options_flow_rejects_appliance_type_changes(
+    hass, enable_custom_integrations
+):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Washer",
+        data={
+            "name": "Washer",
+            CONF_APPLIANCE_TYPE: "washer",
+            CONF_POWER_ENTITY: "sensor.washer_power",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    flow_id = result["flow_id"]
+    result = await hass.config_entries.options.async_configure(
+        flow_id,
+        {"name": "Washer", CONF_APPLIANCE_TYPE: "refrigerator"},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "init"
+    assert result["errors"] == {"base": "appliance_type_immutable"}
+
+    result = await hass.config_entries.options.async_configure(
+        flow_id,
+        {"name": "Washer", CONF_APPLIANCE_TYPE: "washer"},
+    )
+    assert result["step_id"] == "sensors"
 
 
 @pytest.mark.asyncio
