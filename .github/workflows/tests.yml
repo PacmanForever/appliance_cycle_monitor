@@ -21,7 +21,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-test.txt
       - run: pip install -r requirements-test.txt
-      - run: python -m pytest -q tests/unit --cov=custom_components.appliance_cycle_monitor --cov-report= --cov-fail-under=0
+      - run: python -m pytest -q tests/unit --cov=custom_components.home_activity_manager --cov-report= --cov-fail-under=0
         env:
           COVERAGE_FILE: .coverage.unit
       - uses: actions/upload-artifact@v4
@@ -41,7 +41,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-test.txt
       - run: pip install -r requirements-test.txt
-      - run: python -m pytest -q tests/component --cov=custom_components.appliance_cycle_monitor --cov-report= --cov-fail-under=0
+      - run: python -m pytest -q tests/component --cov=custom_components.home_activity_manager --cov-report= --cov-fail-under=0
         env:
           COVERAGE_FILE: .coverage.component
       - uses: actions/upload-artifact@v4

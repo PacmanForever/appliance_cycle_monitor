@@ -8,7 +8,7 @@ import unittest
 import pytest
 import voluptuous as vol
 
-from custom_components.appliance_cycle_monitor.config_flow import (
+from custom_components.home_activity_manager.config_flow import (
     ApplianceCycleMonitorConfigFlow,
     ApplianceCycleMonitorOptionsFlow,
     _action_schema,
@@ -24,7 +24,7 @@ from custom_components.appliance_cycle_monitor.config_flow import (
     _validate_pending,
     _validate_thresholds,
 )
-from custom_components.appliance_cycle_monitor.appliance_types import (
+from custom_components.home_activity_manager.appliance_types import (
     APPLIANCE_CATEGORIES,
     APPLIANCE_MODEL_NAMES,
     APPLIANCE_PROFILES,
@@ -32,7 +32,7 @@ from custom_components.appliance_cycle_monitor.appliance_types import (
     get_appliance_model,
     get_appliance_profile,
 )
-from custom_components.appliance_cycle_monitor.const import (
+from custom_components.home_activity_manager.const import (
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
     CONF_APPLIANCE_TYPE,
@@ -507,7 +507,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
 
 
     def test_all_translation_files_have_matching_keys(self) -> None:
-        root = Path(__file__).parents[2] / "custom_components" / "appliance_cycle_monitor"
+        root = Path(__file__).parents[2] / "custom_components" / "home_activity_manager"
         translations = [
             json.loads((root / "strings.json").read_text(encoding="utf-8")),
             json.loads((root / "translations" / "en.json").read_text(encoding="utf-8")),

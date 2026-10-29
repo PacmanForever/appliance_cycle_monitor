@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from custom_components.appliance_cycle_monitor.appliance import (
+from custom_components.home_activity_manager.appliance import (
     ApplianceCycleDetector,
     BinaryActivityDetector,
     CycleEvent,

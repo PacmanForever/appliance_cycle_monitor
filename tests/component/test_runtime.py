@@ -14,7 +14,7 @@ from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.plugins import enable_custom_integrations
 
-from custom_components.appliance_cycle_monitor.const import (
+from custom_components.home_activity_manager.const import (
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
     CONF_APPLIANCE_TYPE,
@@ -43,23 +43,23 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_START_ACTIONS,
     DOMAIN,
 )
-from custom_components.appliance_cycle_monitor import (
+from custom_components.home_activity_manager import (
     _async_appliance_device_id,
     _async_reload_entry,
     async_remove_entry,
     async_unload_entry,
 )
-from custom_components.appliance_cycle_monitor import runtime as runtime_module
-from custom_components.appliance_cycle_monitor.appliance import ApplianceCycleDetector
-from custom_components.appliance_cycle_monitor.appliance_types import APPLIANCE_PROFILES
-from custom_components.appliance_cycle_monitor.runtime import ApplianceRuntime
-from custom_components.appliance_cycle_monitor.binary_sensor import ApplianceBinarySensor
-from custom_components.appliance_cycle_monitor.sensor import ApplianceSensor
-from custom_components.appliance_cycle_monitor.button import (
+from custom_components.home_activity_manager import runtime as runtime_module
+from custom_components.home_activity_manager.appliance import ApplianceCycleDetector
+from custom_components.home_activity_manager.appliance_types import APPLIANCE_PROFILES
+from custom_components.home_activity_manager.runtime import ApplianceRuntime
+from custom_components.home_activity_manager.binary_sensor import ApplianceBinarySensor
+from custom_components.home_activity_manager.sensor import ApplianceSensor
+from custom_components.home_activity_manager.button import (
     ClearPendingButton,
     async_setup_entry as setup_button_entry,
 )
-from custom_components.appliance_cycle_monitor.switch import (
+from custom_components.home_activity_manager.switch import (
     AppliancePlugSwitch,
     async_setup_entry as setup_switch_entry,
 )

@@ -7,15 +7,15 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er, 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.plugins import enable_custom_integrations
 
-from custom_components.appliance_cycle_monitor import async_migrate_entry
-from custom_components.appliance_cycle_monitor.appliance_types import (
+from custom_components.home_activity_manager import async_migrate_entry
+from custom_components.home_activity_manager.appliance_types import (
     APPLIANCE_CATEGORIES,
     APPLIANCE_PROFILES,
 )
-from custom_components.appliance_cycle_monitor.config_flow import (
+from custom_components.home_activity_manager.config_flow import (
     _validate_climate_entity,
 )
-from custom_components.appliance_cycle_monitor.const import (
+from custom_components.home_activity_manager.const import (
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
     CONF_APPLIANCE_TYPE,

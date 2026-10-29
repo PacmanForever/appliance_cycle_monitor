@@ -1,6 +1,6 @@
-"""Constants for Appliance Cycle Monitor."""
+"""Constants for Home Activity Manager."""
 
-DOMAIN = "appliance_cycle_monitor"
+DOMAIN = "home_activity_manager"
 
 CONF_APPLIANCE_TYPE = "appliance_type"
 CONF_POWER_ENTITY = "power_entity"

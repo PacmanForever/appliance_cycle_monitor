@@ -120,12 +120,12 @@
     "activity_mode": {
       "options": {"running_sensor": "1. Sensor binario (encendido = aire en marcha)", "climate": "2. Entidad climate (sigue la actividad HVAC)", "power": "4. Sensor de potencia (sigue los umbrales de inicio y parada)", "smart_plug": "Interruptor inteligente (encendido = aparato activo)", "mail_slot": "Contacto de trampilla (abrir = llega correo)", "mail_motion": "Movimiento interior (movimiento = llega correo)"}
     },
-    "activity_mode_air_conditioner": {"options": {"running_sensor": "Contacto de lama (abierto = aire acondicionado activo)", "climate": "Entidad climate (sigue la actividad HVAC)", "power": "Sensor de potencia (umbrales de inicio y parada)"}},
-    "activity_mode_dryer": {"options": {"power": "Sensor de potencia (umbrales de inicio y parada)"}},
+    "activity_mode_air_conditioner": {"options": {"running_sensor": "Contacto de lama (abierto = aire acondicionado activo)", "climate": "Entidad climate (sigue la actividad HVAC)", "power": "Sensor de potencia (sigue los umbrales de inicio y parada)"}},
+    "activity_mode_dryer": {"options": {"power": "Sensor de potencia (sigue los umbrales de inicio y parada)"}},
     "activity_mode_mailbox": {"options": {"mail_slot": "Contacto de la trampilla (detecta el correo)", "mail_motion": "Sensor de movimiento interior (detecta el correo)"}},
-    "activity_mode_refrigerator": {"options": {"smart_plug": "Interruptor inteligente (encendido = frigorífico activo)", "power": "Sensor de potencia (umbrales del compresor)"}},
-    "activity_mode_washer": {"options": {"power": "Sensor de potencia (umbrales de inicio y finalización)"}},
-    "activity_mode_dishwasher": {"options": {"power": "Sensor de potencia (umbrales de inicio y finalización)"}},
+    "activity_mode_refrigerator": {"options": {"smart_plug": "Interruptor inteligente (encendido = frigorífico activo)", "power": "Sensor de potencia (sigue los umbrales de inicio y parada)"}},
+    "activity_mode_washer": {"options": {"power": "Sensor de potencia (sigue los umbrales de inicio y parada)"}},
+    "activity_mode_dishwasher": {"options": {"power": "Sensor de potencia (sigue los umbrales de inicio y parada)"}},
     "appliance_type": {
       "options": {
         "washer": "Lavadora",

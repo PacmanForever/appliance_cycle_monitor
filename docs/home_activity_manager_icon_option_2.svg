@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Home Activity Manager icon option 2: activity pulse</title>
+  <rect x="12" y="12" width="232" height="232" rx="52" fill="#f2efe4"/>
+  <path d="m51 111 77-63 77 63v78a15 15 0 0 1-15 15H66a15 15 0 0 1-15-15z" fill="#167d78"/>
+  <path d="M82 204v-53a18 18 0 0 1 36 0v53" fill="#153f3d"/>
+  <circle cx="158" cy="143" r="38" fill="#f2efe4"/>
+  <path d="M132 145h14l9-18 12 35 9-17h11" fill="none" stroke="#e98160" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"/>
+  <circle cx="203" cy="53" r="13" fill="#efb44f"/>
+</svg>
