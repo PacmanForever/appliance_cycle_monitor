@@ -33,7 +33,7 @@ def _async_appliance_device_id(
 	registry = dr.async_get(hass)
 	get_by_identifier = getattr(registry, "async_get_device_by_identifier", None)
 	device = (
-		get_by_identifier((DOMAIN, entry_id))
+		get_by_identifier((DOMAIN, entry_id), entry_id)
 		if get_by_identifier is not None
 		else registry.async_get_device(identifiers={(DOMAIN, entry_id)})
 	)

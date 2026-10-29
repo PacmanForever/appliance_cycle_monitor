@@ -14,88 +14,47 @@
           "appliance_type": "Tipo de electrodoméstico"
         }
       },
-      "activity_mode": {
-        "title": "Detección de actividad",
-        "data": {"activity_mode": "Modalidad de detección de actividad"},
-        "data_description": {"activity_mode": "Solo esta opción determina la actividad del aparato. En el buzón, determina qué evento cuenta como correo nuevo; los sensores opcionales no cambian el método de detección seleccionado."}
-      },
-      "sensors": {
-        "title": "Sensores de entrada",
-        "data": {
-          "climate_entity": "Entidad climate original del aire acondicionado (sin dispositivo principal)",
-          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
-          "energy_entity": "Sensor de energía total acumulada (opcional)",
-          "running_entity": "Sensor binario activo cuando la lama del aire acondicionado está abierta",
-          "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
-          "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
-          "washer_door_entity": "Sensor de apertura de la puerta de la lavadora (opcional)",
-          "dishwasher_door_entity": "Sensor de apertura de la puerta del lavavajillas (opcional)",
-          "dryer_door_entity": "Sensor de apertura de la puerta de la secadora (opcional)",
-          "refrigerator_door_entity": "Sensor de apertura de la puerta del frigorífico",
-          "smart_plug_entity": "Interruptor inteligente del frigorífico",
-          "refrigerator_switch_door_entity": "Sensor de apertura de la puerta del frigorífico",
-          "mailbox_motion_door_entity": "Contacto de la puerta principal del buzón",
-          "mailbox_slot_door_entity": "Contacto de la puerta principal del buzón",
-          "plug_entity": "Enchufe inteligente del aparato (opcional)"
-        },
-        "data_description": {
-          "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo asociado; volverá a quedar sin dispositivo al sustituirla o eliminar el aparato.",
-          "energy_entity": "Usa la energía total acumulada del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
-          "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
-          "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
-          "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
-          "washer_door_entity": "El contacto abierto indica que la puerta de la lavadora está abierta.",
-          "dishwasher_door_entity": "El contacto abierto indica que la puerta del lavavajillas está abierta.",
-          "dryer_door_entity": "El contacto abierto indica que la puerta de la secadora está abierta.",
-          "refrigerator_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
-          "smart_plug_entity": "Selecciona el interruptor inteligente conectado al frigorífico; encendido significa que está alimentado y apagado que no está en marcha.",
-          "refrigerator_switch_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
-          "mailbox_motion_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
-          "mailbox_slot_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
-          "plug_entity": "La integración también puede incluir un interruptor. Si lo apagas, cortarás bruscamente la alimentación del aparato."
-        }
-      },
-      "parameters": {
-        "title": "Parámetros específicos del tipo",
-        "description": "Los parámetros dependen del perfil seleccionado. Si no aparece ningún campo, este perfil no tiene parámetros configurables.",
-        "data": {
-          "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
-          "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
-          "finish_power_w": "Potencia por debajo de la cual se considera que termina el ciclo (W)",
-          "finish_duration_seconds": "Segundos que la potencia debe estar bajo el umbral final para confirmar que terminó el ciclo",
-          "max_runtime_seconds": "Tiempo máximo del ciclo",
-          "pending_delay_seconds": "Espera tras el ciclo antes del primer aviso para vaciar",
-          "pending_interval_seconds": "Intervalo entre los avisos posteriores para vaciar",
-          "pending_repeats": "Avisos adicionales después del primero (3 significa 4 en total)",
-          "door_open_delay_seconds": "Segundos que la puerta del frigorífico puede estar abierta antes del aviso",
-          "compressor_inactive_delay_seconds": "Segundos sin actividad del compresor antes del aviso",
-          "alarm_repeat_interval_seconds": "Intervalo entre avisos repetidos del frigorífico (segundos)",
-          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)",
-          "plug_off_repeat_interval_seconds": "Intervalo entre avisos repetidos con el enchufe apagado (segundos)",
-          "plug_off_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
-        },
-        "data_description": {
-          "max_runtime_seconds": "Opcional. Déjalo vacío para desactivarlo. Si el ciclo sigue en marcha al cumplirse este tiempo, se ejecutarán una vez las acciones que configures para este límite; el aparato no se detendrá."
-        }
-      },
-      "actions": {
-        "title": "Acciones para los eventos del ciclo",
-        "data": {
-          "start_actions": "Acciones que se ejecutan cuando empieza el ciclo",
-          "finish_actions": "Acciones que se ejecutan cuando termina el ciclo",
-          "max_runtime_actions": "Acciones que se ejecutan una vez si se supera el tiempo máximo",
-          "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
-          "door_open_actions": "Acciones para la alarma de puerta abierta del frigorífico",
-          "compressor_inactive_actions": "Acciones para la alarma de inactividad del compresor",
-          "plug_off_actions": "Acciones mientras el enchufe inteligente seleccionado esté apagado",
-          "mail_arrival_actions": "Acciones que se ejecutan cuando se detecta correo"
-        }
-      }
+      "activity_mode_air_conditioner": {"title": "Modalidad de detección del aire acondicionado", "data": {"activity_mode": "Cómo detecta la actividad este aire acondicionado"}, "data_description": {"activity_mode": "Elige la modalidad de detección propia del aire acondicionado."}},
+      "activity_mode_dryer": {"title": "Modalidad de detección de la secadora", "data": {"activity_mode": "Cómo detecta la actividad esta secadora"}, "data_description": {"activity_mode": "Elige la modalidad de detección propia de la secadora."}},
+      "activity_mode_mailbox": {"title": "Modalidad de detección del buzón", "data": {"activity_mode": "Cómo detecta la llegada de correo este buzón"}, "data_description": {"activity_mode": "Elige el sensor de llegada propio de este buzón."}},
+      "activity_mode_refrigerator": {"title": "Modalidad de detección del frigorífico", "data": {"activity_mode": "Cómo detecta la actividad este frigorífico"}, "data_description": {"activity_mode": "Elige la modalidad de detección propia del frigorífico."}},
+      "activity_mode_washer": {"title": "Modalidad de detección de la lavadora", "data": {"activity_mode": "Cómo detecta la actividad esta lavadora"}, "data_description": {"activity_mode": "Elige la modalidad de detección propia de la lavadora."}},
+      "activity_mode_dishwasher": {"title": "Modalidad de detección del lavavajillas", "data": {"activity_mode": "Cómo detecta la actividad este lavavajillas"}, "data_description": {"activity_mode": "Elige la modalidad de detección propia del lavavajillas."}},
+      "sensors_air_conditioner_climate": {"title": "Sensores del aire acondicionado (climate)", "data": {"air_conditioner_climate_climate_entity": "Entidad climate original", "air_conditioner_climate_power_entity": "Sensor de potencia en vatios (opcional)", "air_conditioner_climate_running_entity": "Sensor binario de la lama (opcional)", "air_conditioner_climate_plug_entity": "Enchufe inteligente (opcional)", "air_conditioner_climate_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_air_conditioner_climate": {"title": "Parámetros del aire acondicionado (climate)", "data": {"plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_air_conditioner_climate": {"title": "Acciones del aire acondicionado (climate)", "data": {"start_actions": "Acciones cuando empieza la actividad HVAC (opcional)", "finish_actions": "Acciones cuando se detiene la actividad HVAC (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_air_conditioner_contact": {"title": "Sensores del aire acondicionado (contacto de lama)", "data": {"air_conditioner_contact_running_entity": "Sensor binario de la lama (obligatorio)", "air_conditioner_contact_power_entity": "Sensor de potencia en vatios (opcional)", "air_conditioner_contact_plug_entity": "Enchufe inteligente (opcional)", "air_conditioner_contact_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_air_conditioner_contact": {"title": "Parámetros del aire acondicionado (contacto de lama)", "data": {"plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_air_conditioner_contact": {"title": "Acciones del aire acondicionado (contacto de lama)", "data": {"start_actions": "Acciones cuando se abre la lama (opcional)", "finish_actions": "Acciones cuando se cierra la lama (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_air_conditioner_power": {"title": "Sensores del aire acondicionado (potencia)", "data": {"air_conditioner_power_power_entity": "Sensor de potencia en vatios (obligatorio)", "air_conditioner_power_running_entity": "Sensor binario de la lama (opcional)", "air_conditioner_power_plug_entity": "Enchufe inteligente (opcional)", "air_conditioner_power_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_air_conditioner_power": {"title": "Parámetros del aire acondicionado (potencia)", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_air_conditioner_power": {"title": "Acciones del aire acondicionado (potencia)", "data": {"start_actions": "Acciones cuando el umbral confirma actividad (opcional)", "finish_actions": "Acciones cuando el umbral confirma que se ha detenido (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_washer": {"title": "Sensores de la lavadora", "data": {"washer_power_entity": "Sensor de potencia en vatios (obligatorio)", "washer_door_entity": "Sensor de puerta de la lavadora (opcional)", "washer_plug_entity": "Enchufe inteligente (opcional)", "washer_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_washer": {"title": "Parámetros del ciclo de lavado", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "max_runtime_seconds": "Tiempo máximo del ciclo (opcional)", "pending_delay_seconds": "Retraso antes del primer aviso para vaciar (segundos)", "pending_interval_seconds": "Intervalo entre avisos para vaciar (segundos)", "pending_repeats": "Avisos adicionales para vaciar", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_washer": {"title": "Acciones de la lavadora", "data": {"start_actions": "Acciones cuando empieza el ciclo (opcional)", "finish_actions": "Acciones cuando termina el ciclo (opcional)", "max_runtime_actions": "Acciones si se supera el tiempo máximo (opcional)", "pending_actions": "Acciones mientras está pendiente de vaciar (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_dishwasher": {"title": "Sensores del lavavajillas", "data": {"dishwasher_power_entity": "Sensor de potencia en vatios (obligatorio)", "dishwasher_door_entity": "Sensor de puerta del lavavajillas (opcional)", "dishwasher_plug_entity": "Enchufe inteligente (opcional)", "dishwasher_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_dishwasher": {"title": "Parámetros del ciclo de lavado", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "max_runtime_seconds": "Tiempo máximo del ciclo (opcional)", "pending_delay_seconds": "Retraso antes del primer aviso para vaciar (segundos)", "pending_interval_seconds": "Intervalo entre avisos para vaciar (segundos)", "pending_repeats": "Avisos adicionales para vaciar", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_dishwasher": {"title": "Acciones del lavavajillas", "data": {"start_actions": "Acciones cuando empieza el ciclo (opcional)", "finish_actions": "Acciones cuando termina el ciclo (opcional)", "max_runtime_actions": "Acciones si se supera el tiempo máximo (opcional)", "pending_actions": "Acciones mientras está pendiente de vaciar (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_dryer": {"title": "Sensores de la secadora", "data": {"dryer_power_entity": "Sensor de potencia en vatios (obligatorio)", "dryer_door_entity": "Sensor de puerta de la secadora (opcional)", "dryer_plug_entity": "Enchufe inteligente (opcional)", "dryer_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_dryer": {"title": "Parámetros del ciclo de secado", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "max_runtime_seconds": "Tiempo máximo del ciclo (opcional)", "pending_delay_seconds": "Retraso antes del primer aviso para vaciar (segundos)", "pending_interval_seconds": "Intervalo entre avisos para vaciar (segundos)", "pending_repeats": "Avisos adicionales para vaciar", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_dryer": {"title": "Acciones de la secadora", "data": {"start_actions": "Acciones cuando empieza el ciclo (opcional)", "finish_actions": "Acciones cuando termina el ciclo (opcional)", "max_runtime_actions": "Acciones si se supera el tiempo máximo (opcional)", "pending_actions": "Acciones mientras está pendiente de vaciar (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_refrigerator": {"title": "Sensores del frigorífico", "data": {"refrigerator_power_entity": "Sensor de potencia en vatios (obligatorio)", "refrigerator_door_entity": "Sensor de puerta del frigorífico (obligatorio)", "refrigerator_plug_entity": "Enchufe inteligente (opcional)", "refrigerator_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_refrigerator": {"title": "Parámetros de alarma del frigorífico", "data": {"start_power_w": "Umbral de arranque del compresor (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de parada del compresor (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "door_open_delay_seconds": "Retraso de la alarma de puerta abierta (segundos)", "compressor_inactive_delay_seconds": "Retraso por inactividad del compresor (segundos)", "alarm_repeat_interval_seconds": "Intervalo entre alarmas (segundos)", "alarm_repeat_count": "Repeticiones adicionales de la alarma", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_refrigerator": {"title": "Acciones del frigorífico", "data": {"door_open_actions": "Acciones mientras está activa la alarma de puerta (opcional)", "compressor_inactive_actions": "Acciones mientras está activa la alarma del compresor (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_refrigerator_switch": {"title": "Sensores del frigorífico por interruptor", "data": {"refrigerator_switch_smart_plug_entity": "Interruptor de actividad (obligatorio)", "refrigerator_switch_door_entity": "Sensor de puerta del frigorífico (obligatorio)", "refrigerator_switch_power_entity": "Sensor de potencia en vatios (opcional)", "refrigerator_switch_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_refrigerator_switch": {"title": "Parámetros de alarma del frigorífico por interruptor", "data": {"door_open_delay_seconds": "Retraso de la alarma de puerta abierta (segundos)", "alarm_repeat_interval_seconds": "Intervalo entre alarmas (segundos)", "alarm_repeat_count": "Repeticiones adicionales de la alarma", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_refrigerator_switch": {"title": "Acciones del frigorífico por interruptor", "data": {"door_open_actions": "Acciones mientras está activa la alarma de puerta (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_mailbox_motion": {"title": "Sensores del buzón por movimiento", "data": {"mailbox_motion_arrival_entity": "Sensor de movimiento interior (obligatorio)", "mailbox_motion_door_entity": "Contacto de la puerta principal (obligatorio)"}},
+      "parameters_mailbox_motion": {"title": "Parámetros de los avisos del buzón por movimiento", "data": {"pending_delay_seconds": "Retraso antes del primer aviso (segundos)", "pending_interval_seconds": "Intervalo entre avisos (segundos)", "pending_repeats": "Avisos adicionales"}},
+      "actions_mailbox_motion": {"title": "Acciones del buzón por movimiento", "data": {"mail_arrival_actions": "Acciones cuando llega correo (opcional)", "pending_actions": "Acciones mientras hay correo pendiente de recoger (opcional)"}},
+      "sensors_mailbox_slot": {"title": "Sensores del buzón por trampilla", "data": {"mailbox_slot_arrival_entity": "Contacto de la trampilla del buzón (obligatorio)", "mailbox_slot_door_entity": "Contacto de la puerta principal (obligatorio)"}},
+      "parameters_mailbox_slot": {"title": "Parámetros de los avisos del buzón por trampilla", "data": {"pending_delay_seconds": "Retraso antes del primer aviso (segundos)", "pending_interval_seconds": "Intervalo entre avisos (segundos)", "pending_repeats": "Avisos adicionales"}},
+      "actions_mailbox_slot": {"title": "Acciones del buzón por trampilla", "data": {"mail_arrival_actions": "Acciones cuando llega correo (opcional)", "pending_actions": "Acciones mientras hay correo pendiente de recoger (opcional)"}}
     },
     "error": {
       "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
       "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
-      "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo.",
+      "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos. Las repeticiones adicionales deben ser un entero no negativo.",
       "invalid_plug_off_alarm_settings": "El intervalo de repetición con el enchufe apagado debe ser un entero positivo y los avisos adicionales, un entero no negativo.",
       "appliance_type_immutable": "No se pueden cambiar el tipo de aparato ni la modalidad de actividad después de configurarlo. Añade un aparato nuevo para cambiarlos.",
       "mailbox_sensors_must_be_distinct": "El sensor de llegada de correo y el sensor de la puerta principal deben ser entidades diferentes.",
@@ -111,85 +70,43 @@
           "appliance_type": "Tipo de electrodoméstico",
           "activity_mode": "Modalidad de detección de actividad"
         },
-        "data_description": {"activity_mode": "Solo esta opción determina la actividad del aparato. En el buzón, determina qué evento cuenta como correo nuevo; los sensores opcionales no cambian el método de detección seleccionado."}
+        "data_description": {"activity_mode": "Solo este sensor determina la actividad del aparato."}
       },
-      "sensors": {
-        "title": "Sensores de entrada",
-        "data": {
-          "climate_entity": "Entidad climate original del aire acondicionado (sin dispositivo principal)",
-          "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
-          "energy_entity": "Sensor de energía total acumulada (opcional)",
-          "running_entity": "Sensor binario activo cuando la lama del aire acondicionado está abierta",
-          "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
-          "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
-          "washer_door_entity": "Sensor de apertura de la puerta de la lavadora (opcional)",
-          "dishwasher_door_entity": "Sensor de apertura de la puerta del lavavajillas (opcional)",
-          "dryer_door_entity": "Sensor de apertura de la puerta de la secadora (opcional)",
-          "refrigerator_door_entity": "Sensor de apertura de la puerta del frigorífico",
-          "smart_plug_entity": "Interruptor inteligente del frigorífico",
-          "refrigerator_switch_door_entity": "Sensor de apertura de la puerta del frigorífico",
-          "mailbox_motion_door_entity": "Contacto de la puerta principal del buzón",
-          "mailbox_slot_door_entity": "Contacto de la puerta principal del buzón",
-          "plug_entity": "Enchufe inteligente del aparato (opcional)"
-        },
-        "data_description": {
-          "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo asociado; volverá a quedar sin dispositivo al sustituirla o eliminar el aparato.",
-          "energy_entity": "Usa la energía total acumulada del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
-          "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
-          "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
-          "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
-          "washer_door_entity": "El contacto abierto indica que la puerta de la lavadora está abierta.",
-          "dishwasher_door_entity": "El contacto abierto indica que la puerta del lavavajillas está abierta.",
-          "dryer_door_entity": "El contacto abierto indica que la puerta de la secadora está abierta.",
-          "refrigerator_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
-          "smart_plug_entity": "Selecciona el interruptor inteligente conectado al frigorífico; encendido significa que está alimentado y apagado que no está en marcha.",
-          "refrigerator_switch_door_entity": "El contacto abierto indica que la puerta del frigorífico está abierta.",
-          "mailbox_motion_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
-          "mailbox_slot_door_entity": "El contacto abierto indica que la puerta principal del buzón está abierta; abrirla borra el correo pendiente.",
-          "plug_entity": "La integración también puede incluir un interruptor. Si lo apagas, cortarás bruscamente la alimentación del aparato."
-        }
-      },
-      "parameters": {
-        "title": "Parámetros específicos del tipo",
-        "description": "Los parámetros dependen del perfil seleccionado. Si no aparece ningún campo, este perfil no tiene parámetros configurables.",
-        "data": {
-          "start_power_w": "Potencia por encima de la cual se considera que empieza el ciclo (W)",
-          "start_duration_seconds": "Segundos que la potencia debe superar el umbral inicial para confirmar el ciclo",
-          "finish_power_w": "Potencia por debajo de la cual se considera que termina el ciclo (W)",
-          "finish_duration_seconds": "Segundos que la potencia debe estar bajo el umbral final para confirmar que terminó el ciclo",
-          "max_runtime_seconds": "Tiempo máximo del ciclo",
-          "pending_delay_seconds": "Espera tras el ciclo antes del primer aviso para vaciar",
-          "pending_interval_seconds": "Intervalo entre los avisos posteriores para vaciar",
-          "pending_repeats": "Avisos adicionales después del primero (3 significa 4 en total)",
-          "door_open_delay_seconds": "Segundos que la puerta del frigorífico puede estar abierta antes del aviso",
-          "compressor_inactive_delay_seconds": "Segundos sin actividad del compresor antes del aviso",
-          "alarm_repeat_interval_seconds": "Intervalo entre avisos repetidos del frigorífico (segundos)",
-          "alarm_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)",
-          "plug_off_repeat_interval_seconds": "Intervalo entre avisos repetidos con el enchufe apagado (segundos)",
-          "plug_off_repeat_count": "Avisos adicionales después del inicial (3 significa 4 en total)"
-        },
-        "data_description": {
-          "max_runtime_seconds": "Opcional. Déjalo vacío para desactivarlo. Si el ciclo sigue en marcha al cumplirse este tiempo, se ejecutarán una vez las acciones que configures para este límite; el aparato no se detendrá."
-        }
-      },
-      "actions": {
-        "title": "Acciones para los eventos del ciclo",
-        "data": {
-          "start_actions": "Acciones que se ejecutan cuando empieza el ciclo",
-          "finish_actions": "Acciones que se ejecutan cuando termina el ciclo",
-          "max_runtime_actions": "Acciones que se ejecutan una vez si se supera el tiempo máximo",
-          "pending_actions": "Acciones que se repiten mientras está pendiente de vaciar (requiere sensor de puerta)",
-          "door_open_actions": "Acciones para la alarma de puerta abierta del frigorífico",
-          "compressor_inactive_actions": "Acciones para la alarma de inactividad del compresor",
-          "plug_off_actions": "Acciones mientras el enchufe inteligente seleccionado esté apagado",
-          "mail_arrival_actions": "Acciones que se ejecutan cuando se detecta correo"
-        }
-      }
+      "sensors_air_conditioner_climate": {"title": "Sensores del aire acondicionado (climate)", "data": {"air_conditioner_climate_climate_entity": "Entidad climate original", "air_conditioner_climate_power_entity": "Sensor de potencia en vatios (opcional)", "air_conditioner_climate_running_entity": "Sensor binario de la lama (opcional)", "air_conditioner_climate_plug_entity": "Enchufe inteligente (opcional)", "air_conditioner_climate_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_air_conditioner_climate": {"title": "Parámetros del aire acondicionado (climate)", "data": {"plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_air_conditioner_climate": {"title": "Acciones del aire acondicionado (climate)", "data": {"start_actions": "Acciones cuando empieza la actividad HVAC (opcional)", "finish_actions": "Acciones cuando se detiene la actividad HVAC (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_air_conditioner_contact": {"title": "Sensores del aire acondicionado (contacto de lama)", "data": {"air_conditioner_contact_running_entity": "Sensor binario de la lama (obligatorio)", "air_conditioner_contact_power_entity": "Sensor de potencia en vatios (opcional)", "air_conditioner_contact_plug_entity": "Enchufe inteligente (opcional)", "air_conditioner_contact_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_air_conditioner_contact": {"title": "Parámetros del aire acondicionado (contacto de lama)", "data": {"plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_air_conditioner_contact": {"title": "Acciones del aire acondicionado (contacto de lama)", "data": {"start_actions": "Acciones cuando se abre la lama (opcional)", "finish_actions": "Acciones cuando se cierra la lama (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_air_conditioner_power": {"title": "Sensores del aire acondicionado (potencia)", "data": {"air_conditioner_power_power_entity": "Sensor de potencia en vatios (obligatorio)", "air_conditioner_power_running_entity": "Sensor binario de la lama (opcional)", "air_conditioner_power_plug_entity": "Enchufe inteligente (opcional)", "air_conditioner_power_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_air_conditioner_power": {"title": "Parámetros del aire acondicionado (potencia)", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_air_conditioner_power": {"title": "Acciones del aire acondicionado (potencia)", "data": {"start_actions": "Acciones cuando el umbral confirma actividad (opcional)", "finish_actions": "Acciones cuando el umbral confirma que se ha detenido (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_washer": {"title": "Sensores de la lavadora", "data": {"washer_power_entity": "Sensor de potencia en vatios (obligatorio)", "washer_door_entity": "Sensor de puerta de la lavadora (opcional)", "washer_plug_entity": "Enchufe inteligente (opcional)", "washer_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_washer": {"title": "Parámetros del ciclo de lavado", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "max_runtime_seconds": "Tiempo máximo del ciclo (opcional)", "pending_delay_seconds": "Retraso antes del primer aviso para vaciar (segundos)", "pending_interval_seconds": "Intervalo entre avisos para vaciar (segundos)", "pending_repeats": "Avisos adicionales para vaciar", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_washer": {"title": "Acciones de la lavadora", "data": {"start_actions": "Acciones cuando empieza el ciclo (opcional)", "finish_actions": "Acciones cuando termina el ciclo (opcional)", "max_runtime_actions": "Acciones si se supera el tiempo máximo (opcional)", "pending_actions": "Acciones mientras está pendiente de vaciar (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_dishwasher": {"title": "Sensores del lavavajillas", "data": {"dishwasher_power_entity": "Sensor de potencia en vatios (obligatorio)", "dishwasher_door_entity": "Sensor de puerta del lavavajillas (opcional)", "dishwasher_plug_entity": "Enchufe inteligente (opcional)", "dishwasher_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_dishwasher": {"title": "Parámetros del ciclo de lavado", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "max_runtime_seconds": "Tiempo máximo del ciclo (opcional)", "pending_delay_seconds": "Retraso antes del primer aviso para vaciar (segundos)", "pending_interval_seconds": "Intervalo entre avisos para vaciar (segundos)", "pending_repeats": "Avisos adicionales para vaciar", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_dishwasher": {"title": "Acciones del lavavajillas", "data": {"start_actions": "Acciones cuando empieza el ciclo (opcional)", "finish_actions": "Acciones cuando termina el ciclo (opcional)", "max_runtime_actions": "Acciones si se supera el tiempo máximo (opcional)", "pending_actions": "Acciones mientras está pendiente de vaciar (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_dryer": {"title": "Sensores de la secadora", "data": {"dryer_power_entity": "Sensor de potencia en vatios (obligatorio)", "dryer_door_entity": "Sensor de puerta de la secadora (opcional)", "dryer_plug_entity": "Enchufe inteligente (opcional)", "dryer_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_dryer": {"title": "Parámetros del ciclo de secado", "data": {"start_power_w": "Umbral de potencia de inicio (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de potencia de finalización (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "max_runtime_seconds": "Tiempo máximo del ciclo (opcional)", "pending_delay_seconds": "Retraso antes del primer aviso para vaciar (segundos)", "pending_interval_seconds": "Intervalo entre avisos para vaciar (segundos)", "pending_repeats": "Avisos adicionales para vaciar", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_dryer": {"title": "Acciones de la secadora", "data": {"start_actions": "Acciones cuando empieza el ciclo (opcional)", "finish_actions": "Acciones cuando termina el ciclo (opcional)", "max_runtime_actions": "Acciones si se supera el tiempo máximo (opcional)", "pending_actions": "Acciones mientras está pendiente de vaciar (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_refrigerator": {"title": "Sensores del frigorífico", "data": {"refrigerator_power_entity": "Sensor de potencia en vatios (obligatorio)", "refrigerator_door_entity": "Sensor de puerta del frigorífico (obligatorio)", "refrigerator_plug_entity": "Enchufe inteligente (opcional)", "refrigerator_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_refrigerator": {"title": "Parámetros de alarma del frigorífico", "data": {"start_power_w": "Umbral de arranque del compresor (W)", "start_duration_seconds": "Tiempo de confirmación de inicio (segundos)", "finish_power_w": "Umbral de parada del compresor (W)", "finish_duration_seconds": "Tiempo de confirmación de finalización (segundos)", "door_open_delay_seconds": "Retraso de la alarma de puerta abierta (segundos)", "compressor_inactive_delay_seconds": "Retraso por inactividad del compresor (segundos)", "alarm_repeat_interval_seconds": "Intervalo entre alarmas (segundos)", "alarm_repeat_count": "Repeticiones adicionales de la alarma", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_refrigerator": {"title": "Acciones del frigorífico", "data": {"door_open_actions": "Acciones mientras está activa la alarma de puerta (opcional)", "compressor_inactive_actions": "Acciones mientras está activa la alarma del compresor (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_refrigerator_switch": {"title": "Sensores del frigorífico por interruptor", "data": {"refrigerator_switch_smart_plug_entity": "Interruptor de actividad (obligatorio)", "refrigerator_switch_door_entity": "Sensor de puerta del frigorífico (obligatorio)", "refrigerator_switch_power_entity": "Sensor de potencia en vatios (opcional)", "refrigerator_switch_energy_entity": "Sensor de energía acumulada (opcional)"}},
+      "parameters_refrigerator_switch": {"title": "Parámetros de alarma del frigorífico por interruptor", "data": {"door_open_delay_seconds": "Retraso de la alarma de puerta abierta (segundos)", "alarm_repeat_interval_seconds": "Intervalo entre alarmas (segundos)", "alarm_repeat_count": "Repeticiones adicionales de la alarma", "plug_off_repeat_interval_seconds": "Intervalo entre avisos del enchufe (segundos)", "plug_off_repeat_count": "Avisos adicionales del enchufe"}},
+      "actions_refrigerator_switch": {"title": "Acciones del frigorífico por interruptor", "data": {"door_open_actions": "Acciones mientras está activa la alarma de puerta (opcional)", "plug_off_actions": "Acciones mientras el enchufe está apagado (opcional)"}},
+      "sensors_mailbox_motion": {"title": "Sensores del buzón por movimiento", "data": {"mailbox_motion_arrival_entity": "Sensor de movimiento interior (obligatorio)", "mailbox_motion_door_entity": "Contacto de la puerta principal (obligatorio)"}},
+      "parameters_mailbox_motion": {"title": "Parámetros de los avisos del buzón por movimiento", "data": {"pending_delay_seconds": "Retraso antes del primer aviso (segundos)", "pending_interval_seconds": "Intervalo entre avisos (segundos)", "pending_repeats": "Avisos adicionales"}},
+      "actions_mailbox_motion": {"title": "Acciones del buzón por movimiento", "data": {"mail_arrival_actions": "Acciones cuando llega correo (opcional)", "pending_actions": "Acciones mientras hay correo pendiente de recoger (opcional)"}},
+      "sensors_mailbox_slot": {"title": "Sensores del buzón por trampilla", "data": {"mailbox_slot_arrival_entity": "Contacto de la trampilla del buzón (obligatorio)", "mailbox_slot_door_entity": "Contacto de la puerta principal (obligatorio)"}},
+      "parameters_mailbox_slot": {"title": "Parámetros de los avisos del buzón por trampilla", "data": {"pending_delay_seconds": "Retraso antes del primer aviso (segundos)", "pending_interval_seconds": "Intervalo entre avisos (segundos)", "pending_repeats": "Avisos adicionales"}},
+      "actions_mailbox_slot": {"title": "Acciones del buzón por trampilla", "data": {"mail_arrival_actions": "Acciones cuando llega correo (opcional)", "pending_actions": "Acciones mientras hay correo pendiente de recoger (opcional)"}}
     },
     "error": {
       "invalid_thresholds": "Comprueba que la potencia de finalización sea inferior a la de inicio y que los tiempos sean válidos.",
       "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
-      "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo.",
+      "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos. Las repeticiones adicionales deben ser un entero no negativo.",
       "invalid_plug_off_alarm_settings": "El intervalo de repetición con el enchufe apagado debe ser un entero positivo y los avisos adicionales, un entero no negativo.",
       "appliance_type_immutable": "No se pueden cambiar el tipo de aparato ni la modalidad de actividad después de configurarlo. Añade un aparato nuevo para cambiarlos.",
       "mailbox_sensors_must_be_distinct": "El sensor de llegada de correo y el sensor de la puerta principal deben ser entidades diferentes.",
@@ -201,8 +118,14 @@
       "options": {"air_conditioner": "Aire acondicionado", "dryer": "Secadora", "mailbox": "Buzón", "refrigerator": "Frigorífico", "washer": "Lavadora", "dishwasher": "Lavavajillas"}
     },
     "activity_mode": {
-      "options": {"running_sensor": "Contacto de lama (abierta = aire en marcha)", "climate": "Entidad climate (sigue la actividad HVAC)", "power": "Potencia (umbrales de inicio y parada)", "smart_plug": "Interruptor inteligente (encendido = aparato activo)", "mail_slot": "Contacto de trampilla (abrir = llega correo)", "mail_motion": "Movimiento interior (movimiento = llega correo)"}
+      "options": {"running_sensor": "1. Sensor binario (encendido = aire en marcha)", "climate": "2. Entidad climate (sigue la actividad HVAC)", "power": "4. Sensor de potencia (sigue los umbrales de inicio y parada)", "smart_plug": "Interruptor inteligente (encendido = aparato activo)", "mail_slot": "Contacto de trampilla (abrir = llega correo)", "mail_motion": "Movimiento interior (movimiento = llega correo)"}
     },
+    "activity_mode_air_conditioner": {"options": {"running_sensor": "Contacto de lama (abierto = aire acondicionado activo)", "climate": "Entidad climate (sigue la actividad HVAC)", "power": "Sensor de potencia (umbrales de inicio y parada)"}},
+    "activity_mode_dryer": {"options": {"power": "Sensor de potencia (umbrales de inicio y parada)"}},
+    "activity_mode_mailbox": {"options": {"mail_slot": "Contacto de la trampilla (detecta el correo)", "mail_motion": "Sensor de movimiento interior (detecta el correo)"}},
+    "activity_mode_refrigerator": {"options": {"smart_plug": "Interruptor inteligente (encendido = frigorífico activo)", "power": "Sensor de potencia (umbrales del compresor)"}},
+    "activity_mode_washer": {"options": {"power": "Sensor de potencia (umbrales de inicio y finalización)"}},
+    "activity_mode_dishwasher": {"options": {"power": "Sensor de potencia (umbrales de inicio y finalización)"}},
     "appliance_type": {
       "options": {
         "washer": "Lavadora",
@@ -227,7 +150,7 @@
     },
     "binary_sensor": {
       "running": {"name": "En funcionamiento"},
-      "input_running": {"name": "Sensor auxiliar de la lama"},
+      "input_running": {"name": "Sensor de lama del aire acondicionado"},
       "input_mail_motion": {"name": "Entrada del sensor de movimiento del buzón"},
       "door": {"name": "Puerta"},
       "mail_slot": {"name": "Portilla"},

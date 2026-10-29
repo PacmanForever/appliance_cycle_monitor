@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0 - 2026-10-29
+
+### Added
+
+- Give each appliance profile and activity category its own configuration steps and translated labels.
+- Wrap configured binary input entities on the appliance device while preserving the original climate entity exception.
+- Mark optional profile fields explicitly and verify all profiles and locales in tests.
+
+### Fixed
+
+- Pass the config-entry ID to Home Assistant's device-registry identifier lookup.
+
 ## 0.8.0 - 2026-10-29
 
 ### Added

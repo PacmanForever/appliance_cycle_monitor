@@ -110,16 +110,20 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         profile = get_appliance_profile("dishwasher")
         schema = _sensor_schema(_sensor_form_values(values, profile), profile)
 
-        values = schema({})
-        self.assertEqual(values[CONF_POWER_ENTITY], "sensor.dishwasher_power")
+        form_values = schema({})
         self.assertEqual(
-            values["dishwasher_door_entity"], "binary_sensor.dishwasher_door"
+            form_values["dishwasher_power_entity"], "sensor.dishwasher_power"
         )
-        self.assertEqual(values["plug_entity"], "switch.dishwasher_plug")
         self.assertEqual(
-            _normalize_sensor_values(values, profile)["door_entity"],
+            form_values["dishwasher_door_entity"], "binary_sensor.dishwasher_door"
+        )
+        self.assertEqual(form_values["dishwasher_plug_entity"], "switch.dishwasher_plug")
+        normalized = _normalize_sensor_values(form_values, profile)
+        self.assertEqual(
+            normalized["door_entity"],
             "binary_sensor.dishwasher_door",
         )
+        self.assertEqual(normalized[CONF_POWER_ENTITY], "sensor.dishwasher_power")
 
     def test_ac_profiles_offer_auxiliary_sources(self) -> None:
         contact_profile = get_appliance_profile("air_conditioner_contact")
@@ -127,12 +131,12 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         contact_schema = _sensor_schema({}, contact_profile)
         power_schema = _sensor_schema({}, power_profile)
 
-        self.assertIn(CONF_RUNNING_ENTITY, contact_schema.schema)
-        self.assertIn(CONF_POWER_ENTITY, contact_schema.schema)
-        self.assertIn(CONF_POWER_ENTITY, power_schema.schema)
-        self.assertIn(CONF_RUNNING_ENTITY, power_schema.schema)
-        self.assertIn(CONF_PLUG_ENTITY, contact_schema.schema)
-        self.assertIn(CONF_PLUG_ENTITY, power_schema.schema)
+        self.assertIn("air_conditioner_contact_running_entity", contact_schema.schema)
+        self.assertIn("air_conditioner_contact_power_entity", contact_schema.schema)
+        self.assertIn("air_conditioner_power_power_entity", power_schema.schema)
+        self.assertIn("air_conditioner_power_running_entity", power_schema.schema)
+        self.assertIn("air_conditioner_contact_plug_entity", contact_schema.schema)
+        self.assertIn("air_conditioner_power_plug_entity", power_schema.schema)
         self.assertFalse(contact_profile.supports_pending_unload)
         self.assertFalse(contact_profile.estimates_remaining)
         self.assertFalse(power_profile.supports_pending_unload)
@@ -220,11 +224,19 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                 self.assertIn(expected_source, sensor_schema.schema)
                 self.assertEqual(
                     any(item.config_key == CONF_POWER_ENTITY for item in profile.sensor_inputs),
-                    CONF_POWER_ENTITY in sensor_schema.schema,
+                    any(
+                        item.form_key in sensor_schema.schema
+                        for item in profile.sensor_inputs
+                        if item.config_key == CONF_POWER_ENTITY
+                    ),
                 )
                 self.assertEqual(
                     any(item.config_key == CONF_RUNNING_ENTITY for item in profile.sensor_inputs),
-                    CONF_RUNNING_ENTITY in sensor_schema.schema,
+                    any(
+                        item.form_key in sensor_schema.schema
+                        for item in profile.sensor_inputs
+                        if item.config_key == CONF_RUNNING_ENTITY
+                    ),
                 )
                 self.assertEqual(
                     profile.supports_door_sensor,
@@ -321,7 +333,9 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                 )
             if profile.door_sensor_input is not None:
                 self.assertEqual(
-                    selectors[profile.door_sensor_input.form_key].config["filter"],
+                    selectors[
+                        profile.door_sensor_input.form_key
+                    ].config["filter"],
                     [
                         {
                             "domain": [profile.door_sensor_input.domain],
@@ -513,6 +527,20 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         self.assertEqual(key_shape(translations[2]), expected)
         self.assertEqual(key_shape(translations[3]), expected)
 
+        for translation in translations:
+            for flow in ("config", "options"):
+                for shared_step in ("sensors", "parameters", "actions"):
+                    self.assertNotIn(shared_step, translation[flow]["step"])
+        for translation in translations:
+            self.assertNotIn("activity_mode", translation["config"]["step"])
+
+        sensor_form_keys = [
+            item.form_key
+            for profile in APPLIANCE_PROFILES.values()
+            for item in profile.sensor_inputs
+        ]
+        self.assertEqual(len(sensor_form_keys), len(set(sensor_form_keys)))
+
         catalan_options = translations[3]["selector"]["appliance_type"]["options"]
         catalan_labels = [catalan_options[appliance_type] for appliance_type in APPLIANCE_TYPES]
         self.assertEqual(catalan_labels, sorted(catalan_labels, key=str.casefold))
@@ -525,19 +553,20 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                 self.assertNotEqual(label, appliance_type)
 
             for flow, identity_step in (("config", "user"), ("options", "init")):
-                parameter_description = translation[flow]["step"]["parameters"][
-                    "description"
-                ]
-                self.assertTrue(parameter_description.strip())
                 for profile in APPLIANCE_PROFILES.values():
                     values = {"door_entity": "binary_sensor.door"}
+                    profile_name = next(
+                        name
+                        for name, candidate in APPLIANCE_PROFILES.items()
+                        if candidate is profile
+                    )
                     step_schemas = {
                         identity_step: _identity_schema({}),
-                        "sensors": _sensor_schema(
+                        f"sensors_{profile_name}": _sensor_schema(
                             _sensor_form_values(values, profile), profile
                         ),
-                        "parameters": _threshold_schema(values, profile),
-                        "actions": _action_schema(values, profile),
+                        f"parameters_{profile_name}": _threshold_schema(values, profile),
+                        f"actions_{profile_name}": _action_schema(values, profile),
                     }
                     for step, schema in step_schemas.items():
                         labels = translation[flow]["step"][step]["data"]
@@ -546,6 +575,41 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                             self.assertIn(key, labels)
                             self.assertTrue(labels[key].strip())
                             self.assertNotEqual(labels[key], key)
+                    sensor_labels = translation[flow]["step"][
+                        f"sensors_{profile_name}"
+                    ]["data"]
+                    for sensor_input in profile.sensor_inputs:
+                        if not sensor_input.required:
+                            self.assertTrue(
+                                "(optional)" in sensor_labels[sensor_input.form_key]
+                                or "(opcional)" in sensor_labels[sensor_input.form_key]
+                            )
+                    action_labels = translation[flow]["step"][
+                        f"actions_{profile_name}"
+                    ]["data"].values()
+                    self.assertTrue(
+                        all(
+                            "(optional)" in label or "(opcional)" in label
+                            for label in action_labels
+                        )
+                    )
+
+            mode_labels = []
+            for category, modes in APPLIANCE_CATEGORIES.items():
+                step = translation["config"]["step"][
+                    f"activity_mode_{category}"
+                ]
+                labels = step["data"]
+                self.assertTrue(step["title"].strip())
+                self.assertTrue(labels["activity_mode"].strip())
+                self.assertTrue(step["data_description"]["activity_mode"].strip())
+                mode_labels.append(labels["activity_mode"])
+                options = translation["selector"][
+                    f"activity_mode_{category}"
+                ]["options"]
+                self.assertEqual(set(options), set(modes))
+                self.assertTrue(all(label.strip() for label in options.values()))
+            self.assertEqual(len(mode_labels), len(set(mode_labels)))
 
 
 @pytest.mark.asyncio
@@ -565,14 +629,14 @@ async def test_config_flow_has_five_forward_steps_and_separates_options():
             "appliance_type": "washer",
         }
     )
-    assert mode_result["step_id"] == "activity_mode"
+    assert mode_result["step_id"] == "activity_mode_washer"
     sensors_result = await flow.async_step_activity_mode({"activity_mode": "power"})
-    assert sensors_result["step_id"] == "sensors"
+    assert sensors_result["step_id"] == "sensors_washer"
 
     parameters_result = await flow.async_step_sensors(
-        {"power_entity": "sensor.washer_power"}
+        {"washer_power_entity": "sensor.washer_power"}
     )
-    assert parameters_result["step_id"] == "parameters"
+    assert parameters_result["step_id"] == "parameters_washer"
     assert parameters_result["last_step"] is False
 
     actions_result = await flow.async_step_parameters(
@@ -583,7 +647,7 @@ async def test_config_flow_has_five_forward_steps_and_separates_options():
             "finish_duration_seconds": 60,
         }
     )
-    assert actions_result["step_id"] == "actions"
+    assert actions_result["step_id"] == "actions_washer"
 
     created = await flow.async_step_actions(
         {
@@ -598,10 +662,10 @@ async def test_config_flow_has_five_forward_steps_and_separates_options():
     assert created["options"]["start_power_w"] == 4
     assert [result["step_id"] for result in shown_steps] == [
         "user",
-        "activity_mode",
-        "sensors",
-        "parameters",
-        "actions",
+        "activity_mode_washer",
+        "sensors_washer",
+        "parameters_washer",
+        "actions_washer",
     ]
 
 
@@ -620,7 +684,7 @@ async def test_pending_settings_are_validated_on_parameters_step():
     await flow.async_step_activity_mode({"activity_mode": "power"})
     await flow.async_step_sensors(
         {
-            "power_entity": "sensor.washer_power",
+            "washer_power_entity": "sensor.washer_power",
             "door_entity": "binary_sensor.washer_door",
         }
     )
@@ -636,7 +700,7 @@ async def test_pending_settings_are_validated_on_parameters_step():
         }
     )
 
-    assert result["step_id"] == "parameters"
+    assert result["step_id"] == "parameters_washer"
     assert result["errors"] == {"base": "invalid_pending_settings"}
 
     result = await flow.async_step_parameters(
@@ -650,7 +714,7 @@ async def test_pending_settings_are_validated_on_parameters_step():
             CONF_PENDING_REPEATS: 2,
         }
     )
-    assert result["step_id"] == "actions"
+    assert result["step_id"] == "actions_washer"
     assert CONF_PENDING_DELAY_SECONDS not in result["data_schema"].schema
 
     created = await flow.async_step_actions(
@@ -714,11 +778,11 @@ async def test_options_flow_edits_four_steps_and_clears_removed_door_settings(
             "appliance_type": "washer",
         }
     )
-    assert sensors_result["step_id"] == "sensors"
+    assert sensors_result["step_id"] == "sensors_washer"
     parameters_result = await flow.async_step_sensors(
-        {"power_entity": "sensor.new_power", "door_entity": None}
+        {"washer_power_entity": "sensor.new_power", "washer_door_entity": None}
     )
-    assert parameters_result["step_id"] == "parameters"
+    assert parameters_result["step_id"] == "parameters_washer"
     actions_result = await flow.async_step_parameters(
         {
             "start_power_w": 5,
@@ -727,16 +791,16 @@ async def test_options_flow_edits_four_steps_and_clears_removed_door_settings(
             "finish_duration_seconds": 60,
         }
     )
-    assert actions_result["step_id"] == "actions"
+    assert actions_result["step_id"] == "actions_washer"
     created = await flow.async_step_actions(
         {"start_actions": [], "finish_actions": [], "max_runtime_actions": []}
     )
 
     assert [result["step_id"] for result in shown_steps] == [
         "init",
-        "sensors",
-        "parameters",
-        "actions",
+        "sensors_washer",
+        "parameters_washer",
+        "actions_washer",
     ]
     assert updated[0]["title"] == "Washer 2"
     assert updated[0]["data"]["power_entity"] == "sensor.new_power"

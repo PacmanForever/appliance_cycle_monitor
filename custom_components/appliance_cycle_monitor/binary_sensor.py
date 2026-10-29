@@ -57,7 +57,12 @@ class ApplianceBinarySensor(BinarySensorEntity):
         self._key = key
         self._value_fn = value_fn
         self._attr_unique_id = f"{entry.entry_id}_{key}"
-        self._attr_translation_key = key
+        self._attr_translation_key = (
+            "input_running"
+            if key == "running"
+            and "running_sensor" in runtime.profile.detection_sources
+            else key
+        )
         self._attr_device_class = device_class
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
@@ -69,6 +74,24 @@ class ApplianceBinarySensor(BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return the current runtime state."""
         return self._value_fn()
+
+    @property
+    def available(self) -> bool:
+        """Reflect the louver input's availability for contact-based profiles."""
+        source_input = next(
+            (
+                item
+                for item in self._runtime.profile.sensor_inputs
+                if item.detection_source == "running_sensor"
+            ),
+            None,
+        )
+        if self._key == "running" and source_input is not None:
+            state = self.hass.states.get(
+                self._runtime.config.get(source_input.config_key)
+            )
+            return state is not None and state.state in ("on", "off")
+        return super().available
 
     @property
     def extra_state_attributes(self) -> dict[str, str] | None:

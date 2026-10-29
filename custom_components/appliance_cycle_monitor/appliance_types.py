@@ -1,6 +1,6 @@
 """Capabilities and detection sources for supported appliance types."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from .const import (
     CONF_DOOR_ENTITY,
@@ -80,11 +80,37 @@ APPLIANCE_PROFILES = {
     "air_conditioner_climate": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key=CONF_CLIMATE_ENTITY,
+                form_key="air_conditioner_climate_climate_entity",
                 config_key=CONF_CLIMATE_ENTITY,
                 domain="climate",
                 required=True,
                 detection_source="climate",
+            ),
+            SensorInput(
+                form_key="air_conditioner_climate_power_entity",
+                config_key=CONF_POWER_ENTITY,
+                domain="sensor",
+                device_classes=("power",),
+                output_entity="power",
+            ),
+            SensorInput(
+                form_key="air_conditioner_climate_running_entity",
+                config_key=CONF_RUNNING_ENTITY,
+                domain="binary_sensor",
+                device_classes=("opening",),
+            ),
+            SensorInput(
+                form_key="air_conditioner_climate_plug_entity",
+                config_key=CONF_PLUG_ENTITY,
+                domain="switch",
+                output_entity="plug",
+            ),
+            SensorInput(
+                form_key="air_conditioner_climate_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=("plug_off_alarm",),
@@ -97,7 +123,7 @@ APPLIANCE_PROFILES = {
     "washer": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="power_entity",
+                form_key="washer_power_entity",
                 config_key=CONF_POWER_ENTITY,
                 domain="sensor",
                 device_classes=("power",),
@@ -113,8 +139,15 @@ APPLIANCE_PROFILES = {
                 output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                form_key="washer_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
                 output_entity="plug",
+            ),
+            SensorInput(
+                form_key="washer_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
@@ -129,7 +162,7 @@ APPLIANCE_PROFILES = {
     "dishwasher": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="power_entity",
+                form_key="dishwasher_power_entity",
                 config_key=CONF_POWER_ENTITY,
                 domain="sensor",
                 device_classes=("power",),
@@ -145,8 +178,15 @@ APPLIANCE_PROFILES = {
                 output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                form_key="dishwasher_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
                 output_entity="plug",
+            ),
+            SensorInput(
+                form_key="dishwasher_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
@@ -161,7 +201,7 @@ APPLIANCE_PROFILES = {
     "dryer": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="power_entity",
+                form_key="dryer_power_entity",
                 config_key=CONF_POWER_ENTITY,
                 domain="sensor",
                 device_classes=("power",),
@@ -177,8 +217,15 @@ APPLIANCE_PROFILES = {
                 output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                form_key="dryer_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
                 output_entity="plug",
+            ),
+            SensorInput(
+                form_key="dryer_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
@@ -193,7 +240,7 @@ APPLIANCE_PROFILES = {
     "air_conditioner_contact": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="running_entity",
+                form_key="air_conditioner_contact_running_entity",
                 config_key=CONF_RUNNING_ENTITY,
                 domain="binary_sensor",
                 device_classes=("opening",),
@@ -202,8 +249,22 @@ APPLIANCE_PROFILES = {
                 output_entity="running",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                form_key="air_conditioner_contact_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
                 output_entity="plug",
+            ),
+            SensorInput(
+                form_key="air_conditioner_contact_power_entity",
+                config_key=CONF_POWER_ENTITY,
+                domain="sensor",
+                device_classes=("power",),
+                output_entity="power",
+            ),
+            SensorInput(
+                form_key="air_conditioner_contact_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=("plug_off_alarm",),
@@ -216,7 +277,7 @@ APPLIANCE_PROFILES = {
     "air_conditioner_power": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="power_entity",
+                form_key="air_conditioner_power_power_entity",
                 config_key=CONF_POWER_ENTITY,
                 domain="sensor",
                 device_classes=("power",),
@@ -225,8 +286,21 @@ APPLIANCE_PROFILES = {
                 output_entity="power",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                form_key="air_conditioner_power_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
                 output_entity="plug",
+            ),
+            SensorInput(
+                form_key="air_conditioner_power_running_entity",
+                config_key=CONF_RUNNING_ENTITY,
+                domain="binary_sensor",
+                device_classes=("opening",),
+            ),
+            SensorInput(
+                form_key="air_conditioner_power_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=("power_cycle", "plug_off_alarm"),
@@ -239,7 +313,7 @@ APPLIANCE_PROFILES = {
     "refrigerator": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="power_entity",
+                form_key="refrigerator_power_entity",
                 config_key=CONF_POWER_ENTITY,
                 domain="sensor",
                 device_classes=("power",),
@@ -256,8 +330,15 @@ APPLIANCE_PROFILES = {
                 output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                form_key="refrigerator_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
                 output_entity="plug",
+            ),
+            SensorInput(
+                form_key="refrigerator_energy_entity",
+                config_key=CONF_ENERGY_ENTITY,
+                domain="sensor",
+                device_classes=("energy",),
+                output_entity="total_energy",
             ),
         ),
         parameter_groups=(
@@ -276,7 +357,7 @@ APPLIANCE_PROFILES = {
         "refrigerator_switch": ApplianceTypeProfile(
             sensor_inputs=(
                 SensorInput(
-                    form_key="smart_plug_entity",
+                    form_key="refrigerator_switch_smart_plug_entity",
                     config_key=CONF_PLUG_ENTITY,
                     domain="switch",
                     required=True,
@@ -291,6 +372,20 @@ APPLIANCE_PROFILES = {
                     required=True,
                     output_entity="door",
                 ),
+                SensorInput(
+                    form_key="refrigerator_switch_power_entity",
+                    config_key=CONF_POWER_ENTITY,
+                    domain="sensor",
+                    device_classes=("power",),
+                    output_entity="power",
+                ),
+                SensorInput(
+                    form_key="refrigerator_switch_energy_entity",
+                    config_key=CONF_ENERGY_ENTITY,
+                    domain="sensor",
+                    device_classes=("energy",),
+                    output_entity="total_energy",
+                ),
             ),
             parameter_groups=("door_alarm", "alarm_repeats", "plug_off_alarm"),
             action_groups=("door_open_alarm", "plug_off_alarm"),
@@ -302,7 +397,7 @@ APPLIANCE_PROFILES = {
     "mailbox_motion": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="mail_motion_entity",
+                form_key="mailbox_motion_arrival_entity",
                 config_key=CONF_MAIL_MOTION_ENTITY,
                 domain="binary_sensor",
                 device_classes=("motion",),
@@ -328,7 +423,7 @@ APPLIANCE_PROFILES = {
     "mailbox_slot": ApplianceTypeProfile(
         sensor_inputs=(
             SensorInput(
-                form_key="mail_slot_entity",
+                form_key="mailbox_slot_arrival_entity",
                 config_key=CONF_MAIL_SLOT_ENTITY,
                 domain="binary_sensor",
                 device_classes=("door", "opening"),
@@ -353,55 +448,6 @@ APPLIANCE_PROFILES = {
         supports_max_runtime=False,
     ),
 }
-
-_AUXILIARY_POWER = SensorInput(
-    form_key=CONF_POWER_ENTITY,
-    config_key=CONF_POWER_ENTITY,
-    domain="sensor",
-    device_classes=("power",),
-    output_entity="power",
-)
-_AUXILIARY_RUNNING = SensorInput(
-    form_key=CONF_RUNNING_ENTITY,
-    config_key=CONF_RUNNING_ENTITY,
-    domain="binary_sensor",
-    device_classes=("opening",),
-)
-_AUXILIARY_PLUG = SensorInput(
-    form_key=CONF_PLUG_ENTITY, config_key=CONF_PLUG_ENTITY, domain="switch",
-    output_entity="plug",
-)
-_AUXILIARY_ENERGY = SensorInput(
-    form_key=CONF_ENERGY_ENTITY,
-    config_key=CONF_ENERGY_ENTITY,
-    domain="sensor",
-    device_classes=("energy",),
-    output_entity="total_energy",
-)
-
-for _profile_name in (
-    "air_conditioner_contact",
-    "air_conditioner_power",
-    "air_conditioner_climate",
-    "refrigerator_switch",
-):
-    _profile = APPLIANCE_PROFILES[_profile_name]
-    _inputs = list(_profile.sensor_inputs)
-    for _extra in (
-        (_AUXILIARY_POWER, _AUXILIARY_RUNNING, _AUXILIARY_PLUG)
-        if _profile_name.startswith("air_conditioner_")
-        else (_AUXILIARY_POWER,)
-    ):
-        if not any(item.config_key == _extra.config_key for item in _inputs):
-            _inputs.append(_extra)
-    APPLIANCE_PROFILES[_profile_name] = replace(_profile, sensor_inputs=tuple(_inputs))
-
-for _profile_name, _profile in tuple(APPLIANCE_PROFILES.items()):
-    if not _profile_name.startswith("mailbox_"):
-        APPLIANCE_PROFILES[_profile_name] = replace(
-            _profile, sensor_inputs=(*_profile.sensor_inputs, _AUXILIARY_ENERGY)
-        )
-
 
 APPLIANCE_CATEGORIES = {
     "air_conditioner": {
