@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.2 - 2026-10-29
+
+### Changed
+
+- Refresh the integration icon to represent connected household devices.
+
 ## v0.9.1 - 2026-10-29
 
 ### Changed
