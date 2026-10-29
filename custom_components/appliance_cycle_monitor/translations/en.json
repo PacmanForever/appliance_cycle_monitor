@@ -14,88 +14,47 @@
           "appliance_type": "Appliance type"
         }
       },
-      "activity_mode": {
-        "title": "Activity detection",
-        "data": {"activity_mode": "Activity detection method"},
-        "data_description": {"activity_mode": "Only this choice determines appliance activity. For a mailbox, it determines which event counts as new mail; optional sensors do not change the selected detection method."}
-      },
-      "sensors": {
-        "title": "Input sensors",
-        "data": {
-          "climate_entity": "Original air-conditioner climate entity (no parent device)",
-          "power_entity": "Power sensor for this appliance (in watts)",
-          "energy_entity": "Cumulative energy sensor (optional)",
-          "running_entity": "Binary sensor that is on while the AC louver is open",
-          "mail_motion_entity": "Interior motion sensor that detects incoming mail",
-          "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
-          "washer_door_entity": "Washer door-open sensor (optional)",
-          "dishwasher_door_entity": "Dishwasher door-open sensor (optional)",
-          "dryer_door_entity": "Dryer door-open sensor (optional)",
-          "refrigerator_door_entity": "Refrigerator door-open sensor",
-          "smart_plug_entity": "Refrigerator smart switch",
-          "refrigerator_switch_door_entity": "Refrigerator door-open sensor",
-          "mailbox_motion_door_entity": "Mailbox main-door contact",
-          "mailbox_slot_door_entity": "Mailbox main-door contact",
-          "plug_entity": "Appliance smart plug (optional)"
-        },
-        "data_description": {
-          "climate_entity": "This associates the original climate entity with the appliance device; it is not a wrapper. Its controls remain available. Select an entity with no parent device; it is released when replaced or when the appliance is removed.",
-          "energy_entity": "Use this sensor's accumulated energy total. Leave empty to calculate energy from power when a power sensor is selected.",
-          "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
-          "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
-          "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
-          "washer_door_entity": "An open contact means the washer door is open.",
-          "dishwasher_door_entity": "An open contact means the dishwasher door is open.",
-          "dryer_door_entity": "An open contact means the dryer door is open.",
-          "refrigerator_door_entity": "An open contact means the refrigerator door is open.",
-          "smart_plug_entity": "Select the smart switch connected to the refrigerator; on means it is powered and off means it is not running.",
-          "refrigerator_switch_door_entity": "An open contact means the refrigerator door is open.",
-          "mailbox_motion_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
-          "mailbox_slot_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
-          "plug_entity": "The integration can also provide a switch. Turning it off will abruptly cut power to the appliance."
-        }
-      },
-      "parameters": {
-        "title": "Type-specific parameters",
-        "description": "Parameters depend on the selected profile. If no fields are shown, this profile has no configurable parameters.",
-        "data": {
-          "start_power_w": "Power above which a cycle is considered started (W)",
-          "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
-          "finish_power_w": "Power below which a cycle is considered finished (W)",
-          "finish_duration_seconds": "Seconds power must stay below the finish level before confirming the cycle has ended",
-          "max_runtime_seconds": "Maximum cycle runtime",
-          "pending_delay_seconds": "Wait after the cycle before the first unload reminder",
-          "pending_interval_seconds": "Interval between later unload reminders",
-          "pending_repeats": "Additional reminders after the first one (3 means 4 total)",
-          "door_open_delay_seconds": "Seconds the refrigerator door may stay open before the alarm",
-          "compressor_inactive_delay_seconds": "Seconds without compressor activity before the alarm",
-          "alarm_repeat_interval_seconds": "Interval between repeated refrigerator alarms (seconds)",
-          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)",
-          "plug_off_repeat_interval_seconds": "Interval between plug-off alarm repeats (seconds)",
-          "plug_off_repeat_count": "Additional plug-off alarms after the first one (3 means 4 total)"
-        },
-        "data_description": {
-          "max_runtime_seconds": "Optional. Leave blank to disable. If the cycle is still running after this time, the actions you configure for this limit run once; the appliance is not stopped."
-        }
-      },
-      "actions": {
-        "title": "Actions for cycle events",
-        "data": {
-          "start_actions": "Actions to run when the cycle starts",
-          "finish_actions": "Actions to run when the cycle finishes",
-          "max_runtime_actions": "Actions to run once if the maximum cycle time is exceeded",
-          "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
-          "door_open_actions": "Actions to run while the refrigerator door alarm is active",
-          "compressor_inactive_actions": "Actions to run while the compressor inactivity alarm is active",
-          "plug_off_actions": "Actions to run while the selected smart plug is off",
-          "mail_arrival_actions": "Actions to run when mail is detected"
-        }
-      }
+      "activity_mode_air_conditioner": {"title": "Air conditioner detection mode", "data": {"activity_mode": "How this air conditioner detects activity"}, "data_description": {"activity_mode": "Choose the dedicated detection method for this air conditioner."}},
+      "activity_mode_dryer": {"title": "Dryer detection mode", "data": {"activity_mode": "How this dryer detects activity"}, "data_description": {"activity_mode": "Choose the dedicated detection method for this dryer."}},
+      "activity_mode_mailbox": {"title": "Mailbox detection mode", "data": {"activity_mode": "How this mailbox detects incoming mail"}, "data_description": {"activity_mode": "Choose the dedicated arrival sensor for this mailbox."}},
+      "activity_mode_refrigerator": {"title": "Refrigerator detection mode", "data": {"activity_mode": "How this refrigerator detects activity"}, "data_description": {"activity_mode": "Choose the dedicated detection method for this refrigerator."}},
+      "activity_mode_washer": {"title": "Washer detection mode", "data": {"activity_mode": "How this washer detects activity"}, "data_description": {"activity_mode": "Choose the dedicated detection method for this washer."}},
+      "activity_mode_dishwasher": {"title": "Dishwasher detection mode", "data": {"activity_mode": "How this dishwasher detects activity"}, "data_description": {"activity_mode": "Choose the dedicated detection method for this dishwasher."}},
+      "sensors_air_conditioner_climate": {"title": "Air conditioner (climate) sensors", "data": {"air_conditioner_climate_climate_entity": "Original climate entity", "air_conditioner_climate_power_entity": "Power sensor in watts (optional)", "air_conditioner_climate_running_entity": "Louver binary sensor (optional)", "air_conditioner_climate_plug_entity": "Smart plug (optional)", "air_conditioner_climate_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_air_conditioner_climate": {"title": "Air conditioner (climate) parameters", "data": {"plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_air_conditioner_climate": {"title": "Air conditioner (climate) actions", "data": {"start_actions": "Actions when HVAC activity starts (optional)", "finish_actions": "Actions when HVAC activity stops (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_air_conditioner_contact": {"title": "Air conditioner (louver contact) sensors", "data": {"air_conditioner_contact_running_entity": "Louver binary sensor (required)", "air_conditioner_contact_power_entity": "Power sensor in watts (optional)", "air_conditioner_contact_plug_entity": "Smart plug (optional)", "air_conditioner_contact_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_air_conditioner_contact": {"title": "Air conditioner (louver contact) parameters", "data": {"plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_air_conditioner_contact": {"title": "Air conditioner (louver contact) actions", "data": {"start_actions": "Actions when the louver opens (optional)", "finish_actions": "Actions when the louver closes (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_air_conditioner_power": {"title": "Air conditioner (power) sensors", "data": {"air_conditioner_power_power_entity": "Power sensor in watts (required)", "air_conditioner_power_running_entity": "Louver binary sensor (optional)", "air_conditioner_power_plug_entity": "Smart plug (optional)", "air_conditioner_power_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_air_conditioner_power": {"title": "Air conditioner (power) parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_air_conditioner_power": {"title": "Air conditioner (power) actions", "data": {"start_actions": "Actions when the power threshold confirms activity (optional)", "finish_actions": "Actions when the finish threshold confirms inactivity (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_washer": {"title": "Washer sensors", "data": {"washer_power_entity": "Power sensor in watts (required)", "washer_door_entity": "Washer door sensor (optional)", "washer_plug_entity": "Smart plug (optional)", "washer_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_washer": {"title": "Washer cycle parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "max_runtime_seconds": "Maximum cycle runtime (optional)", "pending_delay_seconds": "Delay before the first unload reminder (seconds)", "pending_interval_seconds": "Interval between unload reminders (seconds)", "pending_repeats": "Additional unload reminders", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_washer": {"title": "Washer actions", "data": {"start_actions": "Actions when the cycle starts (optional)", "finish_actions": "Actions when the cycle finishes (optional)", "max_runtime_actions": "Actions when maximum runtime is exceeded (optional)", "pending_actions": "Actions while waiting to unload (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_dishwasher": {"title": "Dishwasher sensors", "data": {"dishwasher_power_entity": "Power sensor in watts (required)", "dishwasher_door_entity": "Dishwasher door sensor (optional)", "dishwasher_plug_entity": "Smart plug (optional)", "dishwasher_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_dishwasher": {"title": "Dishwasher cycle parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "max_runtime_seconds": "Maximum cycle runtime (optional)", "pending_delay_seconds": "Delay before the first unload reminder (seconds)", "pending_interval_seconds": "Interval between unload reminders (seconds)", "pending_repeats": "Additional unload reminders", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_dishwasher": {"title": "Dishwasher actions", "data": {"start_actions": "Actions when the cycle starts (optional)", "finish_actions": "Actions when the cycle finishes (optional)", "max_runtime_actions": "Actions when maximum runtime is exceeded (optional)", "pending_actions": "Actions while waiting to unload (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_dryer": {"title": "Dryer sensors", "data": {"dryer_power_entity": "Power sensor in watts (required)", "dryer_door_entity": "Dryer door sensor (optional)", "dryer_plug_entity": "Smart plug (optional)", "dryer_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_dryer": {"title": "Dryer cycle parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "max_runtime_seconds": "Maximum cycle runtime (optional)", "pending_delay_seconds": "Delay before the first unload reminder (seconds)", "pending_interval_seconds": "Interval between unload reminders (seconds)", "pending_repeats": "Additional unload reminders", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_dryer": {"title": "Dryer actions", "data": {"start_actions": "Actions when the cycle starts (optional)", "finish_actions": "Actions when the cycle finishes (optional)", "max_runtime_actions": "Actions when maximum runtime is exceeded (optional)", "pending_actions": "Actions while waiting to unload (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_refrigerator": {"title": "Refrigerator sensors", "data": {"refrigerator_power_entity": "Power sensor in watts (required)", "refrigerator_door_entity": "Refrigerator door sensor (required)", "refrigerator_plug_entity": "Smart plug (optional)", "refrigerator_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_refrigerator": {"title": "Refrigerator alarm parameters", "data": {"start_power_w": "Compressor start threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Compressor stop threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "door_open_delay_seconds": "Door-open alarm delay (seconds)", "compressor_inactive_delay_seconds": "Compressor inactivity delay (seconds)", "alarm_repeat_interval_seconds": "Alarm repeat interval (seconds)", "alarm_repeat_count": "Additional alarm repeats", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_refrigerator": {"title": "Refrigerator actions", "data": {"door_open_actions": "Actions while the door alarm is active (optional)", "compressor_inactive_actions": "Actions while the compressor alarm is active (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_refrigerator_switch": {"title": "Smart-switch refrigerator sensors", "data": {"refrigerator_switch_smart_plug_entity": "Activity smart switch (required)", "refrigerator_switch_door_entity": "Refrigerator door sensor (required)", "refrigerator_switch_power_entity": "Power sensor in watts (optional)", "refrigerator_switch_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_refrigerator_switch": {"title": "Smart-switch refrigerator alarm parameters", "data": {"door_open_delay_seconds": "Door-open alarm delay (seconds)", "alarm_repeat_interval_seconds": "Alarm repeat interval (seconds)", "alarm_repeat_count": "Additional alarm repeats", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_refrigerator_switch": {"title": "Smart-switch refrigerator actions", "data": {"door_open_actions": "Actions while the door alarm is active (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_mailbox_motion": {"title": "Mailbox motion sensors", "data": {"mailbox_motion_arrival_entity": "Interior mail-motion sensor (required)", "mailbox_motion_door_entity": "Mailbox main-door contact (required)"}},
+      "parameters_mailbox_motion": {"title": "Mailbox reminder parameters", "data": {"pending_delay_seconds": "Delay before the first reminder (seconds)", "pending_interval_seconds": "Interval between reminders (seconds)", "pending_repeats": "Additional reminders"}},
+      "actions_mailbox_motion": {"title": "Mailbox motion actions", "data": {"mail_arrival_actions": "Actions when mail arrives (optional)", "pending_actions": "Actions while mail is waiting to be collected (optional)"}},
+      "sensors_mailbox_slot": {"title": "Mailbox flap sensors", "data": {"mailbox_slot_arrival_entity": "Mail-slot flap contact (required)", "mailbox_slot_door_entity": "Mailbox main-door contact (required)"}},
+      "parameters_mailbox_slot": {"title": "Mailbox reminder parameters", "data": {"pending_delay_seconds": "Delay before the first reminder (seconds)", "pending_interval_seconds": "Interval between reminders (seconds)", "pending_repeats": "Additional reminders"}},
+      "actions_mailbox_slot": {"title": "Mailbox flap actions", "data": {"mail_arrival_actions": "Actions when mail arrives (optional)", "pending_actions": "Actions while mail is waiting to be collected (optional)"}}
     },
     "error": {
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
-      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
+      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers. Additional repeats must be a non-negative whole number.",
       "invalid_plug_off_alarm_settings": "The plug-off repeat interval must be a positive whole number and additional alarms a non-negative whole number.",
       "appliance_type_immutable": "The appliance type and activity mode cannot be changed after setup. Add a new appliance to change them.",
       "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities.",
@@ -111,85 +70,43 @@
           "appliance_type": "Appliance type",
           "activity_mode": "Activity detection method"
         },
-        "data_description": {"activity_mode": "Only this choice determines appliance activity. For a mailbox, it determines which event counts as new mail; optional sensors do not change the selected detection method."}
+        "data_description": {"activity_mode": "Only this sensor determines appliance activity."}
       },
-      "sensors": {
-        "title": "Input sensors",
-        "data": {
-          "climate_entity": "Original air-conditioner climate entity (no parent device)",
-          "power_entity": "Power sensor for this appliance (in watts)",
-          "energy_entity": "Cumulative energy sensor (optional)",
-          "running_entity": "Binary sensor that is on while the AC louver is open",
-          "mail_motion_entity": "Interior motion sensor that detects incoming mail",
-          "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
-          "washer_door_entity": "Washer door-open sensor (optional)",
-          "dishwasher_door_entity": "Dishwasher door-open sensor (optional)",
-          "dryer_door_entity": "Dryer door-open sensor (optional)",
-          "refrigerator_door_entity": "Refrigerator door-open sensor",
-          "smart_plug_entity": "Refrigerator smart switch",
-          "refrigerator_switch_door_entity": "Refrigerator door-open sensor",
-          "mailbox_motion_door_entity": "Mailbox main-door contact",
-          "mailbox_slot_door_entity": "Mailbox main-door contact",
-          "plug_entity": "Appliance smart plug (optional)"
-        },
-        "data_description": {
-          "climate_entity": "This associates the original climate entity with the appliance device; it is not a wrapper. Its controls remain available. Select an entity with no parent device; it is released when replaced or when the appliance is removed.",
-          "energy_entity": "Use this sensor's accumulated energy total. Leave empty to calculate energy from power when a power sensor is selected.",
-          "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
-          "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
-          "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
-          "washer_door_entity": "An open contact means the washer door is open.",
-          "dishwasher_door_entity": "An open contact means the dishwasher door is open.",
-          "dryer_door_entity": "An open contact means the dryer door is open.",
-          "refrigerator_door_entity": "An open contact means the refrigerator door is open.",
-          "smart_plug_entity": "Select the smart switch connected to the refrigerator; on means it is powered and off means it is not running.",
-          "refrigerator_switch_door_entity": "An open contact means the refrigerator door is open.",
-          "mailbox_motion_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
-          "mailbox_slot_door_entity": "An open contact means the mailbox's main door is open; opening it clears pending mail.",
-          "plug_entity": "The integration can also provide a switch. Turning it off will abruptly cut power to the appliance."
-        }
-      },
-      "parameters": {
-        "title": "Type-specific parameters",
-        "description": "Parameters depend on the selected profile. If no fields are shown, this profile has no configurable parameters.",
-        "data": {
-          "start_power_w": "Power above which a cycle is considered started (W)",
-          "start_duration_seconds": "Seconds power must stay above the start level before confirming the cycle",
-          "finish_power_w": "Power below which a cycle is considered finished (W)",
-          "finish_duration_seconds": "Seconds power must stay below the finish level before confirming the cycle has ended",
-          "max_runtime_seconds": "Maximum cycle runtime",
-          "pending_delay_seconds": "Wait after the cycle before the first unload reminder",
-          "pending_interval_seconds": "Interval between later unload reminders",
-          "pending_repeats": "Additional reminders after the first one (3 means 4 total)",
-          "door_open_delay_seconds": "Seconds the refrigerator door may stay open before the alarm",
-          "compressor_inactive_delay_seconds": "Seconds without compressor activity before the alarm",
-          "alarm_repeat_interval_seconds": "Interval between repeated refrigerator alarms (seconds)",
-          "alarm_repeat_count": "Additional alarms after the initial alarm (3 means 4 total)",
-          "plug_off_repeat_interval_seconds": "Interval between plug-off alarm repeats (seconds)",
-          "plug_off_repeat_count": "Additional plug-off alarms after the first one (3 means 4 total)"
-        },
-        "data_description": {
-          "max_runtime_seconds": "Optional. Leave blank to disable. If the cycle is still running after this time, the actions you configure for this limit run once; the appliance is not stopped."
-        }
-      },
-      "actions": {
-        "title": "Actions for cycle events",
-        "data": {
-          "start_actions": "Actions to run when the cycle starts",
-          "finish_actions": "Actions to run when the cycle finishes",
-          "max_runtime_actions": "Actions to run once if the maximum cycle time is exceeded",
-          "pending_actions": "Actions to repeat while waiting to unload (requires a door sensor)",
-          "door_open_actions": "Actions to run while the refrigerator door alarm is active",
-          "compressor_inactive_actions": "Actions to run while the compressor inactivity alarm is active",
-          "plug_off_actions": "Actions to run while the selected smart plug is off",
-          "mail_arrival_actions": "Actions to run when mail is detected"
-        }
-      }
+      "sensors_air_conditioner_climate": {"title": "Air conditioner (climate) sensors", "data": {"air_conditioner_climate_climate_entity": "Original climate entity", "air_conditioner_climate_power_entity": "Power sensor in watts (optional)", "air_conditioner_climate_running_entity": "Louver binary sensor (optional)", "air_conditioner_climate_plug_entity": "Smart plug (optional)", "air_conditioner_climate_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_air_conditioner_climate": {"title": "Air conditioner (climate) parameters", "data": {"plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_air_conditioner_climate": {"title": "Air conditioner (climate) actions", "data": {"start_actions": "Actions when HVAC activity starts (optional)", "finish_actions": "Actions when HVAC activity stops (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_air_conditioner_contact": {"title": "Air conditioner (louver contact) sensors", "data": {"air_conditioner_contact_running_entity": "Louver binary sensor (required)", "air_conditioner_contact_power_entity": "Power sensor in watts (optional)", "air_conditioner_contact_plug_entity": "Smart plug (optional)", "air_conditioner_contact_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_air_conditioner_contact": {"title": "Air conditioner (louver contact) parameters", "data": {"plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_air_conditioner_contact": {"title": "Air conditioner (louver contact) actions", "data": {"start_actions": "Actions when the louver opens (optional)", "finish_actions": "Actions when the louver closes (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_air_conditioner_power": {"title": "Air conditioner (power) sensors", "data": {"air_conditioner_power_power_entity": "Power sensor in watts (required)", "air_conditioner_power_running_entity": "Louver binary sensor (optional)", "air_conditioner_power_plug_entity": "Smart plug (optional)", "air_conditioner_power_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_air_conditioner_power": {"title": "Air conditioner (power) parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_air_conditioner_power": {"title": "Air conditioner (power) actions", "data": {"start_actions": "Actions when the power threshold confirms activity (optional)", "finish_actions": "Actions when the finish threshold confirms inactivity (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_washer": {"title": "Washer sensors", "data": {"washer_power_entity": "Power sensor in watts (required)", "washer_door_entity": "Washer door sensor (optional)", "washer_plug_entity": "Smart plug (optional)", "washer_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_washer": {"title": "Washer cycle parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "max_runtime_seconds": "Maximum cycle runtime (optional)", "pending_delay_seconds": "Delay before the first unload reminder (seconds)", "pending_interval_seconds": "Interval between unload reminders (seconds)", "pending_repeats": "Additional unload reminders", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_washer": {"title": "Washer actions", "data": {"start_actions": "Actions when the cycle starts (optional)", "finish_actions": "Actions when the cycle finishes (optional)", "max_runtime_actions": "Actions when maximum runtime is exceeded (optional)", "pending_actions": "Actions while waiting to unload (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_dishwasher": {"title": "Dishwasher sensors", "data": {"dishwasher_power_entity": "Power sensor in watts (required)", "dishwasher_door_entity": "Dishwasher door sensor (optional)", "dishwasher_plug_entity": "Smart plug (optional)", "dishwasher_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_dishwasher": {"title": "Dishwasher cycle parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "max_runtime_seconds": "Maximum cycle runtime (optional)", "pending_delay_seconds": "Delay before the first unload reminder (seconds)", "pending_interval_seconds": "Interval between unload reminders (seconds)", "pending_repeats": "Additional unload reminders", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_dishwasher": {"title": "Dishwasher actions", "data": {"start_actions": "Actions when the cycle starts (optional)", "finish_actions": "Actions when the cycle finishes (optional)", "max_runtime_actions": "Actions when maximum runtime is exceeded (optional)", "pending_actions": "Actions while waiting to unload (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_dryer": {"title": "Dryer sensors", "data": {"dryer_power_entity": "Power sensor in watts (required)", "dryer_door_entity": "Dryer door sensor (optional)", "dryer_plug_entity": "Smart plug (optional)", "dryer_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_dryer": {"title": "Dryer cycle parameters", "data": {"start_power_w": "Start power threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Finish power threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "max_runtime_seconds": "Maximum cycle runtime (optional)", "pending_delay_seconds": "Delay before the first unload reminder (seconds)", "pending_interval_seconds": "Interval between unload reminders (seconds)", "pending_repeats": "Additional unload reminders", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_dryer": {"title": "Dryer actions", "data": {"start_actions": "Actions when the cycle starts (optional)", "finish_actions": "Actions when the cycle finishes (optional)", "max_runtime_actions": "Actions when maximum runtime is exceeded (optional)", "pending_actions": "Actions while waiting to unload (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_refrigerator": {"title": "Refrigerator sensors", "data": {"refrigerator_power_entity": "Power sensor in watts (required)", "refrigerator_door_entity": "Refrigerator door sensor (required)", "refrigerator_plug_entity": "Smart plug (optional)", "refrigerator_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_refrigerator": {"title": "Refrigerator alarm parameters", "data": {"start_power_w": "Compressor start threshold (W)", "start_duration_seconds": "Start confirmation time (seconds)", "finish_power_w": "Compressor stop threshold (W)", "finish_duration_seconds": "Finish confirmation time (seconds)", "door_open_delay_seconds": "Door-open alarm delay (seconds)", "compressor_inactive_delay_seconds": "Compressor inactivity delay (seconds)", "alarm_repeat_interval_seconds": "Alarm repeat interval (seconds)", "alarm_repeat_count": "Additional alarm repeats", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_refrigerator": {"title": "Refrigerator actions", "data": {"door_open_actions": "Actions while the door alarm is active (optional)", "compressor_inactive_actions": "Actions while the compressor alarm is active (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_refrigerator_switch": {"title": "Smart-switch refrigerator sensors", "data": {"refrigerator_switch_smart_plug_entity": "Activity smart switch (required)", "refrigerator_switch_door_entity": "Refrigerator door sensor (required)", "refrigerator_switch_power_entity": "Power sensor in watts (optional)", "refrigerator_switch_energy_entity": "Cumulative energy sensor (optional)"}},
+      "parameters_refrigerator_switch": {"title": "Smart-switch refrigerator alarm parameters", "data": {"door_open_delay_seconds": "Door-open alarm delay (seconds)", "alarm_repeat_interval_seconds": "Alarm repeat interval (seconds)", "alarm_repeat_count": "Additional alarm repeats", "plug_off_repeat_interval_seconds": "Smart plug alarm repeat interval (seconds)", "plug_off_repeat_count": "Additional smart plug alarms"}},
+      "actions_refrigerator_switch": {"title": "Smart-switch refrigerator actions", "data": {"door_open_actions": "Actions while the door alarm is active (optional)", "plug_off_actions": "Actions while the smart plug is off (optional)"}},
+      "sensors_mailbox_motion": {"title": "Mailbox motion sensors", "data": {"mailbox_motion_arrival_entity": "Interior mail-motion sensor (required)", "mailbox_motion_door_entity": "Mailbox main-door contact (required)"}},
+      "parameters_mailbox_motion": {"title": "Mailbox reminder parameters", "data": {"pending_delay_seconds": "Delay before the first reminder (seconds)", "pending_interval_seconds": "Interval between reminders (seconds)", "pending_repeats": "Additional reminders"}},
+      "actions_mailbox_motion": {"title": "Mailbox motion actions", "data": {"mail_arrival_actions": "Actions when mail arrives (optional)", "pending_actions": "Actions while mail is waiting to be collected (optional)"}},
+      "sensors_mailbox_slot": {"title": "Mailbox flap sensors", "data": {"mailbox_slot_arrival_entity": "Mail-slot flap contact (required)", "mailbox_slot_door_entity": "Mailbox main-door contact (required)"}},
+      "parameters_mailbox_slot": {"title": "Mailbox reminder parameters", "data": {"pending_delay_seconds": "Delay before the first reminder (seconds)", "pending_interval_seconds": "Interval between reminders (seconds)", "pending_repeats": "Additional reminders"}},
+      "actions_mailbox_slot": {"title": "Mailbox flap actions", "data": {"mail_arrival_actions": "Actions when mail arrives (optional)", "pending_actions": "Actions while mail is waiting to be collected (optional)"}}
     },
     "error": {
       "invalid_thresholds": "Check that finish power is below start power and all times are valid.",
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
-      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
+      "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers. Additional repeats must be a non-negative whole number.",
       "invalid_plug_off_alarm_settings": "The plug-off repeat interval must be a positive whole number and additional alarms a non-negative whole number.",
       "appliance_type_immutable": "The appliance type and activity mode cannot be changed after setup. Add a new appliance to change them.",
       "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities.",
@@ -201,8 +118,14 @@
       "options": {"air_conditioner": "Air conditioner", "dryer": "Dryer", "mailbox": "Mailbox", "refrigerator": "Refrigerator", "washer": "Washer", "dishwasher": "Dishwasher"}
     },
     "activity_mode": {
-      "options": {"running_sensor": "Louver contact (open = AC running)", "climate": "Climate entity (follows HVAC activity)", "power": "Power sensor (start/stop thresholds)", "smart_plug": "Smart switch (on = appliance active)", "mail_slot": "Mail-slot contact (open = mail arrived)", "mail_motion": "Interior motion (motion = mail arrived)"}
+      "options": {"running_sensor": "1. Binary sensor (on = air running)", "climate": "2. Climate entity (follows HVAC activity)", "power": "4. Power sensor (follows start and stop thresholds)", "smart_plug": "Smart switch (on = appliance active)", "mail_slot": "Mail-slot contact (open = mail arrived)", "mail_motion": "Interior motion (motion = mail arrived)"}
     },
+    "activity_mode_air_conditioner": {"options": {"running_sensor": "Louver contact (open = air conditioner active)", "climate": "Climate entity (follows HVAC activity)", "power": "Power sensor (start and stop thresholds)"}},
+    "activity_mode_dryer": {"options": {"power": "Power sensor (start and stop thresholds)"}},
+    "activity_mode_mailbox": {"options": {"mail_slot": "Mail-slot flap contact (mail detected)", "mail_motion": "Interior motion sensor (mail detected)"}},
+    "activity_mode_refrigerator": {"options": {"smart_plug": "Smart switch (on = refrigerator active)", "power": "Power sensor (compressor thresholds)"}},
+    "activity_mode_washer": {"options": {"power": "Power sensor (start and finish thresholds)"}},
+    "activity_mode_dishwasher": {"options": {"power": "Power sensor (start and finish thresholds)"}},
     "appliance_type": {
       "options": {
         "washer": "Washer",
@@ -227,7 +150,7 @@
     },
     "binary_sensor": {
       "running": {"name": "Running"},
-      "input_running": {"name": "Auxiliary louver sensor"},
+      "input_running": {"name": "Air conditioner louver sensor"},
       "input_mail_motion": {"name": "Mailbox motion sensor input"},
       "door": {"name": "Door"},
       "mail_slot": {"name": "Mail slot"},

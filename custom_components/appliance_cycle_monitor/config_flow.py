@@ -93,6 +93,10 @@ def _optional(key: str, values: dict[str, Any]) -> vol.Optional:
     return vol.Optional(key)
 
 
+def _profile_step_id(step: str, profile_name: str) -> str:
+    return f"{step}_{profile_name}"
+
+
 class _OptionalEntitySelector(selector.EntitySelector):
     def __call__(self, data: Any) -> str | list[str] | None:
         if data is None:
@@ -151,7 +155,7 @@ def _activity_mode_schema(category: str) -> vol.Schema:
                 selector.SelectSelectorConfig(
                     options=list(APPLIANCE_CATEGORIES[category]),
                     mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key="activity_mode",
+                    translation_key=f"activity_mode_{category}",
                 )
             )
         }
@@ -646,7 +650,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
             ]
             return await self.async_step_sensors()
         return self.async_show_form(
-            step_id="activity_mode",
+            step_id=f"activity_mode_{self._category}",
             data_schema=_activity_mode_schema(self._category),
             last_step=False,
         )
@@ -659,7 +663,9 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
             self._draft.update(_normalize_sensor_values(user_input, profile))
             if not _validate_sensor_values(self._draft, profile):
                 return self.async_show_form(
-                    step_id="sensors",
+                    step_id=_profile_step_id(
+                        "sensors", self._draft[CONF_APPLIANCE_TYPE]
+                    ),
                     data_schema=_sensor_schema(
                         _sensor_form_values(self._draft, profile), profile, self.hass
                     ),
@@ -670,7 +676,9 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 self.hass, self._draft.get(CONF_CLIMATE_ENTITY)
             ):
                 return self.async_show_form(
-                    step_id="sensors",
+                    step_id=_profile_step_id(
+                        "sensors", self._draft[CONF_APPLIANCE_TYPE]
+                    ),
                     data_schema=_sensor_schema(
                         _sensor_form_values(self._draft, profile), profile, self.hass
                     ),
@@ -680,7 +688,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
             return await self.async_step_parameters()
         profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
-            step_id="sensors",
+            step_id=_profile_step_id("sensors", self._draft[CONF_APPLIANCE_TYPE]),
             data_schema=_sensor_schema(
                 _sensor_form_values(self._draft, profile), profile, self.hass
             ),
@@ -714,7 +722,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._draft.update(user_input)
                 return await self.async_step_actions()
         return self.async_show_form(
-            step_id="parameters",
+            step_id=_profile_step_id("parameters", self._draft[CONF_APPLIANCE_TYPE]),
             data_schema=_threshold_schema(self._draft, profile),
             errors=errors,
             last_step=False,
@@ -736,11 +744,48 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 options=_entry_options(self._draft),
             )
         return self.async_show_form(
-            step_id="actions",
+            step_id=_profile_step_id("actions", self._draft[CONF_APPLIANCE_TYPE]),
             data_schema=_action_schema(
                 self._draft, get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
             ),
         )
+
+    async_step_activity_mode_air_conditioner = async_step_activity_mode
+    async_step_activity_mode_dryer = async_step_activity_mode
+    async_step_activity_mode_mailbox = async_step_activity_mode
+    async_step_activity_mode_refrigerator = async_step_activity_mode
+    async_step_activity_mode_washer = async_step_activity_mode
+    async_step_activity_mode_dishwasher = async_step_activity_mode
+    async_step_sensors_air_conditioner_climate = async_step_sensors
+    async_step_parameters_air_conditioner_climate = async_step_parameters
+    async_step_actions_air_conditioner_climate = async_step_actions
+    async_step_sensors_air_conditioner_contact = async_step_sensors
+    async_step_parameters_air_conditioner_contact = async_step_parameters
+    async_step_actions_air_conditioner_contact = async_step_actions
+    async_step_sensors_air_conditioner_power = async_step_sensors
+    async_step_parameters_air_conditioner_power = async_step_parameters
+    async_step_actions_air_conditioner_power = async_step_actions
+    async_step_sensors_washer = async_step_sensors
+    async_step_parameters_washer = async_step_parameters
+    async_step_actions_washer = async_step_actions
+    async_step_sensors_dishwasher = async_step_sensors
+    async_step_parameters_dishwasher = async_step_parameters
+    async_step_actions_dishwasher = async_step_actions
+    async_step_sensors_dryer = async_step_sensors
+    async_step_parameters_dryer = async_step_parameters
+    async_step_actions_dryer = async_step_actions
+    async_step_sensors_refrigerator = async_step_sensors
+    async_step_parameters_refrigerator = async_step_parameters
+    async_step_actions_refrigerator = async_step_actions
+    async_step_sensors_refrigerator_switch = async_step_sensors
+    async_step_parameters_refrigerator_switch = async_step_parameters
+    async_step_actions_refrigerator_switch = async_step_actions
+    async_step_sensors_mailbox_motion = async_step_sensors
+    async_step_parameters_mailbox_motion = async_step_parameters
+    async_step_actions_mailbox_motion = async_step_actions
+    async_step_sensors_mailbox_slot = async_step_sensors
+    async_step_parameters_mailbox_slot = async_step_parameters
+    async_step_actions_mailbox_slot = async_step_actions
 
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
@@ -793,7 +838,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
             values = {**self._saved, **self._draft}
             if not _validate_sensor_values(values, profile):
                 return self.async_show_form(
-                    step_id="sensors",
+                    step_id=_profile_step_id("sensors", values[CONF_APPLIANCE_TYPE]),
                     data_schema=_sensor_schema(
                         _sensor_form_values(values, profile), profile, self.hass
                     ),
@@ -809,7 +854,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 )
             ):
                 return self.async_show_form(
-                    step_id="sensors",
+                    step_id=_profile_step_id("sensors", values[CONF_APPLIANCE_TYPE]),
                     data_schema=_sensor_schema(
                         _sensor_form_values(values, profile), profile, self.hass
                     ),
@@ -819,7 +864,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
             return await self.async_step_parameters()
         profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
         return self.async_show_form(
-            step_id="sensors",
+            step_id=_profile_step_id("sensors", values[CONF_APPLIANCE_TYPE]),
             data_schema=_sensor_schema(
                 _sensor_form_values(values, profile), profile, self.hass
             ),
@@ -854,7 +899,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 self._draft.update(user_input)
                 return await self.async_step_actions()
         return self.async_show_form(
-            step_id="parameters",
+            step_id=_profile_step_id("parameters", values[CONF_APPLIANCE_TYPE]),
             data_schema=_threshold_schema(values, profile),
             errors=errors,
             last_step=False,
@@ -882,8 +927,39 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 title="", data=_entry_options(values)
             )
         return self.async_show_form(
-            step_id="actions",
+            step_id=_profile_step_id("actions", values[CONF_APPLIANCE_TYPE]),
             data_schema=_action_schema(
                 values, get_appliance_profile(values[CONF_APPLIANCE_TYPE])
             ),
         )
+
+    async_step_sensors_air_conditioner_climate = async_step_sensors
+    async_step_parameters_air_conditioner_climate = async_step_parameters
+    async_step_actions_air_conditioner_climate = async_step_actions
+    async_step_sensors_air_conditioner_contact = async_step_sensors
+    async_step_parameters_air_conditioner_contact = async_step_parameters
+    async_step_actions_air_conditioner_contact = async_step_actions
+    async_step_sensors_air_conditioner_power = async_step_sensors
+    async_step_parameters_air_conditioner_power = async_step_parameters
+    async_step_actions_air_conditioner_power = async_step_actions
+    async_step_sensors_washer = async_step_sensors
+    async_step_parameters_washer = async_step_parameters
+    async_step_actions_washer = async_step_actions
+    async_step_sensors_dishwasher = async_step_sensors
+    async_step_parameters_dishwasher = async_step_parameters
+    async_step_actions_dishwasher = async_step_actions
+    async_step_sensors_dryer = async_step_sensors
+    async_step_parameters_dryer = async_step_parameters
+    async_step_actions_dryer = async_step_actions
+    async_step_sensors_refrigerator = async_step_sensors
+    async_step_parameters_refrigerator = async_step_parameters
+    async_step_actions_refrigerator = async_step_actions
+    async_step_sensors_refrigerator_switch = async_step_sensors
+    async_step_parameters_refrigerator_switch = async_step_parameters
+    async_step_actions_refrigerator_switch = async_step_actions
+    async_step_sensors_mailbox_motion = async_step_sensors
+    async_step_parameters_mailbox_motion = async_step_parameters
+    async_step_actions_mailbox_motion = async_step_actions
+    async_step_sensors_mailbox_slot = async_step_sensors
+    async_step_parameters_mailbox_slot = async_step_parameters
+    async_step_actions_mailbox_slot = async_step_actions

@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
@@ -50,6 +51,7 @@ from custom_components.appliance_cycle_monitor import (
 )
 from custom_components.appliance_cycle_monitor import runtime as runtime_module
 from custom_components.appliance_cycle_monitor.appliance import ApplianceCycleDetector
+from custom_components.appliance_cycle_monitor.appliance_types import APPLIANCE_PROFILES
 from custom_components.appliance_cycle_monitor.runtime import ApplianceRuntime
 from custom_components.appliance_cycle_monitor.binary_sensor import ApplianceBinarySensor
 from custom_components.appliance_cycle_monitor.sensor import ApplianceSensor
@@ -79,6 +81,24 @@ async def _async_fire_deadline(runtime: ApplianceRuntime, when: datetime) -> Non
         runtime._unsubscribe_timer()
         runtime._unsubscribe_timer = None
     await runtime._async_handle_deadline(when)
+
+
+def test_appliance_device_lookup_scopes_identifier_by_config_entry(
+    hass, monkeypatch
+):
+    calls = []
+
+    def get_device_by_identifier(identifier, config_entry_id):
+        calls.append((identifier, config_entry_id))
+        return SimpleNamespace(id="appliance-device")
+
+    registry = SimpleNamespace(
+        async_get_device_by_identifier=get_device_by_identifier
+    )
+    monkeypatch.setattr(dr, "async_get", lambda _: registry)
+
+    assert _async_appliance_device_id(hass, "entry-123") == "appliance-device"
+    assert calls == [((DOMAIN, "entry-123"), "entry-123")]
 
 
 @pytest.mark.asyncio
@@ -969,9 +989,15 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     running_entity_id = registry.async_get_entity_id(
         "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
     )
-    assert hass.states.get(running_entity_id).attributes["source_entity"] == config[
-        CONF_RUNNING_ENTITY
-    ]
+    running_state = hass.states.get(running_entity_id)
+    assert running_state.attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
+    device_id = _async_appliance_device_id(hass, entry)
+    assert device_id is not None
+    assert registry.async_get(running_entity_id).device_id == device_id
+
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    assert hass.states.get(running_entity_id).state == "unavailable"
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -1031,6 +1057,94 @@ async def test_unrepresented_binary_inputs_get_a_single_source_wrapper(
     assert hass.states.get(wrapper_entity_id).state == "on"
 
     await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.parametrize("appliance_type", tuple(APPLIANCE_PROFILES))
+@pytest.mark.asyncio
+async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
+    hass, appliance_type, enable_custom_integrations
+):
+    profile = APPLIANCE_PROFILES[appliance_type]
+    source_entry = MockConfigEntry(domain=f"source_{appliance_type}")
+    source_entry.add_to_hass(hass)
+    source_registry = er.async_get(hass)
+    source_device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=source_entry.entry_id,
+        identifiers={(source_entry.domain, appliance_type)},
+        name=f"Source device {appliance_type}",
+    )
+    config = {
+        CONF_APPLIANCE_TYPE: appliance_type,
+        "name": f"Test {appliance_type}",
+    }
+    input_entities = []
+
+    for index, input_config in enumerate(profile.sensor_inputs):
+        source = source_registry.async_get_or_create(
+            input_config.domain,
+            source_entry.domain,
+            f"{appliance_type}_{index}",
+            config_entry=source_entry,
+            device_id=(
+                source_device.id
+                if input_config.domain != "climate" and index % 2 == 0
+                else None
+            ),
+        )
+        config[input_config.config_key] = source.entity_id
+        input_entities.append((input_config, source.entity_id, source.device_id))
+
+        if input_config.domain == "sensor":
+            unit = "kWh" if "energy" in input_config.device_classes else "W"
+            hass.states.async_set(
+                source.entity_id,
+                "0",
+                {ATTR_UNIT_OF_MEASUREMENT: unit},
+            )
+        elif input_config.domain == "climate":
+            hass.states.async_set(
+                source.entity_id, "off", {"hvac_action": "idle"}
+            )
+        else:
+            hass.states.async_set(source.entity_id, "off")
+
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+
+    device_id = _async_appliance_device_id(hass, entry)
+    assert device_id is not None
+    integration_registry = er.async_get(hass)
+
+    for input_config, source_entity_id, original_device_id in input_entities:
+        source = source_registry.async_get(source_entity_id)
+        assert source is not None
+        if input_config.domain == "climate":
+            assert source.device_id == device_id
+            continue
+
+        assert source.device_id == original_device_id
+        unique_id = (
+            f"{entry.entry_id}_{input_config.output_entity}"
+            if input_config.output_entity is not None
+            else f"{entry.entry_id}_input_{input_config.config_key.removesuffix('_entity')}"
+        )
+        wrapper = next(
+            (
+                entity
+                for entity in integration_registry.entities.values()
+                if entity.config_entry_id == entry.entry_id
+                and entity.unique_id == unique_id
+            ),
+            None,
+        )
+        assert wrapper is not None
+        assert wrapper.device_id == device_id
+        wrapper_state = hass.states.get(wrapper.entity_id)
+        assert wrapper_state is not None
+        assert wrapper_state.attributes["source_entity"] == source_entity_id
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.asyncio

@@ -49,6 +49,8 @@ La creació d'un dispositiu presenta cinc passos. En editar, el tipus i la modal
 
 Els passos segueixen la navegació estàndard cap endavant dels fluxos de Home Assistant; no cal afegir controls personalitzats per tornar a pantalles anteriors. En editar, es mostra la configuració desada. La validació s'ha de mostrar al pas corresponent abans de completar el flux. Cada perfil declara les seves fonts obligatòries i opcionals, paràmetres, grups d'accions i entitats de sortida.
 
+Després de seleccionar el tipus i la modalitat, els passos de sensors, paràmetres i accions són independents per a cada perfil (combinació de tipus i modalitat). Cada perfil té identificadors de pas, formularis, camps, selectors i labels propis. No s'han de compartir pantalles, definicions de sensors ni labels entre perfils, encara que es repeteixin; una etiqueta opcional o obligatòria s'ha d'escriure directament al formulari de cada perfil i no derivar-se de condicions dinàmiques. Es pot reutilitzar lògica interna de validació o runtime sempre que no torni a unificar les definicions visibles dels formularis.
+
 Aquest flux és el lloc central per configurar tot el comportament propi de l'electrodomèstic. Les automatitzacions externes no poden ser un requisit de funcionament. Es poden seleccionar entitats o accions ja existents a Home Assistant, inclosos scripts com a accions opcionals, però la integració ha de controlar directament la detecció de cicle i el moment d'execució de les accions.
 
 ### 4.2 Entitats d'entrada
@@ -63,7 +65,7 @@ Aquest flux és el lloc central per configurar tot el comportament propi de l'el
 - **Obertura de porta per a bugaderia**: selector opcional per a rentadora, rentaplats i assecadora; activa estat de porta i «pendent de buidar».
 - **Switch intel·ligent de l'endoll**: selector opcional en aparells endollats. La integració n'exposa el control; només determina l'activitat si és la font seleccionada.
 
-Les fonts obligatòries depenen de la modalitat seleccionada. En AC poden coexistir contacte, potència i switch, però només la font seleccionada determina l'activitat. No es requereixen helpers externs: la integració proporciona les entitats de sortida de la secció 5. Les entitats seleccionades són fonts externes i no s'han d'esborrar quan s'elimina el dispositiu.
+Les fonts obligatòries depenen de la modalitat seleccionada. En AC poden coexistir contacte, potència i switch, però només la font seleccionada determina l'activitat. No es requereixen helpers externs: la integració proporciona les entitats de sortida de la secció 5. Les entitats seleccionades són fonts externes i no s'han d'esborrar quan s'elimina el dispositiu. La integració no n'ha de canviar mai l'associació amb un dispositiu pare; per mostrar-les al dispositiu de l'aparell, ha de crear o reutilitzar wrappers propis, llevat de l'excepció explícita de les entitats sense dispositiu pare descrita a la secció 5.
 
 ### 4.3 Detecció del cicle per potència
 
@@ -115,7 +117,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 
 - Cada electrodomèstic configurat ha d'aparèixer com un dispositiu propi al registre de dispositius de Home Assistant.
 - Totes les entitats de sortida creades per la integració han d'estar associades al dispositiu de l'electrodomèstic i ser visibles des de la seva pàgina.
-- En tots els tipus d'aparell, cada entitat d'entrada configurada ha d'estar representada a la pàgina del dispositiu mitjançant una entitat pròpia de la integració. Si ja hi ha una sortida equivalent que reflecteix aquesta font, s'ha de reutilitzar com a wrapper i no crear una segona entitat amb el mateix estat. Les entitats `climate` són l'excepció: s'associen directament al dispositiu, sense wrapper, per conservar-ne els controls i la identitat originals.
+- **Regla d'associació i wrappers**: mai no s'han d'associar entitats externes seleccionades a un dispositiu creat per la integració. En tots els tipus d'aparell, cada entitat d'entrada configurada s'ha de representar al dispositiu mitjançant un wrapper propi de la integració; si ja hi ha una sortida equivalent que reflecteix aquesta font, s'ha de reutilitzar com a wrapper i no crear una segona entitat amb el mateix estat. L'única excepció són les entitats sense dispositiu pare indicades explícitament, com ara les entitats `climate` dels AC: aquestes s'assignen directament al dispositiu, sense wrapper, per conservar-ne els controls i la identitat originals. Si una entitat té un dispositiu pare, no se l'ha de reassignar.
 - **Potència** i **Energia total consumida**: es creen segons les entrades configurades, independentment de la modalitat. L'energia es mostra en kWh, des d'un sensor extern o calculada i persistent a partir de potència.
 - **Durada de l'últim període actiu**: sensor de sortida amb la durada del període d'activitat més recent detectat.
 - **Temps restant estimat**: només es crea per perfils de cicle que en poden oferir una estimació útil. No es crea per AC ni nevera.
@@ -198,6 +200,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 40. En crear o editar un perfil de bústia, el sensor d'arribada i el contacte de la porta principal han de ser entitats diferents; si se selecciona la mateixa entitat, el flux mostra un error i no desa la configuració.
 41. El perfil `mailbox_slot` exposa l'estat obert/tancat del contacte de portella com una entitat «Portella» separada de «Porta». El perfil `mailbox_motion` no crea aquesta entitat.
 42. Tots els perfils que admeten un endoll intel·ligent exposen, quan n'hi ha un de seleccionat, un grup d'accions i paràmetres independents per a l'endoll apagat. El primer avís és immediat, se'n poden configurar N repeticions addicionals, no s'envien repeticions després de `on` i l'estat, recompte i venciment es restauren després d'un reinici.
+43. Cada categoria té un pas de modalitat i opcions de traducció propis; cada perfil té identificadors de pas, formularis de sensors, paràmetres i accions, i labels de traducció independents. Les proves han de recórrer totes les categories i perfils i confirmar que els formularis i les claus de traducció estan aïllats, inclosa la indicació explícita «(optional)» o «(opcional)» als camps opcionals.
 
 ## 9. Qualitat i proves
 
