@@ -173,8 +173,34 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
             "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
         }
+        expected_input_wrappers = {
+            "air_conditioner_climate": {CONF_RUNNING_ENTITY},
+            "air_conditioner_power": {CONF_RUNNING_ENTITY},
+            "mailbox_motion": {CONF_MAIL_MOTION_ENTITY},
+        }
         for appliance_type, profile in APPLIANCE_PROFILES.items():
             with self.subTest(appliance_type=appliance_type):
+                self.assertEqual(
+                    {
+                        item.config_key
+                        for item in profile.inputs_requiring_wrapper
+                    },
+                    expected_input_wrappers.get(appliance_type, set()),
+                )
+                for input_config in profile.sensor_inputs:
+                    if input_config.domain == "climate":
+                        self.assertIsNone(input_config.output_entity)
+                    else:
+                        self.assertTrue(
+                            input_config.output_entity
+                            or input_config in profile.inputs_requiring_wrapper
+                        )
+                self.assertTrue(
+                    all(
+                        input_config.domain == "binary_sensor"
+                        for input_config in profile.inputs_requiring_wrapper
+                    )
+                )
                 values = {
                     CONF_POWER_ENTITY: "sensor.appliance_power",
                     CONF_RUNNING_ENTITY: "binary_sensor.appliance_activity",

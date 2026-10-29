@@ -26,9 +26,16 @@ async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 	await hass.config_entries.async_reload(entry.entry_id)
 
 
-def _async_appliance_device_id(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
-	device = dr.async_get(hass).async_get_device(
-		identifiers={(DOMAIN, entry.entry_id)}
+def _async_appliance_device_id(
+	hass: HomeAssistant, entry: ConfigEntry | str
+) -> str | None:
+	entry_id = entry.entry_id if isinstance(entry, ConfigEntry) else entry
+	registry = dr.async_get(hass)
+	get_by_identifier = getattr(registry, "async_get_device_by_identifier", None)
+	device = (
+		get_by_identifier((DOMAIN, entry_id))
+		if get_by_identifier is not None
+		else registry.async_get_device(identifiers={(DOMAIN, entry_id)})
 	)
 	return device.id if device is not None else None
 

@@ -8,7 +8,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Tipus i nom de l’electrodomèstic",
+        "title": "Nom i tipus d’electrodomèstic",
         "data": {
           "name": "Nom que es mostrarà per a aquest electrodomèstic",
           "appliance_type": "Tipus d’electrodomèstic"
@@ -16,15 +16,16 @@
       },
       "activity_mode": {
         "title": "Detecció d'activitat",
-        "data": {"activity_mode": "Modalitat de detecció d'activitat"}
+        "data": {"activity_mode": "Modalitat de detecció d'activitat"},
+        "data_description": {"activity_mode": "Només aquesta opció determina l'activitat de l'aparell. A la bústia, determina quin esdeveniment compta com a correu nou; els sensors opcionals no canvien la modalitat de detecció."}
       },
       "sensors": {
         "title": "Sensors d’entrada",
         "data": {
           "climate_entity": "Entitat climate original de l’aire condicionat (sense dispositiu pare)",
           "power_entity": "Sensor de potència de l’aparell (ha d’indicar watts)",
-          "energy_entity": "Sensor d'energia existent (opcional)",
-          "running_entity": "Contacte binari actiu quan la pala de l’aire condicionat és oberta",
+          "energy_entity": "Sensor d'energia total acumulada (opcional)",
+          "running_entity": "Sensor binari actiu quan la pala de l’aire condicionat és oberta",
           "mail_motion_entity": "Sensor de moviment interior que detecta l’arribada de correu",
           "mail_slot_entity": "Contacte a la portella de la bústia per on s’introdueixen les cartes",
           "washer_door_entity": "Sensor de porta oberta de la rentadora (opcional)",
@@ -39,7 +40,7 @@
         },
         "data_description": {
           "climate_entity": "Aquesta opció associa l’entitat climate original al dispositiu de l’aparell; no és un wrapper. Es conserven els controls originals. Tria una climate sense dispositiu pare; en substituir-la o eliminar l’aparell, tornarà a quedar sense dispositiu.",
-          "energy_entity": "Utilitza el total existent del sensor. Deixa-ho buit per calcular l'energia a partir de la potència, si hi ha un sensor de potència seleccionat.",
+          "energy_entity": "Fes servir l'energia total acumulada del sensor. Deixa-ho buit per calcular l'energia a partir de la potència, si hi ha un sensor de potència seleccionat.",
           "running_entity": "Munta el contacte a la pala de l’aire condicionat. La pala oberta indica que funciona.",
           "mail_motion_entity": "El moviment dins de la bústia indica que ha arribat una carta.",
           "mail_slot_entity": "L’obertura de la portella indica que ha arribat una carta.",
@@ -104,20 +105,21 @@
   "options": {
     "step": {
       "init": {
-        "title": "Tipus i nom de l’electrodomèstic",
+        "title": "Nom i tipus d’electrodomèstic",
         "data": {
           "name": "Nom que es mostrarà per a aquest electrodomèstic",
           "appliance_type": "Tipus d’electrodomèstic",
           "activity_mode": "Modalitat de detecció d'activitat"
-        }
+        },
+        "data_description": {"activity_mode": "Només aquesta opció determina l'activitat de l'aparell. A la bústia, determina quin esdeveniment compta com a correu nou; els sensors opcionals no canvien la modalitat de detecció."}
       },
       "sensors": {
         "title": "Sensors d’entrada",
         "data": {
           "climate_entity": "Entitat climate original de l’aire condicionat (sense dispositiu pare)",
           "power_entity": "Sensor de potència de l’aparell (ha d’indicar watts)",
-          "energy_entity": "Sensor d'energia existent (opcional)",
-          "running_entity": "Contacte binari actiu quan la pala de l’aire condicionat és oberta",
+          "energy_entity": "Sensor d'energia total acumulada (opcional)",
+          "running_entity": "Sensor binari actiu quan la pala de l’aire condicionat és oberta",
           "mail_motion_entity": "Sensor de moviment interior que detecta l’arribada de correu",
           "mail_slot_entity": "Contacte a la portella de la bústia per on s’introdueixen les cartes",
           "washer_door_entity": "Sensor de porta oberta de la rentadora (opcional)",
@@ -132,7 +134,7 @@
         },
         "data_description": {
           "climate_entity": "Aquesta opció associa l’entitat climate original al dispositiu de l’aparell; no és un wrapper. Es conserven els controls originals. Tria una climate sense dispositiu pare; en substituir-la o eliminar l’aparell, tornarà a quedar sense dispositiu.",
-          "energy_entity": "Utilitza el total existent del sensor. Deixa-ho buit per calcular l'energia a partir de la potència, si hi ha un sensor de potència seleccionat.",
+          "energy_entity": "Fes servir l'energia total acumulada del sensor. Deixa-ho buit per calcular l'energia a partir de la potència, si hi ha un sensor de potència seleccionat.",
           "running_entity": "Munta el contacte a la pala de l’aire condicionat. La pala oberta indica que funciona.",
           "mail_motion_entity": "El moviment dins de la bústia indica que ha arribat una carta.",
           "mail_slot_entity": "L’obertura de la portella indica que ha arribat una carta.",
@@ -199,7 +201,7 @@
       "options": {"air_conditioner": "Aire condicionat", "dryer": "Assecadora", "mailbox": "Bústia", "refrigerator": "Nevera", "washer": "Rentadora", "dishwasher": "Rentaplats"}
     },
     "activity_mode": {
-      "options": {"running_sensor": "Contacte de pala", "climate": "Entitat climate", "power": "Sensor de potència", "smart_plug": "Interruptor intel·ligent", "mail_slot": "Contacte de portella", "mail_motion": "Sensor de moviment interior"}
+      "options": {"running_sensor": "Contacte de pala (oberta = aire en marxa)", "climate": "Entitat climate (segueix l'activitat HVAC)", "power": "Potència (llindars d'inici i aturada)", "smart_plug": "Interruptor intel·ligent (encès = aparell actiu)", "mail_slot": "Contacte de portella (obrir = arriba correu)", "mail_motion": "Moviment interior (moviment = arriba correu)"}
     },
     "appliance_type": {
       "options": {
@@ -225,6 +227,8 @@
     },
     "binary_sensor": {
       "running": {"name": "En funcionament"},
+      "input_running": {"name": "Sensor auxiliar de la pala"},
+      "input_mail_motion": {"name": "Entrada del sensor de moviment de la bústia"},
       "door": {"name": "Porta"},
       "mail_slot": {"name": "Portella"},
       "pending_unload": {"name": "Pendent de buidar"}

@@ -51,6 +51,10 @@ class AppliancePlugSwitch(SwitchEntity):
         state = self.hass.states.get(self._entity_id)
         return state is not None and state.state in ("on", "off")
 
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        return {"source_entity": self._entity_id}
+
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the selected external plug."""
         await self.hass.services.async_call(

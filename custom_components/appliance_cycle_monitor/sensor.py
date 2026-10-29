@@ -63,6 +63,22 @@ class ApplianceSensor(SensorEntity):
         """Return the latest value from the appliance runtime."""
         return self._value_fn()
 
+    @property
+    def extra_state_attributes(self) -> dict[str, str] | None:
+        """Identify the configured input represented by this output."""
+        if self._key == "power":
+            source_key = CONF_POWER_ENTITY
+        elif self._key == "total_energy":
+            source_key = (
+                CONF_ENERGY_ENTITY
+                if self._runtime.config.get(CONF_ENERGY_ENTITY)
+                else CONF_POWER_ENTITY
+            )
+        else:
+            return None
+        source_entity = self._runtime.config.get(source_key)
+        return {"source_entity": source_entity} if source_entity else None
+
     async def async_added_to_hass(self) -> None:
         """Subscribe to changes from the shared runtime."""
         await super().async_added_to_hass()

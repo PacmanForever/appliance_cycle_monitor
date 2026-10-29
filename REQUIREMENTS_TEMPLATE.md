@@ -2,16 +2,16 @@
 
 ## 1. Objectiu
 
-Crear una integració local de Home Assistant per centralitzar en un únic dispositiu la configuració i la gestió de cada electrodomèstic no intel·ligent o bústia. La integració pot utilitzar entitats que ja existeixen a Home Assistant com a fonts de dades, especialment un sensor de potència d'un endoll intel·ligent, però la detecció del cicle o de l'arribada de correu, l'estat, la configuració i les accions han de pertànyer al dispositiu gestionat per la integració.
+Crear una integració local de Home Assistant per centralitzar en un únic dispositiu la configuració i la gestió de cada electrodomèstic no intel·ligent o bústia. La integració pot fer servir entitats que ja existeixen a Home Assistant com a fonts de dades, especialment un sensor de potència d'un endoll intel·ligent, però la detecció del cicle o de l'arribada de correu, l'estat, la configuració i les accions han de pertànyer al dispositiu gestionat per la integració.
 
 L'usuari no ha de necessitar crear automatitzacions o blueprints externs per detectar l'inici o el final del cicle ni per executar les accions configurades.
 
-Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat detectat per contacte de pala, potència o una entitat `climate` existent, nevera detectada per potència amb switch opcional o per interruptor intel·ligent obligatori, i bústia detectada per moviment interior o per contacte de portella. L'estructura ha de permetre afegir tipus futurs sense repartir condicions específiques per tipus entre els fluxos, el runtime i les plataformes d'entitats.
+Els tipus generals inicials són rentadora, rentaplats, assecadora, aire condicionat, nevera i bústia. Cada tipus ofereix les modalitats d'activitat que li corresponen: potència per als electrodomèstics de bugaderia; contacte de pala, potència o entitat `climate` per a l'aire condicionat; potència o interruptor per a la nevera; i moviment interior o contacte de portella per a la bústia. Les entrades auxiliars compatibles són independents de la modalitat. L'estructura ha de permetre afegir tipus futurs sense repartir condicions específiques per tipus entre els fluxos, el runtime i les plataformes d'entitats.
 
 ## 2. Identitat del projecte
 
 - **Nom visible**: Appliance Cycle Monitor
-- **Domini proposat**: `appliance_cycle_monitor`
+- **Domini**: `appliance_cycle_monitor`
 - **Tipus**: integració personalitzada de Home Assistant, distribuïble amb HACS
 - **Funcionament**: local; sense API externa ni credencials
 - **Font d'activitat**: una entitat de Home Assistant determinada per la modalitat seleccionada
@@ -19,7 +19,7 @@ Els tipus inicials són rentadora, rentaplats, assecadora, aire condicionat dete
 - **Idioma font**: anglès
 - **Idiomes de la interfície**: anglès, castellà i català
 
-El domini es manté diferenciat de `appliance_cycle`, que ja l'utilitza una altra integració.
+El domini es manté diferenciat de `appliance_cycle`, que ja fa servir una altra integració.
 
 ## 3. Gestió de dispositius
 
@@ -27,7 +27,7 @@ La integració ha de permetre:
 
 - **Crear** un dispositiu per a cada electrodomèstic, amb nom i tipus propis.
 - **Modificar** la configuració d'un dispositiu existent sense crear-ne un duplicat. El nom, les fonts, els valors i les accions s'han de poder canviar després de la configuració inicial, però el tipus general i la modalitat d'activitat són immutables; per canviar-los cal crear un dispositiu nou.
-- **Eliminar** un dispositiu de la integració i retirar-ne les entitats del registre de Home Assistant quan ja no hi hagi cap entrada que les utilitzi.
+- **Eliminar** un dispositiu de la integració i retirar-ne les entitats del registre de Home Assistant quan ja no hi hagi cap entrada que les faci servir.
 - Mantenir cada aparell i la seva configuració aïllats dels altres, encara que comparteixin la mateixa integració.
 - Recuperar les entrades configurades després d'un reinici de Home Assistant.
 
@@ -58,7 +58,7 @@ Aquest flux és el lloc central per configurar tot el comportament propi de l'el
 - **Contacte de pala de l'AC**: selector obligatori del perfil `air_conditioner_contact`. `on` significa AC en funcionament i `off` aturat; les transicions actualitzen l'estat de funcionament.
 - **Obertura de porta de nevera**: selector obligatori dels perfils `refrigerator` i `refrigerator_switch`; reflecteix l'estat de porta i inicia o cancel·la l'alarma de porta oberta.
 - **Switch de nevera**: al perfil `refrigerator`, selector opcional d'un endoll intel·ligent controlable que no altera la detecció per potència. Al perfil `refrigerator_switch`, el switch és obligatori, controla l'alimentació i és també la font binària d'activitat (`on` inicia i `off` finalitza el període).
-- **Arribada de correu**: `mailbox_motion` requereix un sensor binari de moviment interior i `mailbox_slot` un contacte binari a la portella d'entrada. Una transició `off`→`on` després d'haver observat `off` indica una arribada; l'estat inicial `on` no ha de generar una arribada falsa.
+- **Arribada de correu**: `mailbox_motion` requereix un sensor binari de moviment interior i `mailbox_slot` un sensor binari a la portella d'entrada. Una transició `off`→`on` després d'haver observat `off` indica una arribada; l'estat inicial `on` no ha de generar una arribada falsa.
 - **Porta principal de la bústia**: selector obligatori dels dos perfils de bústia. L'obertura neteja «pendent de recollir» i cancel·la els recordatoris.
 - **Obertura de porta per a bugaderia**: selector opcional per a rentadora, rentaplats i assecadora; activa estat de porta i «pendent de buidar».
 - **Switch intel·ligent de l'endoll**: selector opcional en aparells endollats. La integració n'exposa el control; només determina l'activitat si és la font seleccionada.
@@ -83,7 +83,7 @@ Cada dispositiu pot tenir un **temps màxim de funcionament** configurable en se
 
 ### 4.4 Perfils de tipus i comportaments addicionals
 
-Els tipus s'han de definir en un registre de perfils extensible. Cada perfil declara fonts d'entrada, grups de paràmetres, grups d'accions, capacitats i entitats de sortida. Els fluxos i les plataformes han de derivar-ne els camps visibles; no han d'acumular condicions específiques disperses per nom de tipus. Els perfils de rentadora, rentaplats i assecadora es mantenen separats encara que reutilitzin avui els mateixos detectors i grups. Afegir un tipus nou que reutilitzi una estratègia existent ha de requerir registrar-ne el perfil i traduccions; només una estratègia nova requereix un detector nou.
+Els tipus s'han de definir en un registre de perfils extensible. Cada perfil declara fonts d'entrada, grups de paràmetres, grups d'accions, capacitats i entitats de sortida. Els fluxos i les plataformes han de derivar-ne els camps visibles; no han d'acumular condicions específiques disperses per nom de tipus. Els perfils de rentadora, rentaplats i assecadora es mantenen separats encara que facin servir avui els mateixos detectors i grups. Afegir un tipus nou que faci servir una estratègia existent ha de requerir registrar-ne el perfil i traduccions; només una estratègia nova requereix un detector nou.
 
 - **Aire condicionat per contacte** (`air_conditioner_contact`): el contacte de pala és la font binària de funcionament. Les transicions `off`→`on` i `on`→`off` inicien i finalitzen respectivament el període actiu. La potència i l'energia són opcionals; no es creen «pendent de buidar» ni temps restant estimat.
 - **Aire condicionat per potència** (`air_conditioner_power`): usa llindars/histèresi de potència per detectar activitat. No es creen «pendent de buidar» ni temps restant estimat.
@@ -93,7 +93,7 @@ Els tipus s'han de definir en un registre de perfils extensible. Cada perfil dec
 - **Bústia amb moviment** (`mailbox_motion`): el moviment interior detecta l'arribada de correu. La porta principal és independent del sensor d'arribada i neteja l'estat pendent quan s'obre.
 - **Bústia amb portella** (`mailbox_slot`): l'obertura de la portella d'entrada detecta l'arribada de correu. La porta principal és independent del contacte de portella i neteja l'estat pendent quan s'obre.
 - En tots dos perfils de bústia, una arribada posa «pendent de recollir» a `on`, reinicia el recompte i activa les accions d'arribada. Els recordatoris configurats només s'inicien quan la porta principal consta tancada; si el correu arriba amb la porta oberta, es programen quan aquesta es tanca. El sensor d'arribada no s'interpreta com un inici o final de cicle.
-- **Alarmes de nevera**: valors inicials proposats de 120 s amb la porta oberta, 3600 s sense compressor actiu, 900 s entre repeticions i 3 repeticions addicionals després del primer avís. S'executa l'acció inicial en complir-se el retard i després fins a N repeticions; les accions buides no fan res. Cada grup es rearma quan es resol la seva condició (porta tancada o compressor actiu) i manté el seu propi recompte.
+- **Alarmes de nevera**: valors per defecte de 120 s amb la porta oberta, 3600 s sense compressor actiu, 900 s entre repeticions i 3 repeticions addicionals després del primer avís. S'executa l'acció inicial en complir-se el retard i després fins a N repeticions; les accions buides no fan res. Cada grup es rearma quan es resol la seva condició (porta tancada o compressor actiu) i manté el seu propi recompte.
 - Els temporitzadors i recomptes d'alarmes es persisteixen i es restauren sense ràfegues després d'un reinici. Una transició `unknown`/`unavailable` no es considera resolució ni genera una alarma falsa.
 
 ### 4.5 Accions
@@ -115,6 +115,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 
 - Cada electrodomèstic configurat ha d'aparèixer com un dispositiu propi al registre de dispositius de Home Assistant.
 - Totes les entitats de sortida creades per la integració han d'estar associades al dispositiu de l'electrodomèstic i ser visibles des de la seva pàgina.
+- En tots els tipus d'aparell, cada entitat d'entrada configurada ha d'estar representada a la pàgina del dispositiu mitjançant una entitat pròpia de la integració. Si ja hi ha una sortida equivalent que reflecteix aquesta font, s'ha de reutilitzar com a wrapper i no crear una segona entitat amb el mateix estat. Les entitats `climate` són l'excepció: s'associen directament al dispositiu, sense wrapper, per conservar-ne els controls i la identitat originals.
 - **Potència** i **Energia total consumida**: es creen segons les entrades configurades, independentment de la modalitat. L'energia es mostra en kWh, des d'un sensor extern o calculada i persistent a partir de potència.
 - **Durada de l'últim període actiu**: sensor de sortida amb la durada del període d'activitat més recent detectat.
 - **Temps restant estimat**: només es crea per perfils de cicle que en poden oferir una estimació útil. No es crea per AC ni nevera.
@@ -230,23 +231,23 @@ El repositori ha de tenir workflows independents per als tests unitaris, els tes
 ## 12. Idiomes i marca
 
 - L'anglès és l'idioma font per a les cadenes de la interfície i la documentació principal del projecte.
-- Tots els textos visibles a Home Assistant han d'utilitzar claus de traducció; no s'han de codificar directament dins la lògica de la integració.
+- Tots els textos visibles a Home Assistant han de fer servir claus de traducció; no s'han de codificar directament dins la lògica de la integració.
 - La interfície ha de tenir traduccions completes en anglès, castellà (`es`) i català (`ca`), inclosos els passos de configuració, tipus, modalitats, noms i estats de les entitats, opcions, validacions i errors.
 - Les traduccions han de mantenir el mateix conjunt de claus i significat. Les proves o validacions han de detectar claus absents o sobrants.
 - La proposta `docs/appliance_cycle_monitor_icon.svg` ha estat aprovada per l'usuari com a icona de marca. Cal conservar el disseny aprovat en preparar els recursos finals de marca per a la integració.
 - La icona ha de ser llegible a mida petita i sobre fons clars i foscos, representar la gestió de cicles d'electrodomèstics de manera genèrica i no identificar-se només amb un tipus d'aparell.
 
-## 13. Decisions pendents
+## 13. Estat del model i evolució futura
 
-### Proposta: tipus generals i modalitat d'activitat
+### Tipus generals, modalitats i capacitats
 
-**Estat: implementat per als tipus i modalitats actuals.** No s'afegeix, de moment, un tipus de dispositiu personalitzat.
+**Estat: implementat a la versió 0.8.0 per als tipus i modalitats actuals.** No s'afegeix, de moment, un tipus de dispositiu personalitzat.
 
-Separar el tipus general d'aparell de la modalitat que determina l'activitat i de les capacitats opcionals. Els perfils actuals que només diferencien la font de detecció es poden agrupar sota un mateix tipus general, sense perdre les funcions específiques de cada aparell.
+El tipus general, la modalitat que determina l'activitat i les capacitats opcionals són conceptes separats. Els perfils interns fan servir els detectors existents sense perdre les funcions específiques de cada aparell.
 
 El tipus general i la modalitat són fixos després de la creació i han de ser identificables a la interfície. Es pot substituir l'entitat font per una altra compatible amb la mateixa modalitat; una font `climate` no es pot deixar buida en desar, i cal substituir-la o eliminar l'aparell.
 
-El flux proposat té cinc passos:
+La creació segueix cinc passos:
 
 1. **Tipus i nom**: seleccionar el tipus general i donar nom a l'aparell.
 2. **Modalitat d'activitat**: triar una modalitat obligatòria entre les compatibles amb el tipus seleccionat.
@@ -255,34 +256,34 @@ El flux proposat té cinc passos:
 5. **Accions**: mostrar les accions disponibles per a les funcions configurades.
 
 - La modalitat escollida determina quina font mana sobre l'activitat. Els altres sensors poden proporcionar mesures, estats, alarmes o control, però no han d'alterar l'activitat. No s'intenta endevinar si l'usuari ha triat el sensor físic correcte.
-- Exemple d'AC: el contacte d'obertura, el sensor de potència i l'interruptor poden coexistir. Si la modalitat és contacte, només aquest determina l'activitat; la potència informa del consum i l'interruptor permet controlar l'alimentació. Una entitat `climate` pot ser una altra modalitat i conservar els controls originals.
-- Si la modalitat és l'interruptor, el seu estat determina l'activitat encara que la potència indiqui un altre valor. Si la modalitat és potència, l'interruptor no ha de finalitzar ni impedir un cicle per si sol: la potència seleccionada és la font d'activitat. Això canvia el comportament actual que finalitza el cicle en apagar un endoll auxiliar.
-- En aparells endollats, el control per interruptor, la potència instantània i l'energia acumulada han de ser capacitats opcionals independents de la modalitat d'activitat. Un endoll pot oferir només una part d'aquestes funcions; el consum no ha de requerir que la potència sigui la font d'activitat.
-- Si la font obligatòria queda `unknown` o `unavailable`, no s'ha de substituir automàticament per una altra font ni provocar una transició falsa. La combinació de diverses fonts d'activitat i les regles de conflicte queden pendents de disseny; no formen part de la modalitat de font única descrita aquí.
+- Exemple d'AC: el contacte de pala, el sensor de potència, el sensor d'energia i l'interruptor poden coexistir. Només la modalitat escollida determina l'activitat; les altres entrades serveixen per mesurar, mostrar o controlar. Una entitat `climate` conserva els controls originals.
+- Si la modalitat és l'interruptor, el seu estat determina l'activitat encara que la potència indiqui un altre valor. Si la modalitat és potència, l'interruptor auxiliar no finalitza ni impedeix un cicle.
+- En aparells endollats, el control per interruptor, la potència instantània i l'energia acumulada són capacitats independents de la modalitat. L'energia existent mostra el seu total en kWh; si no se selecciona, es calcula a partir de la potència quan n'hi ha. El total calculat es manté separat del total extern.
+- Si la font obligatòria queda `unknown` o `unavailable`, no se substitueix automàticament per una altra ni es provoca una transició falsa. Cada modalitat té una sola font d'activitat seleccionada; no es combinen fonts per decidir l'estat.
 
-### Revisió de compatibilitat de la proposta
+### Modalitats i capacitats implementades
 
 | Tipus general | Modalitats actuals que es poden agrupar | Funcions i límits a conservar |
 | --- | --- | --- |
 | Rentadora, rentaplats i assecadora | Potència, actualment una per cada tipus | Cicle, temps màxim i estimació; porta i pendent de buidar opcionals. Altres modalitats són una extensió a definir, no una capacitat actual. |
-| Aire condicionat | Contacte de pala, potència o `climate` | Una sola font d'activitat; contacte, potència i interruptor poden coexistir. Cal preservar la vinculació de la `climate` original i els seus controls, sense wrapper. |
-| Nevera | Potència o interruptor | Porta i alarma de porta; distingir activitat del compressor de l'estat d'alimentació. L'alarma de compressor inactiu només és significativa si la font realment permet detectar el compressor. |
+| Aire condicionat | Contacte de pala, potència o `climate` | Una sola font d'activitat; contacte, potència, energia i interruptor poden coexistir. La `climate` original conserva associació i controls, sense wrapper. |
+| Nevera | Potència o interruptor | Contacte i alarma de porta; potència i energia auxiliars són compatibles amb la modalitat d'interruptor. L'alarma de compressor inactiu només existeix en modalitat de potència. |
 | Bústia | Moviment interior o contacte de portella | La modalitat detecta una arribada com a esdeveniment, no un estat de funcionament continu. Cal mantenir la porta principal separada, el pendent de recollir, les accions i els recordatoris. |
 | Tendall o persiana, futurs | Pendent d'investigació | Cal decidir si es detecta moviment, posició o estat obert/tancat, i com es controla l'aparell, inclosa una possible entitat `cover`. Una posició oberta no implica que el motor estigui funcionant. |
 
-La separació entre tipus, modalitat i capacitats sembla aplicable als aparells actuals, però els detectors i les sortides no són intercanviables: cal conservar la semàntica de cada modalitat. No es pot garantir la compatibilitat de tots els aparells futurs sense definir-ne els estats, esdeveniments i controls; també cal estudiar si un dispositiu que només agrupa entitats necessita una modalitat d'activitat obligatòria.
+Els detectors i les sortides no són intercanviables: cal conservar la semàntica de cada modalitat. La compatibilitat de dispositius futurs requerirà definir-ne els estats, esdeveniments i controls; també caldrà estudiar si un dispositiu que només agrupa entitats necessita una modalitat d'activitat obligatòria.
 
-### Decisions d'implementació
+### Decisions aplicades
 
-- La potència es mesura independentment de l'activitat. L'energia externa mostra el total original; el total calculat es manté separat i canviar de font pot canviar el valor visible.
-- Definir per tipus les modalitats permeses, entrades obligatòries, capacitats, alarmes i accions. En particular, l'estat d'un interruptor encès indica alimentació, no necessàriament activitat del compressor; no ha de generar una alarma de compressor inactiu com si la mesurés.
+- La potència es mesura independentment de l'activitat. L'energia externa mostra el total original; el total calculat es manté separat. Canviar de font pot canviar el total visible i un sensor extern indisponible no provoca una substitució automàtica.
+- Cada tipus declara les modalitats permeses, les entrades obligatòries i opcionals, les capacitats, les alarmes i les accions. Un interruptor encès indica alimentació, no necessàriament activitat del compressor; per això no activa una alarma de compressor inactiu.
 - El projecte està en proves: s'accepten canvis incompatibles i començar de zero; no és obligatòria una migració automàtica de les configuracions existents.
 - En substituir la font durant un cicle, se'n conserva l'inici i es finalitza quan la nova font confirma que està aturada; la potència respecta la histèresi i una font indisponible no força una transició. En substituir una `climate`, s'allibera l'anterior sense modificar altres associacions.
 
 ### Altres decisions pendents
 
 - Definir límits mínims i màxims dels controls numèrics; els valors inicials sí que queden fixats en aquest document.
-- Definir les versions mínimes de Home Assistant i Python quan s'iniciï la implementació.
+- Documentar i revisar les versions mínimes de Home Assistant i Python suportades.
 - Investigar l'ampliació de l'abast a dispositius com tendalls i persianes, i a altres dispositius no intel·ligents que es vulguin automatitzar o simplement agrupar sota un únic dispositiu de Home Assistant. Valorar com una sola integració podria reunir-ne diverses funcionalitats i facilitar la descoberta, configuració i ús de les entitats a Home Assistant.
 
 **Data d'actualització**: 2026-10-29

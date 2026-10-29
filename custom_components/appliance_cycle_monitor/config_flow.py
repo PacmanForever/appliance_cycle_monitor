@@ -9,8 +9,9 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
+from homeassistant.helpers import entity_registry as er, selector
 
+from . import _async_appliance_device_id
 from .appliance_types import (
     APPLIANCE_CATEGORIES,
     APPLIANCE_TYPES,
@@ -167,6 +168,7 @@ def _options_identity_schema(values: dict[str, Any]) -> vol.Schema:
                     options=[category],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     translation_key="appliance_category",
+                    read_only=True,
                 )
             ),
             vol.Required("activity_mode", default=mode): _LockedSelectSelector(
@@ -174,6 +176,7 @@ def _options_identity_schema(values: dict[str, Any]) -> vol.Schema:
                     options=[mode],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     translation_key="activity_mode",
+                    read_only=True,
                 )
             ),
         }
@@ -443,10 +446,8 @@ def _validate_climate_entity(
         return True
     if config_entry_id is None:
         return False
-    appliance_device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, config_entry_id)}
-    )
-    return appliance_device is not None and entity_entry.device_id == appliance_device.id
+    appliance_device_id = _async_appliance_device_id(hass, config_entry_id)
+    return appliance_device_id is not None and entity_entry.device_id == appliance_device_id
 
 
 def _validate_pending(values: dict[str, Any]) -> bool:

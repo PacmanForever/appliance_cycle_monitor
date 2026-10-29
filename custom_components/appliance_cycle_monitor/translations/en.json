@@ -8,7 +8,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Appliance type and name",
+        "title": "Appliance name and type",
         "data": {
           "name": "Name shown for this appliance",
           "appliance_type": "Appliance type"
@@ -16,15 +16,16 @@
       },
       "activity_mode": {
         "title": "Activity detection",
-        "data": {"activity_mode": "Activity detection method"}
+        "data": {"activity_mode": "Activity detection method"},
+        "data_description": {"activity_mode": "Only this choice determines appliance activity. For a mailbox, it determines which event counts as new mail; optional sensors do not change the selected detection method."}
       },
       "sensors": {
         "title": "Input sensors",
         "data": {
           "climate_entity": "Original air-conditioner climate entity (no parent device)",
           "power_entity": "Power sensor for this appliance (in watts)",
-          "energy_entity": "Existing energy sensor (optional)",
-          "running_entity": "Binary contact that is on while the AC louver is open",
+          "energy_entity": "Cumulative energy sensor (optional)",
+          "running_entity": "Binary sensor that is on while the AC louver is open",
           "mail_motion_entity": "Interior motion sensor that detects incoming mail",
           "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
           "washer_door_entity": "Washer door-open sensor (optional)",
@@ -39,7 +40,7 @@
         },
         "data_description": {
           "climate_entity": "This associates the original climate entity with the appliance device; it is not a wrapper. Its controls remain available. Select an entity with no parent device; it is released when replaced or when the appliance is removed.",
-          "energy_entity": "Use this sensor's existing total. Leave empty to calculate energy from power when a power sensor is selected.",
+          "energy_entity": "Use this sensor's accumulated energy total. Leave empty to calculate energy from power when a power sensor is selected.",
           "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
           "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
           "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
@@ -104,20 +105,21 @@
   "options": {
     "step": {
       "init": {
-        "title": "Appliance type and name",
+        "title": "Appliance name and type",
         "data": {
           "name": "Name shown for this appliance",
           "appliance_type": "Appliance type",
           "activity_mode": "Activity detection method"
-        }
+        },
+        "data_description": {"activity_mode": "Only this choice determines appliance activity. For a mailbox, it determines which event counts as new mail; optional sensors do not change the selected detection method."}
       },
       "sensors": {
         "title": "Input sensors",
         "data": {
           "climate_entity": "Original air-conditioner climate entity (no parent device)",
           "power_entity": "Power sensor for this appliance (in watts)",
-          "energy_entity": "Existing energy sensor (optional)",
-          "running_entity": "Binary contact that is on while the AC louver is open",
+          "energy_entity": "Cumulative energy sensor (optional)",
+          "running_entity": "Binary sensor that is on while the AC louver is open",
           "mail_motion_entity": "Interior motion sensor that detects incoming mail",
           "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
           "washer_door_entity": "Washer door-open sensor (optional)",
@@ -132,7 +134,7 @@
         },
         "data_description": {
           "climate_entity": "This associates the original climate entity with the appliance device; it is not a wrapper. Its controls remain available. Select an entity with no parent device; it is released when replaced or when the appliance is removed.",
-          "energy_entity": "Use this sensor's existing total. Leave empty to calculate energy from power when a power sensor is selected.",
+          "energy_entity": "Use this sensor's accumulated energy total. Leave empty to calculate energy from power when a power sensor is selected.",
           "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
           "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
           "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
@@ -199,7 +201,7 @@
       "options": {"air_conditioner": "Air conditioner", "dryer": "Dryer", "mailbox": "Mailbox", "refrigerator": "Refrigerator", "washer": "Washer", "dishwasher": "Dishwasher"}
     },
     "activity_mode": {
-      "options": {"running_sensor": "Louver contact", "climate": "Climate entity", "power": "Power sensor", "smart_plug": "Smart switch", "mail_slot": "Mail-slot contact", "mail_motion": "Interior motion sensor"}
+      "options": {"running_sensor": "Louver contact (open = AC running)", "climate": "Climate entity (follows HVAC activity)", "power": "Power sensor (start/stop thresholds)", "smart_plug": "Smart switch (on = appliance active)", "mail_slot": "Mail-slot contact (open = mail arrived)", "mail_motion": "Interior motion (motion = mail arrived)"}
     },
     "appliance_type": {
       "options": {
@@ -225,6 +227,8 @@
     },
     "binary_sensor": {
       "running": {"name": "Running"},
+      "input_running": {"name": "Auxiliary louver sensor"},
+      "input_mail_motion": {"name": "Mailbox motion sensor input"},
       "door": {"name": "Door"},
       "mail_slot": {"name": "Mail slot"},
       "pending_unload": {"name": "Pending to unload"}

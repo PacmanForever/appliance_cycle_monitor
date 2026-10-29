@@ -43,6 +43,7 @@ from custom_components.appliance_cycle_monitor.const import (
     DOMAIN,
 )
 from custom_components.appliance_cycle_monitor import (
+    _async_appliance_device_id,
     _async_reload_entry,
     async_remove_entry,
     async_unload_entry,
@@ -965,7 +966,71 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
         f"{entry.entry_id}_last_cycle_duration",
         f"{entry.entry_id}_running",
     }
+    running_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
+    )
+    assert hass.states.get(running_entity_id).attributes["source_entity"] == config[
+        CONF_RUNNING_ENTITY
+    ]
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.parametrize(
+    ("appliance_type", "source_key", "source_entity", "extra_input", "wrapper_key"),
+    (
+        (
+            "air_conditioner_power",
+            CONF_RUNNING_ENTITY,
+            "binary_sensor.ac_louver",
+            {CONF_POWER_ENTITY: "sensor.ac_power"},
+            "running",
+        ),
+        (
+            "mailbox_motion",
+            CONF_MAIL_MOTION_ENTITY,
+            "binary_sensor.mailbox_motion",
+            {CONF_DOOR_ENTITY: "binary_sensor.mailbox_door"},
+            "mail_motion",
+        ),
+    ),
+)
+@pytest.mark.asyncio
+async def test_unrepresented_binary_inputs_get_a_single_source_wrapper(
+    hass, appliance_type, source_key, source_entity, extra_input, wrapper_key,
+    enable_custom_integrations,
+):
+    config = {
+        CONF_APPLIANCE_TYPE: appliance_type,
+        source_key: source_entity,
+        "name": "Test appliance",
+        **extra_input,
+    }
+    hass.states.async_set(source_entity, "off")
+    if CONF_POWER_ENTITY in extra_input:
+        hass.states.async_set(
+            extra_input[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+        )
+    if CONF_DOOR_ENTITY in extra_input:
+        hass.states.async_set(extra_input[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    wrapper_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_input_{wrapper_key}"
+    )
+    assert wrapper_entity_id is not None
+    assert hass.states.get(wrapper_entity_id).state == "off"
+    assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == source_entity
+
+    hass.states.async_set(source_entity, "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(wrapper_entity_id).state == "on"
+
+    await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.asyncio
@@ -1234,6 +1299,12 @@ async def test_smart_switch_refrigerator_creates_only_its_declared_entities(
         f"{entry.entry_id}_door",
         f"{entry.entry_id}_plug",
     }
+    plug_entity_id = registry.async_get_entity_id(
+        "switch", DOMAIN, f"{entry.entry_id}_plug"
+    )
+    assert hass.states.get(plug_entity_id).attributes["source_entity"] == config[
+        CONF_PLUG_ENTITY
+    ]
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -1485,14 +1556,12 @@ async def test_climate_entity_is_assigned_reassociated_and_released(
     entry.add_to_hass(hass)
 
     assert await hass.config_entries.async_setup(entry.entry_id)
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, entry.entry_id)}
-    )
-    assert device is not None
+    device_id = _async_appliance_device_id(hass, entry)
+    assert device_id is not None
     registered_climate = er.async_get(hass).async_get(climate_entity.entity_id)
     assert registered_climate is not None
     assert registered_climate.config_entry_id == climate_entry.entry_id
-    assert registered_climate.device_id == device.id
+    assert registered_climate.device_id == device_id
     assert entry.runtime_data.detector.is_running
 
     hass.states.async_set(
@@ -1511,7 +1580,7 @@ async def test_climate_entity_is_assigned_reassociated_and_released(
 
     er.async_get(hass).async_update_entity(climate_entity.entity_id, device_id=None)
     assert (
-        er.async_get(hass).async_get(climate_entity.entity_id).device_id == device.id
+        er.async_get(hass).async_get(climate_entity.entity_id).device_id == device_id
     )
 
     updated_data = dict(entry.data)
@@ -1521,7 +1590,7 @@ async def test_climate_entity_is_assigned_reassociated_and_released(
     assert er.async_get(hass).async_get(climate_entity.entity_id).device_id is None
     assert (
         er.async_get(hass).async_get(replacement_climate.entity_id).device_id
-        == device.id
+        == device_id
     )
 
     updated_data = dict(entry.data)
@@ -1739,6 +1808,7 @@ async def test_alarm_actions_do_not_overlap_on_duplicate_deadline(
     await first_action
     assert runtime.door_alarm_fired_count == 1
     assert runtime.next_door_alarm >= completed_at + timedelta(seconds=10)
+    await runtime.async_unload()
 
 
 @pytest.mark.asyncio
@@ -1901,6 +1971,7 @@ async def test_due_refrigerator_alarms_start_without_blocking_each_other(
 
     assert runtime.door_alarm_fired_count == 1
     assert runtime.compressor_alarm_fired_count == 1
+    await runtime.async_unload()
 
 
 @pytest.mark.asyncio

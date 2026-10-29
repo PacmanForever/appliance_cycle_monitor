@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0 - 2026-10-29
+
+### Added
+
+- Represent configured input entities on each appliance device, reusing an equivalent integration output to avoid duplicate entities; keep original climate entities directly associated with the appliance.
+
+### Changed
+
+- Keep appliance type and activity mode read-only when editing, and clarify activity-source and accumulated-energy labels in Catalan, English, and Spanish.
+- Use consistent binary-sensor terminology in the interface and documentation.
+
+### Fixed
+
+- Use the current Home Assistant device-registry lookup API for climate association, with a compatibility fallback for older versions.
+
 ## 0.7.0 - 2026-10-29
 
 ### Added

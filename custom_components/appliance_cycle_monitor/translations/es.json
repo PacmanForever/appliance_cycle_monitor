@@ -8,7 +8,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Tipo y nombre del electrodoméstico",
+        "title": "Nombre y tipo de electrodoméstico",
         "data": {
           "name": "Nombre que se mostrará para este electrodoméstico",
           "appliance_type": "Tipo de electrodoméstico"
@@ -16,15 +16,16 @@
       },
       "activity_mode": {
         "title": "Detección de actividad",
-        "data": {"activity_mode": "Modalidad de detección de actividad"}
+        "data": {"activity_mode": "Modalidad de detección de actividad"},
+        "data_description": {"activity_mode": "Solo esta opción determina la actividad del aparato. En el buzón, determina qué evento cuenta como correo nuevo; los sensores opcionales no cambian el método de detección seleccionado."}
       },
       "sensors": {
         "title": "Sensores de entrada",
         "data": {
           "climate_entity": "Entidad climate original del aire acondicionado (sin dispositivo principal)",
           "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
-          "energy_entity": "Sensor de energía existente (opcional)",
-          "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
+          "energy_entity": "Sensor de energía total acumulada (opcional)",
+          "running_entity": "Sensor binario activo cuando la lama del aire acondicionado está abierta",
           "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
           "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
           "washer_door_entity": "Sensor de apertura de la puerta de la lavadora (opcional)",
@@ -39,7 +40,7 @@
         },
         "data_description": {
           "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo asociado; volverá a quedar sin dispositivo al sustituirla o eliminar el aparato.",
-          "energy_entity": "Utiliza el total existente del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
+          "energy_entity": "Usa la energía total acumulada del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
           "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
           "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
           "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
@@ -104,20 +105,21 @@
   "options": {
     "step": {
       "init": {
-        "title": "Tipo y nombre del electrodoméstico",
+        "title": "Nombre y tipo de electrodoméstico",
         "data": {
           "name": "Nombre que se mostrará para este electrodoméstico",
           "appliance_type": "Tipo de electrodoméstico",
           "activity_mode": "Modalidad de detección de actividad"
-        }
+        },
+        "data_description": {"activity_mode": "Solo esta opción determina la actividad del aparato. En el buzón, determina qué evento cuenta como correo nuevo; los sensores opcionales no cambian el método de detección seleccionado."}
       },
       "sensors": {
         "title": "Sensores de entrada",
         "data": {
           "climate_entity": "Entidad climate original del aire acondicionado (sin dispositivo principal)",
           "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
-          "energy_entity": "Sensor de energía existente (opcional)",
-          "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
+          "energy_entity": "Sensor de energía total acumulada (opcional)",
+          "running_entity": "Sensor binario activo cuando la lama del aire acondicionado está abierta",
           "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
           "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
           "washer_door_entity": "Sensor de apertura de la puerta de la lavadora (opcional)",
@@ -132,7 +134,7 @@
         },
         "data_description": {
           "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo asociado; volverá a quedar sin dispositivo al sustituirla o eliminar el aparato.",
-          "energy_entity": "Utiliza el total existente del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
+          "energy_entity": "Usa la energía total acumulada del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
           "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
           "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
           "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
@@ -199,7 +201,7 @@
       "options": {"air_conditioner": "Aire acondicionado", "dryer": "Secadora", "mailbox": "Buzón", "refrigerator": "Frigorífico", "washer": "Lavadora", "dishwasher": "Lavavajillas"}
     },
     "activity_mode": {
-      "options": {"running_sensor": "Contacto de lama", "climate": "Entidad climate", "power": "Sensor de potencia", "smart_plug": "Interruptor inteligente", "mail_slot": "Contacto de trampilla", "mail_motion": "Sensor de movimiento interior"}
+      "options": {"running_sensor": "Contacto de lama (abierta = aire en marcha)", "climate": "Entidad climate (sigue la actividad HVAC)", "power": "Potencia (umbrales de inicio y parada)", "smart_plug": "Interruptor inteligente (encendido = aparato activo)", "mail_slot": "Contacto de trampilla (abrir = llega correo)", "mail_motion": "Movimiento interior (movimiento = llega correo)"}
     },
     "appliance_type": {
       "options": {
@@ -225,6 +227,8 @@
     },
     "binary_sensor": {
       "running": {"name": "En funcionamiento"},
+      "input_running": {"name": "Sensor auxiliar de la lama"},
+      "input_mail_motion": {"name": "Entrada del sensor de movimiento del buzón"},
       "door": {"name": "Puerta"},
       "mail_slot": {"name": "Portilla"},
       "pending_unload": {"name": "Pendiente de vaciar"}

@@ -459,6 +459,8 @@ async def test_options_flow_shows_immutable_category_and_mode(
     fields = {marker.schema: field for marker, field in result["data_schema"].schema.items()}
     assert fields[CONF_APPLIANCE_TYPE].config["options"] == ["washer"]
     assert fields["activity_mode"].config["options"] == ["power"]
+    assert fields[CONF_APPLIANCE_TYPE].config["read_only"] is True
+    assert fields["activity_mode"].config["read_only"] is True
     flow_id = result["flow_id"]
     result = await hass.config_entries.options.async_configure(
         flow_id,

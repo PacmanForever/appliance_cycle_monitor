@@ -353,6 +353,8 @@ class ApplianceRuntime:
             self._notify()
         elif entity_id == self.config.get(CONF_ENERGY_ENTITY):
             self._notify()
+        elif entity_id in self._configured_inputs.values():
+            self._notify()
 
         if entity_id == self.config.get(CONF_PLUG_ENTITY):
             self._update_plug_off_alarm_state(new_state, now)

@@ -24,6 +24,7 @@ class SensorInput:
     device_classes: tuple[str, ...] = ()
     required: bool = False
     detection_source: str | None = None
+    output_entity: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +38,14 @@ class ApplianceTypeProfile:
     supports_pending_unload: bool
     estimates_remaining: bool
     supports_max_runtime: bool = True
+
+    @property
+    def inputs_requiring_wrapper(self) -> tuple[SensorInput, ...]:
+        return tuple(
+            item
+            for item in self.sensor_inputs
+            if item.domain != "climate" and item.output_entity is None
+        )
 
     @property
     def detection_sources(self) -> tuple[str, ...]:
@@ -80,7 +89,7 @@ APPLIANCE_PROFILES = {
         ),
         parameter_groups=("plug_off_alarm",),
         action_groups=("cycle_start", "cycle_finish", "plug_off_alarm"),
-        output_entities=("last_cycle_duration", "running"),
+        output_entities=("last_cycle_duration", "running", "plug"),
         supports_pending_unload=False,
         estimates_remaining=False,
         supports_max_runtime=False,
@@ -94,15 +103,18 @@ APPLIANCE_PROFILES = {
                 device_classes=("power",),
                 required=True,
                 detection_source="power",
+                output_entity="power",
             ),
             SensorInput(
                 form_key="washer_door_entity",
                 config_key=CONF_DOOR_ENTITY,
                 domain="binary_sensor",
                 device_classes=("door", "opening"),
+                output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
+                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                output_entity="plug",
             ),
         ),
         parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
@@ -123,15 +135,18 @@ APPLIANCE_PROFILES = {
                 device_classes=("power",),
                 required=True,
                 detection_source="power",
+                output_entity="power",
             ),
             SensorInput(
                 form_key="dishwasher_door_entity",
                 config_key=CONF_DOOR_ENTITY,
                 domain="binary_sensor",
                 device_classes=("door", "opening"),
+                output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
+                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                output_entity="plug",
             ),
         ),
         parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
@@ -152,15 +167,18 @@ APPLIANCE_PROFILES = {
                 device_classes=("power",),
                 required=True,
                 detection_source="power",
+                output_entity="power",
             ),
             SensorInput(
                 form_key="dryer_door_entity",
                 config_key=CONF_DOOR_ENTITY,
                 domain="binary_sensor",
                 device_classes=("door", "opening"),
+                output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
+                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                output_entity="plug",
             ),
         ),
         parameter_groups=("power_cycle", "max_runtime", "pending_unload", "plug_off_alarm"),
@@ -181,9 +199,11 @@ APPLIANCE_PROFILES = {
                 device_classes=("opening",),
                 required=True,
                 detection_source="running_sensor",
+                output_entity="running",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
+                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                output_entity="plug",
             ),
         ),
         parameter_groups=("plug_off_alarm",),
@@ -202,9 +222,11 @@ APPLIANCE_PROFILES = {
                 device_classes=("power",),
                 required=True,
                 detection_source="power",
+                output_entity="power",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
+                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                output_entity="plug",
             ),
         ),
         parameter_groups=("power_cycle", "plug_off_alarm"),
@@ -223,6 +245,7 @@ APPLIANCE_PROFILES = {
                 device_classes=("power",),
                 required=True,
                 detection_source="power",
+                output_entity="power",
             ),
             SensorInput(
                 form_key="refrigerator_door_entity",
@@ -230,9 +253,11 @@ APPLIANCE_PROFILES = {
                 domain="binary_sensor",
                 device_classes=("door", "opening"),
                 required=True,
+                output_entity="door",
             ),
             SensorInput(
-                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch"
+                form_key="plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
+                output_entity="plug",
             ),
         ),
         parameter_groups=(
@@ -256,6 +281,7 @@ APPLIANCE_PROFILES = {
                     domain="switch",
                     required=True,
                     detection_source="smart_plug",
+                    output_entity="plug",
                 ),
                 SensorInput(
                     form_key="refrigerator_switch_door_entity",
@@ -263,6 +289,7 @@ APPLIANCE_PROFILES = {
                     domain="binary_sensor",
                     device_classes=("door",),
                     required=True,
+                    output_entity="door",
                 ),
             ),
             parameter_groups=("door_alarm", "alarm_repeats", "plug_off_alarm"),
@@ -288,6 +315,7 @@ APPLIANCE_PROFILES = {
                 domain="binary_sensor",
                 device_classes=("door",),
                 required=True,
+                output_entity="door",
             ),
         ),
         parameter_groups=("pending_unload",),
@@ -306,6 +334,7 @@ APPLIANCE_PROFILES = {
                 device_classes=("door", "opening"),
                 required=True,
                 detection_source="mail_slot",
+                output_entity="mail_slot",
             ),
             SensorInput(
                 form_key="mailbox_slot_door_entity",
@@ -313,6 +342,7 @@ APPLIANCE_PROFILES = {
                 domain="binary_sensor",
                 device_classes=("door",),
                 required=True,
+                output_entity="door",
             ),
         ),
         parameter_groups=("pending_unload",),
@@ -329,6 +359,7 @@ _AUXILIARY_POWER = SensorInput(
     config_key=CONF_POWER_ENTITY,
     domain="sensor",
     device_classes=("power",),
+    output_entity="power",
 )
 _AUXILIARY_RUNNING = SensorInput(
     form_key=CONF_RUNNING_ENTITY,
@@ -337,13 +368,15 @@ _AUXILIARY_RUNNING = SensorInput(
     device_classes=("opening",),
 )
 _AUXILIARY_PLUG = SensorInput(
-    form_key=CONF_PLUG_ENTITY, config_key=CONF_PLUG_ENTITY, domain="switch"
+    form_key=CONF_PLUG_ENTITY, config_key=CONF_PLUG_ENTITY, domain="switch",
+    output_entity="plug",
 )
 _AUXILIARY_ENERGY = SensorInput(
     form_key=CONF_ENERGY_ENTITY,
     config_key=CONF_ENERGY_ENTITY,
     domain="sensor",
     device_classes=("energy",),
+    output_entity="total_energy",
 )
 
 for _profile_name in (
