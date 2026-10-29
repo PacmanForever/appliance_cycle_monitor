@@ -120,12 +120,12 @@
     "activity_mode": {
       "options": {"running_sensor": "1. Binary sensor (on = air running)", "climate": "2. Climate entity (follows HVAC activity)", "power": "4. Power sensor (follows start and stop thresholds)", "smart_plug": "Smart switch (on = appliance active)", "mail_slot": "Mail-slot contact (open = mail arrived)", "mail_motion": "Interior motion (motion = mail arrived)"}
     },
-    "activity_mode_air_conditioner": {"options": {"running_sensor": "Louver contact (open = air conditioner active)", "climate": "Climate entity (follows HVAC activity)", "power": "Power sensor (start and stop thresholds)"}},
-    "activity_mode_dryer": {"options": {"power": "Power sensor (start and stop thresholds)"}},
+    "activity_mode_air_conditioner": {"options": {"running_sensor": "Louver contact (open = air conditioner active)", "climate": "Climate entity (follows HVAC activity)", "power": "Power sensor (follows start and stop thresholds)"}},
+    "activity_mode_dryer": {"options": {"power": "Power sensor (follows start and stop thresholds)"}},
     "activity_mode_mailbox": {"options": {"mail_slot": "Mail-slot flap contact (mail detected)", "mail_motion": "Interior motion sensor (mail detected)"}},
-    "activity_mode_refrigerator": {"options": {"smart_plug": "Smart switch (on = refrigerator active)", "power": "Power sensor (compressor thresholds)"}},
-    "activity_mode_washer": {"options": {"power": "Power sensor (start and finish thresholds)"}},
-    "activity_mode_dishwasher": {"options": {"power": "Power sensor (start and finish thresholds)"}},
+    "activity_mode_refrigerator": {"options": {"smart_plug": "Smart switch (on = refrigerator active)", "power": "Power sensor (follows start and stop thresholds)"}},
+    "activity_mode_washer": {"options": {"power": "Power sensor (follows start and stop thresholds)"}},
+    "activity_mode_dishwasher": {"options": {"power": "Power sensor (follows start and stop thresholds)"}},
     "appliance_type": {
       "options": {
         "washer": "Washer",

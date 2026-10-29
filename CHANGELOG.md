@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 - 2026-10-29
+## v0.9.0 - 2026-10-29
 
 ### Added
 
@@ -12,7 +12,7 @@
 
 - Pass the config-entry ID to Home Assistant's device-registry identifier lookup.
 
-## 0.8.0 - 2026-10-29
+## v0.8.0 - 2026-10-29
 
 ### Added
 
@@ -27,7 +27,7 @@
 
 - Use the current Home Assistant device-registry lookup API for climate association, with a compatibility fallback for older versions.
 
-## 0.7.0 - 2026-10-29
+## v0.7.0 - 2026-10-29
 
 ### Added
 
@@ -41,13 +41,13 @@
 - Require a replacement when changing the configured climate activity entity, preserving its original Home Assistant entity and controls.
 - Update setup, options, translations, and documentation for the category-and-mode configuration flow.
 
-## 0.6.1 - 2026-10-28
+## v0.6.1 - 2026-10-28
 
 ### Fixed
 
 - Exclude climate entities with a parent device from the air-conditioner climate selector.
 
-## 0.6.0 - 2026-10-28
+## v0.6.0 - 2026-10-28
 
 ### Added
 
@@ -59,7 +59,7 @@
 - Use appliance-specific icons for laundry door states.
 - Document the climate-backed air-conditioner profile and remove its obsolete under-consideration proposal.
 
-## 0.5.2 - 2026-10-28
+## v0.5.2 - 2026-10-28
 
 ### Fixed
 
@@ -69,13 +69,13 @@
 
 - Record read-only `climate` input for air-conditioner cycle detection as an area under consideration.
 
-## 0.5.1 - 2026-10-28
+## v0.5.1 - 2026-10-28
 
 ### Changed
 
 - Add state-aware MDI icons for appliance activity, doors, mailbox flap, pending status, and smart plugs, plus specific icons for sensors and the clear-pending button.
 
-## 0.5.0 - 2026-10-28
+## v0.5.0 - 2026-10-28
 
 ### Added
 
@@ -87,7 +87,7 @@
 - Keep the last valid power reading available through temporary sensor outages, including a valid reading of 0 W.
 - Keep the configured appliance type fixed and omit it from the options form after setup.
 
-## 0.4.0 - 2026-10-28
+## v0.4.0 - 2026-10-28
 
 ### Added
 
@@ -101,7 +101,7 @@
 - Prevent stale alarm and reminder actions from changing a later state, and avoid catch-up bursts after slow actions or runtime unload.
 - Start repeat intervals after the previous action completes.
 
-## 0.3.0 - 2026-10-27
+## v0.3.0 - 2026-10-27
 
 ### Added
 
@@ -115,7 +115,7 @@
 - Normalize profile-specific form fields to the existing canonical configuration keys to preserve stored configuration compatibility.
 - Expand CRUD and runtime coverage for profile-specific selectors and smart-switch refrigerator behavior.
 
-## 0.2.0 - 2026-10-27
+## v0.2.0 - 2026-10-27
 
 ### Added
 
@@ -129,9 +129,9 @@
 
 - Component tests passed with Home Assistant 2026.10.4.
 
-## 0.1.0 - 2026-10-27
+## v0.1.0 - 2026-10-27
 
-First public release of Appliance Cycle Monitor.
+First public release of Home Activity Manager.
 
 ### Added
 

@@ -1,4 +1,4 @@
-"""Smart plug switch platform for Appliance Cycle Monitor."""
+"""Smart plug switch platform for Home Activity Manager."""
 
 from __future__ import annotations
 

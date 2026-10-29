@@ -1,4 +1,4 @@
-"""Configuration flows for Appliance Cycle Monitor."""
+"""Configuration flows for Home Activity Manager."""
 
 from __future__ import annotations
 

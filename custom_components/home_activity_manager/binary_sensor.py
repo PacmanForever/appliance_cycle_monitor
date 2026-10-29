@@ -1,4 +1,4 @@
-"""Binary sensors for Appliance Cycle Monitor."""
+"""Binary sensors for Home Activity Manager."""
 
 from __future__ import annotations
 

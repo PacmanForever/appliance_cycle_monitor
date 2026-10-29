@@ -1,4 +1,4 @@
-# Requisits de Appliance Cycle Monitor
+# Requisits de Home Activity Manager
 
 ## 1. Objectiu
 
@@ -10,8 +10,8 @@ Els tipus generals inicials són rentadora, rentaplats, assecadora, aire condici
 
 ## 2. Identitat del projecte
 
-- **Nom visible**: Appliance Cycle Monitor
-- **Domini**: `appliance_cycle_monitor`
+- **Nom visible**: Home Activity Manager
+- **Domini**: `home_activity_manager`
 - **Tipus**: integració personalitzada de Home Assistant, distribuïble amb HACS
 - **Funcionament**: local; sense API externa ni credencials
 - **Font d'activitat**: una entitat de Home Assistant determinada per la modalitat seleccionada
@@ -186,7 +186,7 @@ Les accions són configuració de cada dispositiu; no s'han de codificar com a s
 26. Un dispositiu funciona amb la seva configuració pròpia sense que l'usuari hagi de crear automatitzacions, blueprints o helpers externs per detectar cicles, representar-ne l'estat o executar les accions.
 27. Una acció fallida no impedeix executar les accions posteriors ni altera la detecció del cicle.
 28. Tots els textos visibles de la interfície tenen traducció completa en anglès, castellà i català.
-29. La icona de marca aprovada és `docs/appliance_cycle_monitor_icon.svg`; qualsevol canvi posterior de disseny necessita aprovació de l'usuari.
+29. Les propostes de nova icona són `docs/home_activity_manager_icon_option_1.svg` i `docs/home_activity_manager_icon_option_2.svg`. Cal escollir-ne una abans de substituir la icona de marca actual.
 30. Les modalitats d'AC requereixen la font seleccionada i admeten contacte, potència i switch auxiliars.
 31. Els perfils d'AC no creen «Pendent de buidar» ni «Temps restant estimat»; potència i energia depenen de les entrades seleccionades.
 32. La nevera per potència (`refrigerator`) exigeix potència i contacte de porta, admet un switch de control opcional sense substituir la detecció per potència, crea estat de funcionament i porta, no crea «Pendent de buidar» ni temps restant, i ofereix alarmes independents de porta oberta i compressor inactiu.
@@ -226,9 +226,9 @@ El repositori ha de tenir workflows independents per als tests unitaris, els tes
 ## 11. GitHub, HACS i publicacions
 
 - El repositori de codi ha de ser públic i tenir documentació d'instal·lació, configuració, entitats, ús, limitacions i suport.
-- L'estructura ha de seguir el format d'integració HACS: `custom_components/appliance_cycle_monitor/`, manifest vàlid, configuració HACS de categoria `integration`, fitxers de traducció i metadades necessaris per a Home Assistant.
+- L'estructura ha de seguir el format d'integració HACS: `custom_components/home_activity_manager/`, manifest vàlid, configuració HACS de categoria `integration`, fitxers de traducció i metadades necessaris per a Home Assistant.
 - Abans de cada publicació, han de passar HACS validation, Hassfest, tests i cobertura. El README ha d'incloure badges d'estat dels workflows i de cobertura.
-- Les versions han de seguir Semantic Versioning. La versió del manifest, el tag Git i la release de GitHub han de coincidir; cada release ha d'actualitzar el changelog.
+- Les versions han de seguir Semantic Versioning. Els tags Git i els noms de les releases de GitHub han de fer servir el format `vX.Y.Z` (per exemple, `v1.2.3`); la versió numèrica del manifest ha de coincidir amb el tag i la release. Cada release ha d'actualitzar el changelog amb el mateix format.
 - La submissió al repositori per defecte de HACS és un pas de publicació separat: preparar-la i demanar-ne la inclusió quan el repositori i la primera release compleixin els requisits de HACS.
 
 ## 12. Idiomes i marca
@@ -237,8 +237,8 @@ El repositori ha de tenir workflows independents per als tests unitaris, els tes
 - Tots els textos visibles a Home Assistant han de fer servir claus de traducció; no s'han de codificar directament dins la lògica de la integració.
 - La interfície ha de tenir traduccions completes en anglès, castellà (`es`) i català (`ca`), inclosos els passos de configuració, tipus, modalitats, noms i estats de les entitats, opcions, validacions i errors.
 - Les traduccions han de mantenir el mateix conjunt de claus i significat. Les proves o validacions han de detectar claus absents o sobrants.
-- La proposta `docs/appliance_cycle_monitor_icon.svg` ha estat aprovada per l'usuari com a icona de marca. Cal conservar el disseny aprovat en preparar els recursos finals de marca per a la integració.
-- La icona ha de ser llegible a mida petita i sobre fons clars i foscos, representar la gestió de cicles d'electrodomèstics de manera genèrica i no identificar-se només amb un tipus d'aparell.
+- La icona anterior `docs/appliance_cycle_monitor_icon.svg` es conserva com a referència de la marca antiga. Les noves propostes són `docs/home_activity_manager_icon_option_1.svg` (casa i òrbita d'activitat) i `docs/home_activity_manager_icon_option_2.svg` (casa i pols d'activitat); l'usuari n'ha d'escollir una abans d'actualitzar els recursos finals de marca.
+- La icona escollida ha de ser llegible a mida petita i sobre fons clars i foscos, i representar activitat domèstica de manera genèrica sense identificar-se només amb un tipus de dispositiu.
 
 ## 13. Estat del model i evolució futura
 

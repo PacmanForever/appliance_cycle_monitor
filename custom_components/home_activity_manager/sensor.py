@@ -1,4 +1,4 @@
-"""Sensors for Appliance Cycle Monitor."""
+"""Sensors for Home Activity Manager."""
 
 from __future__ import annotations
 

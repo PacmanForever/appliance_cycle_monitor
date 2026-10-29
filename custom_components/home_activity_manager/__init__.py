@@ -1,4 +1,4 @@
-"""Appliance Cycle Monitor integration."""
+"""Home Activity Manager integration."""
 
 import logging
 

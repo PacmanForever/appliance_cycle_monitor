@@ -164,7 +164,7 @@ Create workflows in `.github/workflows/` for:
 ### Workflow Configuration
 Use these triggers for all workflows:
 - `push` to `main` branch
-- `pull_request` to `main` branch  
+- `pull_request` to `main` branch
 - `workflow_dispatch` for manual runs
 
 For daily compatibility, add:

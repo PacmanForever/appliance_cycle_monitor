@@ -1,1 +1,1 @@
-"""Test package for Appliance Cycle Monitor."""
+"""Test package for Home Activity Manager."""
