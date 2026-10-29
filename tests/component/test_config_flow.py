@@ -2,19 +2,23 @@
 
 import pytest
 from homeassistant.config_entries import SOURCE_USER
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.plugins import enable_custom_integrations
 
 from custom_components.appliance_cycle_monitor import async_migrate_entry
-from custom_components.appliance_cycle_monitor.appliance_types import APPLIANCE_PROFILES
+from custom_components.appliance_cycle_monitor.appliance_types import (
+    APPLIANCE_CATEGORIES,
+    APPLIANCE_PROFILES,
+)
 from custom_components.appliance_cycle_monitor.config_flow import _validate_climate_entity
 from custom_components.appliance_cycle_monitor.const import (
     CONF_ALARM_REPEAT_COUNT,
     CONF_ALARM_REPEAT_INTERVAL_SECONDS,
     CONF_APPLIANCE_TYPE,
     CONF_CLIMATE_ENTITY,
+    CONF_ENERGY_ENTITY,
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_DOOR_ENTITY,
@@ -61,6 +65,10 @@ async def test_add_appliance_through_four_config_flow_steps(
             "name": "Washer",
             CONF_APPLIANCE_TYPE: "washer",
         },
+    )
+    assert result["step_id"] == "activity_mode"
+    result = await hass.config_entries.flow.async_configure(
+        flow_id, {"activity_mode": "power"}
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "sensors"
@@ -127,6 +135,29 @@ async def test_add_appliance_through_four_config_flow_steps(
 
 
 @pytest.mark.asyncio
+async def test_activity_modes_follow_the_selected_category(
+    hass, enable_custom_integrations
+):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    flow_id = result["flow_id"]
+    result = await hass.config_entries.flow.async_configure(
+        flow_id, {"name": "Air conditioner", CONF_APPLIANCE_TYPE: "air_conditioner"}
+    )
+    assert result["step_id"] == "activity_mode"
+    mode_selector = next(iter(result["data_schema"].schema.values()))
+    assert set(mode_selector.config["options"]) == {
+        "running_sensor", "climate", "power"
+    }
+    result = await hass.config_entries.flow.async_configure(
+        flow_id, {"activity_mode": "running_sensor"}
+    )
+    assert result["step_id"] == "sensors"
+    assert CONF_RUNNING_ENTITY in result["data_schema"].schema
+
+
+@pytest.mark.asyncio
 async def test_add_air_conditioner_with_opening_sensor(hass, enable_custom_integrations):
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -136,13 +167,17 @@ async def test_add_air_conditioner_with_opening_sensor(hass, enable_custom_integ
         flow_id,
         {
             "name": "Air conditioner",
-            CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+            CONF_APPLIANCE_TYPE: "air_conditioner",
         },
+    )
+    assert result["step_id"] == "activity_mode"
+    result = await hass.config_entries.flow.async_configure(
+        flow_id, {"activity_mode": "running_sensor"}
     )
     assert result["step_id"] == "sensors"
     schema_keys = {marker.schema for marker in result["data_schema"].schema}
     assert CONF_RUNNING_ENTITY in schema_keys
-    assert CONF_POWER_ENTITY not in schema_keys
+    assert CONF_POWER_ENTITY in schema_keys
     assert CONF_DOOR_ENTITY not in schema_keys
 
     result = await hass.config_entries.flow.async_configure(
@@ -197,9 +232,12 @@ async def test_air_conditioner_climate_requires_unparented_entity(
         DOMAIN, context={"source": SOURCE_USER}
     )
     flow_id = result["flow_id"]
-    sensor_step = await hass.config_entries.flow.async_configure(
+    await hass.config_entries.flow.async_configure(
         flow_id,
-        {"name": "Climate AC", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
+        {"name": "Climate AC", CONF_APPLIANCE_TYPE: "air_conditioner"},
+    )
+    sensor_step = await hass.config_entries.flow.async_configure(
+        flow_id, {"activity_mode": "climate"}
     )
     climate_selector = next(
         value
@@ -228,21 +266,26 @@ async def test_air_conditioner_climate_requires_unparented_entity(
     flow_id = result["flow_id"]
     await hass.config_entries.flow.async_configure(
         flow_id,
-        {"name": "Climate AC 2", CONF_APPLIANCE_TYPE: "air_conditioner_climate"},
+        {"name": "Climate AC 2", CONF_APPLIANCE_TYPE: "air_conditioner"},
     )
-    result = await hass.config_entries.flow.async_configure(flow_id, {})
-    assert result["step_id"] == "sensors"
-    assert result["errors"] == {"base": "climate_entity_requires_no_device"}
+    await hass.config_entries.flow.async_configure(
+        flow_id, {"activity_mode": "climate"}
+    )
+    with pytest.raises(InvalidData):
+        await hass.config_entries.flow.async_configure(flow_id, {})
 
 
 @pytest.mark.asyncio
-async def test_climate_entity_can_be_deselected_in_options(
+async def test_climate_entity_must_be_replaced_in_options(
     hass, enable_custom_integrations
 ):
     climate_entry = MockConfigEntry(domain="climate_source")
     climate_entry.add_to_hass(hass)
     climate_entity = er.async_get(hass).async_get_or_create(
         "climate", climate_entry.domain, "air_conditioner", config_entry=climate_entry
+    )
+    replacement = er.async_get(hass).async_get_or_create(
+        "climate", climate_entry.domain, "replacement", config_entry=climate_entry
     )
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -268,8 +311,12 @@ async def test_climate_entity_can_be_deselected_in_options(
     )
     assert isinstance(climate_selector, selector.EntitySelector)
 
+    with pytest.raises(InvalidData):
+        await hass.config_entries.options.async_configure(
+            flow_id, {CONF_CLIMATE_ENTITY: None}
+        )
     result = await hass.config_entries.options.async_configure(
-        flow_id, {CONF_CLIMATE_ENTITY: None}
+        flow_id, {CONF_CLIMATE_ENTITY: replacement.entity_id}
     )
     assert result["step_id"] == "parameters"
     result = await hass.config_entries.options.async_configure(flow_id, {})
@@ -279,7 +326,7 @@ async def test_climate_entity_can_be_deselected_in_options(
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.data.get(CONF_CLIMATE_ENTITY) is None
+    assert entry.data.get(CONF_CLIMATE_ENTITY) == replacement.entity_id
 
 
 @pytest.mark.asyncio
@@ -292,7 +339,10 @@ async def test_mailbox_slot_requires_a_separate_main_door_sensor(
     flow_id = result["flow_id"]
     await hass.config_entries.flow.async_configure(
         flow_id,
-        {"name": "Mailbox", CONF_APPLIANCE_TYPE: "mailbox_slot"},
+        {"name": "Mailbox", CONF_APPLIANCE_TYPE: "mailbox"},
+    )
+    await hass.config_entries.flow.async_configure(
+        flow_id, {"activity_mode": "mail_slot"}
     )
 
     result = await hass.config_entries.flow.async_configure(
@@ -344,10 +394,8 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
-    assert all(
-        marker.schema != CONF_APPLIANCE_TYPE
-        for marker in result["data_schema"].schema
-    )
+    assert CONF_APPLIANCE_TYPE in result["data_schema"].schema
+    assert "activity_mode" in result["data_schema"].schema
     flow_id = result["flow_id"]
 
     result = await hass.config_entries.options.async_configure(
@@ -393,7 +441,7 @@ async def test_options_flow_updates_entry_and_clears_removed_door_configuration(
 
 
 @pytest.mark.asyncio
-async def test_options_flow_hides_appliance_type(
+async def test_options_flow_shows_immutable_category_and_mode(
     hass, enable_custom_integrations
 ):
     entry = MockConfigEntry(
@@ -408,11 +456,20 @@ async def test_options_flow_hides_appliance_type(
     entry.add_to_hass(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert all(
-        marker.schema != CONF_APPLIANCE_TYPE
-        for marker in result["data_schema"].schema
-    )
+    fields = {marker.schema: field for marker, field in result["data_schema"].schema.items()}
+    assert fields[CONF_APPLIANCE_TYPE].config["options"] == ["washer"]
+    assert fields["activity_mode"].config["options"] == ["power"]
     flow_id = result["flow_id"]
+    result = await hass.config_entries.options.async_configure(
+        flow_id,
+        {"name": "Washer", CONF_APPLIANCE_TYPE: "dryer", "activity_mode": "power"},
+    )
+    assert result["errors"] == {"base": "appliance_type_immutable"}
+    result = await hass.config_entries.options.async_configure(
+        flow_id,
+        {"name": "Washer", CONF_APPLIANCE_TYPE: "washer", "activity_mode": "climate"},
+    )
+    assert result["errors"] == {"base": "appliance_type_immutable"}
     result = await hass.config_entries.options.async_configure(
         flow_id,
         {"name": "Washer"},
@@ -468,8 +525,18 @@ async def test_every_profile_supports_config_entry_crud(
     flow_id = flow_result["flow_id"]
 
     async def submit_identity(name: str):
+        category, mode = next(
+            (category, mode)
+            for category, modes in APPLIANCE_CATEGORIES.items()
+            for mode, profile_name in modes.items()
+            if profile_name == appliance_type
+        )
+        result = await hass.config_entries.flow.async_configure(
+            flow_id, {"name": name, CONF_APPLIANCE_TYPE: category}
+        )
+        assert result["step_id"] == "activity_mode"
         return await hass.config_entries.flow.async_configure(
-            flow_id, {"name": name, CONF_APPLIANCE_TYPE: appliance_type}
+            flow_id, {"activity_mode": mode}
         )
 
     def sensor_values(revision: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -478,6 +545,8 @@ async def test_every_profile_supports_config_entry_crud(
         for sensor_input in profile.sensor_inputs:
             if sensor_input.config_key == CONF_POWER_ENTITY:
                 entity_id = f"sensor.{revision}_power"
+            elif sensor_input.config_key == CONF_ENERGY_ENTITY:
+                entity_id = f"sensor.{revision}_energy"
             elif sensor_input.config_key == CONF_PLUG_ENTITY:
                 entity_id = f"switch.{revision}_plug"
             elif sensor_input.config_key == CONF_RUNNING_ENTITY:
@@ -574,10 +643,8 @@ async def test_every_profile_supports_config_entry_crud(
     assert entry in hass.config_entries.async_entries(DOMAIN)
 
     options_result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert all(
-        marker.schema != CONF_APPLIANCE_TYPE
-        for marker in options_result["data_schema"].schema
-    )
+    assert CONF_APPLIANCE_TYPE in options_result["data_schema"].schema
+    assert "activity_mode" in options_result["data_schema"].schema
     options_flow_id = options_result["flow_id"]
     result = await hass.config_entries.options.async_configure(
         options_flow_id,

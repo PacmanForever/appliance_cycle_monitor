@@ -1,9 +1,10 @@
 """Capabilities and detection sources for supported appliance types."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .const import (
     CONF_DOOR_ENTITY,
+    CONF_ENERGY_ENTITY,
     CONF_CLIMATE_ENTITY,
     CONF_MAIL_MOTION_ENTITY,
     CONF_MAIL_SLOT_ENTITY,
@@ -73,12 +74,12 @@ APPLIANCE_PROFILES = {
                 form_key=CONF_CLIMATE_ENTITY,
                 config_key=CONF_CLIMATE_ENTITY,
                 domain="climate",
-                required=False,
+                required=True,
                 detection_source="climate",
             ),
         ),
-        parameter_groups=(),
-        action_groups=("cycle_start", "cycle_finish"),
+        parameter_groups=("plug_off_alarm",),
+        action_groups=("cycle_start", "cycle_finish", "plug_off_alarm"),
         output_entities=("last_cycle_duration", "running"),
         supports_pending_unload=False,
         estimates_remaining=False,
@@ -322,6 +323,66 @@ APPLIANCE_PROFILES = {
         supports_max_runtime=False,
     ),
 }
+
+_AUXILIARY_POWER = SensorInput(
+    form_key=CONF_POWER_ENTITY,
+    config_key=CONF_POWER_ENTITY,
+    domain="sensor",
+    device_classes=("power",),
+)
+_AUXILIARY_RUNNING = SensorInput(
+    form_key=CONF_RUNNING_ENTITY,
+    config_key=CONF_RUNNING_ENTITY,
+    domain="binary_sensor",
+    device_classes=("opening",),
+)
+_AUXILIARY_PLUG = SensorInput(
+    form_key=CONF_PLUG_ENTITY, config_key=CONF_PLUG_ENTITY, domain="switch"
+)
+_AUXILIARY_ENERGY = SensorInput(
+    form_key=CONF_ENERGY_ENTITY,
+    config_key=CONF_ENERGY_ENTITY,
+    domain="sensor",
+    device_classes=("energy",),
+)
+
+for _profile_name in (
+    "air_conditioner_contact",
+    "air_conditioner_power",
+    "air_conditioner_climate",
+    "refrigerator_switch",
+):
+    _profile = APPLIANCE_PROFILES[_profile_name]
+    _inputs = list(_profile.sensor_inputs)
+    for _extra in (
+        (_AUXILIARY_POWER, _AUXILIARY_RUNNING, _AUXILIARY_PLUG)
+        if _profile_name.startswith("air_conditioner_")
+        else (_AUXILIARY_POWER,)
+    ):
+        if not any(item.config_key == _extra.config_key for item in _inputs):
+            _inputs.append(_extra)
+    APPLIANCE_PROFILES[_profile_name] = replace(_profile, sensor_inputs=tuple(_inputs))
+
+for _profile_name, _profile in tuple(APPLIANCE_PROFILES.items()):
+    if not _profile_name.startswith("mailbox_"):
+        APPLIANCE_PROFILES[_profile_name] = replace(
+            _profile, sensor_inputs=(*_profile.sensor_inputs, _AUXILIARY_ENERGY)
+        )
+
+
+APPLIANCE_CATEGORIES = {
+    "air_conditioner": {
+        "running_sensor": "air_conditioner_contact",
+        "climate": "air_conditioner_climate",
+        "power": "air_conditioner_power",
+    },
+    "dryer": {"power": "dryer"},
+    "mailbox": {"mail_slot": "mailbox_slot", "mail_motion": "mailbox_motion"},
+    "refrigerator": {"smart_plug": "refrigerator_switch", "power": "refrigerator"},
+    "washer": {"power": "washer"},
+    "dishwasher": {"power": "dishwasher"},
+}
+
 
 # Keep the selector alphabetized by its Catalan display labels.
 APPLIANCE_TYPES = (

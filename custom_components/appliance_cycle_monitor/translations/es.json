@@ -14,11 +14,16 @@
           "appliance_type": "Tipo de electrodoméstico"
         }
       },
+      "activity_mode": {
+        "title": "Detección de actividad",
+        "data": {"activity_mode": "Modalidad de detección de actividad"}
+      },
       "sensors": {
         "title": "Sensores de entrada",
         "data": {
           "climate_entity": "Entidad climate original del aire acondicionado (sin dispositivo principal)",
           "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
+          "energy_entity": "Sensor de energía existente (opcional)",
           "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
           "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
           "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
@@ -33,7 +38,8 @@
           "plug_entity": "Enchufe inteligente del aparato (opcional)"
         },
         "data_description": {
-          "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo principal; volverá a quedar sin dispositivo al deseleccionarla o eliminar el aparato.",
+          "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo asociado; volverá a quedar sin dispositivo al sustituirla o eliminar el aparato.",
+          "energy_entity": "Utiliza el total existente del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
           "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
           "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
           "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
@@ -90,7 +96,7 @@
       "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
       "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo.",
       "invalid_plug_off_alarm_settings": "El intervalo de repetición con el enchufe apagado debe ser un entero positivo y los avisos adicionales, un entero no negativo.",
-      "appliance_type_immutable": "No se puede cambiar el tipo de aparato después de configurarlo. Añade uno nuevo con el tipo deseado.",
+      "appliance_type_immutable": "No se pueden cambiar el tipo de aparato ni la modalidad de actividad después de configurarlo. Añade un aparato nuevo para cambiarlos.",
       "mailbox_sensors_must_be_distinct": "El sensor de llegada de correo y el sensor de la puerta principal deben ser entidades diferentes.",
       "climate_entity_requires_no_device": "Elige una entidad climate sin dispositivo principal, o la entidad climate que ya esté asignada a este aparato."
     }
@@ -101,7 +107,8 @@
         "title": "Tipo y nombre del electrodoméstico",
         "data": {
           "name": "Nombre que se mostrará para este electrodoméstico",
-          "appliance_type": "Tipo de electrodoméstico"
+          "appliance_type": "Tipo de electrodoméstico",
+          "activity_mode": "Modalidad de detección de actividad"
         }
       },
       "sensors": {
@@ -109,6 +116,7 @@
         "data": {
           "climate_entity": "Entidad climate original del aire acondicionado (sin dispositivo principal)",
           "power_entity": "Sensor de potencia del aparato (debe indicar vatios)",
+          "energy_entity": "Sensor de energía existente (opcional)",
           "running_entity": "Contacto binario que está activo cuando la lama del aire acondicionado está abierta",
           "mail_motion_entity": "Sensor de movimiento interior que detecta la llegada de correo",
           "mail_slot_entity": "Contacto en la trampilla del buzón por donde se introducen las cartas",
@@ -123,7 +131,8 @@
           "plug_entity": "Enchufe inteligente del aparato (opcional)"
         },
         "data_description": {
-          "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo principal; volverá a quedar sin dispositivo al deseleccionarla o eliminar el aparato.",
+          "climate_entity": "Esta opción asocia la entidad climate original al dispositivo del aparato; no es un wrapper. Se conservan sus controles originales. Elige una climate sin dispositivo asociado; volverá a quedar sin dispositivo al sustituirla o eliminar el aparato.",
+          "energy_entity": "Utiliza el total existente del sensor. Déjalo vacío para calcular la energía a partir de la potencia, si hay un sensor de potencia seleccionado.",
           "running_entity": "Instala el contacto en la lama del aire acondicionado. Lama abierta significa que está funcionando.",
           "mail_motion_entity": "El movimiento dentro del buzón indica que ha llegado una carta.",
           "mail_slot_entity": "La apertura de la trampilla indica que ha llegado una carta.",
@@ -180,12 +189,18 @@
       "invalid_pending_settings": "El retraso debe ser un entero positivo y las repeticiones un entero no negativo.",
       "invalid_alarm_settings": "Los retrasos y el intervalo deben ser enteros positivos; las repeticiones adicionales deben ser un entero no negativo.",
       "invalid_plug_off_alarm_settings": "El intervalo de repetición con el enchufe apagado debe ser un entero positivo y los avisos adicionales, un entero no negativo.",
-      "appliance_type_immutable": "No se puede cambiar el tipo de aparato después de configurarlo. Añade uno nuevo con el tipo deseado.",
+      "appliance_type_immutable": "No se pueden cambiar el tipo de aparato ni la modalidad de actividad después de configurarlo. Añade un aparato nuevo para cambiarlos.",
       "mailbox_sensors_must_be_distinct": "El sensor de llegada de correo y el sensor de la puerta principal deben ser entidades diferentes.",
       "climate_entity_requires_no_device": "Elige una entidad climate sin dispositivo principal, o la entidad climate que ya esté asignada a este aparato."
     }
   },
   "selector": {
+    "appliance_category": {
+      "options": {"air_conditioner": "Aire acondicionado", "dryer": "Secadora", "mailbox": "Buzón", "refrigerator": "Frigorífico", "washer": "Lavadora", "dishwasher": "Lavavajillas"}
+    },
+    "activity_mode": {
+      "options": {"running_sensor": "Contacto de lama", "climate": "Entidad climate", "power": "Sensor de potencia", "smart_plug": "Interruptor inteligente", "mail_slot": "Contacto de trampilla", "mail_motion": "Sensor de movimiento interior"}
+    },
     "appliance_type": {
       "options": {
         "washer": "Lavadora",

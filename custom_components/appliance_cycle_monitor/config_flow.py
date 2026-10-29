@@ -11,7 +11,12 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
 
-from .appliance_types import APPLIANCE_TYPES, ApplianceTypeProfile, get_appliance_profile
+from .appliance_types import (
+    APPLIANCE_CATEGORIES,
+    APPLIANCE_TYPES,
+    ApplianceTypeProfile,
+    get_appliance_profile,
+)
 from .const import (
     CONF_APPLIANCE_TYPE,
     CONF_ALARM_REPEAT_COUNT,
@@ -20,6 +25,7 @@ from .const import (
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_DOOR_ENTITY,
+    CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
     CONF_PLUG_OFF_ACTIONS,
@@ -64,6 +70,7 @@ _ENTRY_DATA_KEYS = {
     CONF_NAME,
     CONF_APPLIANCE_TYPE,
     CONF_POWER_ENTITY,
+    CONF_ENERGY_ENTITY,
     CONF_CLIMATE_ENTITY,
     CONF_RUNNING_ENTITY,
     CONF_DOOR_ENTITY,
@@ -108,7 +115,9 @@ def _number_selector(unit: str, step: float = 0.1) -> selector.NumberSelector:
 
 
 def _identity_schema(
-    values: dict[str, Any], appliance_types: tuple[str, ...] = APPLIANCE_TYPES
+    values: dict[str, Any],
+    appliance_types: tuple[str, ...] = APPLIANCE_TYPES,
+    translation_key: str = CONF_APPLIANCE_TYPE,
 ) -> vol.Schema:
     return vol.Schema(
         {
@@ -118,7 +127,7 @@ def _identity_schema(
                 selector.SelectSelectorConfig(
                     options=list(appliance_types),
                     mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key=CONF_APPLIANCE_TYPE,
+                    translation_key=translation_key,
                 )
             )
             if len(appliance_types) == 1
@@ -126,7 +135,7 @@ def _identity_schema(
                 selector.SelectSelectorConfig(
                     options=list(appliance_types),
                     mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key=CONF_APPLIANCE_TYPE,
+                    translation_key=translation_key,
                 )
             )
         ),
@@ -134,8 +143,50 @@ def _identity_schema(
     )
 
 
+def _activity_mode_schema(category: str) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Required("activity_mode"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=list(APPLIANCE_CATEGORIES[category]),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="activity_mode",
+                )
+            )
+        }
+    )
+
+
 def _options_identity_schema(values: dict[str, Any]) -> vol.Schema:
-    return vol.Schema({_required(CONF_NAME, values): selector.TextSelector()})
+    category, mode = _profile_identity(values[CONF_APPLIANCE_TYPE])
+    return vol.Schema(
+        {
+            _required(CONF_NAME, values): selector.TextSelector(),
+            vol.Required(CONF_APPLIANCE_TYPE, default=category): _LockedSelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[category],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="appliance_category",
+                )
+            ),
+            vol.Required("activity_mode", default=mode): _LockedSelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[mode],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="activity_mode",
+                )
+            ),
+        }
+    )
+
+
+def _profile_identity(profile_name: str) -> tuple[str, str]:
+    return next(
+        (category, mode)
+        for category, modes in APPLIANCE_CATEGORIES.items()
+        for mode, name in modes.items()
+        if name == profile_name
+    )
 
 
 def _sensor_form_values(
@@ -494,7 +545,9 @@ def _entry_data(values: dict[str, Any]) -> dict[str, Any]:
         "mail_slot": CONF_MAIL_SLOT_ENTITY,
     }
     for source, key in source_keys.items():
-        if source not in profile.detection_sources:
+        if source not in profile.detection_sources and not any(
+            sensor_input.config_key == key for sensor_input in profile.sensor_inputs
+        ):
             keys.discard(key)
     if not profile.supports_door_sensor:
         keys.discard(CONF_DOOR_ENTITY)
@@ -565,15 +618,36 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._draft: dict[str, Any] = {}
+        self._category: str | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         if user_input is not None:
             self._draft = dict(user_input)
+            self._category = self._draft[CONF_APPLIANCE_TYPE]
+            return await self.async_step_activity_mode()
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_identity_schema(
+                {}, tuple(APPLIANCE_CATEGORIES), "appliance_category"
+            ),
+            last_step=False,
+        )
+
+    async def async_step_activity_mode(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert self._category is not None
+        if user_input is not None:
+            self._draft[CONF_APPLIANCE_TYPE] = APPLIANCE_CATEGORIES[self._category][
+                user_input["activity_mode"]
+            ]
             return await self.async_step_sensors()
         return self.async_show_form(
-            step_id="user", data_schema=_identity_schema({}), last_step=False
+            step_id="activity_mode",
+            data_schema=_activity_mode_schema(self._category),
+            last_step=False,
         )
 
     async def async_step_sensors(
@@ -686,10 +760,11 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
             self._saved = {**self.config_entry.data, **self.config_entry.options}
             self._saved.setdefault(CONF_NAME, self.config_entry.title)
         if user_input is not None:
-            appliance_type = user_input.get(
-                CONF_APPLIANCE_TYPE, self._saved[CONF_APPLIANCE_TYPE]
-            )
-            if appliance_type != self._saved[CONF_APPLIANCE_TYPE]:
+            category, mode = _profile_identity(self._saved[CONF_APPLIANCE_TYPE])
+            if (
+                user_input.get(CONF_APPLIANCE_TYPE, category) != category
+                or user_input.get("activity_mode", mode) != mode
+            ):
                 return self.async_show_form(
                     step_id="init",
                     data_schema=_options_identity_schema(self._saved),
@@ -697,7 +772,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                     last_step=False,
                 )
             self._draft = {
-                **user_input,
+                CONF_NAME: user_input[CONF_NAME],
                 CONF_APPLIANCE_TYPE: self._saved[CONF_APPLIANCE_TYPE],
             }
             return await self.async_step_sensors()
@@ -726,7 +801,6 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 )
             if (
                 "climate" in profile.detection_sources
-                and values.get(CONF_CLIMATE_ENTITY) is not None
                 and not _validate_climate_entity(
                     self.hass,
                     values.get(CONF_CLIMATE_ENTITY),

@@ -18,7 +18,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .appliance_types import get_appliance_model
-from .const import DOMAIN
+from .const import CONF_ENERGY_ENTITY, CONF_POWER_ENTITY, DOMAIN
 from .runtime import ApplianceRuntime
 
 
@@ -94,7 +94,7 @@ async def async_setup_entry(
             runtime,
             entry,
             "total_energy",
-            lambda: runtime.energy_kwh,
+            lambda: runtime.display_energy_kwh,
             UnitOfEnergy.KILO_WATT_HOUR,
             SensorDeviceClass.ENERGY,
             SensorStateClass.TOTAL_INCREASING,
@@ -123,5 +123,11 @@ async def async_setup_entry(
         ),
     }
     async_add_entities(
-        [sensor for key, sensor in sensors.items() if key in runtime.profile.output_entities]
+        [
+            sensor
+            for key, sensor in sensors.items()
+            if key in runtime.profile.output_entities
+            or (key in ("power", "total_energy") and runtime.config.get(CONF_POWER_ENTITY))
+            or (key == "total_energy" and runtime.config.get(CONF_ENERGY_ENTITY))
+        ]
     )

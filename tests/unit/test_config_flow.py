@@ -25,6 +25,7 @@ from custom_components.appliance_cycle_monitor.config_flow import (
     _validate_thresholds,
 )
 from custom_components.appliance_cycle_monitor.appliance_types import (
+    APPLIANCE_CATEGORIES,
     APPLIANCE_MODEL_NAMES,
     APPLIANCE_PROFILES,
     APPLIANCE_TYPES,
@@ -63,6 +64,18 @@ from custom_components.appliance_cycle_monitor.const import (
 
 
 class ConfigFlowSchemaTests(unittest.TestCase):
+    def test_categories_map_each_profile_to_one_compatible_mode(self) -> None:
+        mapped = [
+            profile
+            for modes in APPLIANCE_CATEGORIES.values()
+            for profile in modes.values()
+        ]
+        self.assertEqual(len(mapped), len(set(mapped)))
+        self.assertEqual(set(mapped), set(APPLIANCE_PROFILES))
+        for modes in APPLIANCE_CATEGORIES.values():
+            for mode, profile in modes.items():
+                self.assertEqual(APPLIANCE_PROFILES[profile].detection_sources, (mode,))
+
     def test_device_models_cover_and_distinguish_all_profiles(self) -> None:
         self.assertEqual(set(APPLIANCE_MODEL_NAMES), set(APPLIANCE_PROFILES))
         self.assertEqual(
@@ -108,16 +121,18 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "binary_sensor.dishwasher_door",
         )
 
-    def test_ac_profiles_request_only_their_selected_detection_source(self) -> None:
+    def test_ac_profiles_offer_auxiliary_sources(self) -> None:
         contact_profile = get_appliance_profile("air_conditioner_contact")
         power_profile = get_appliance_profile("air_conditioner_power")
         contact_schema = _sensor_schema({}, contact_profile)
         power_schema = _sensor_schema({}, power_profile)
 
         self.assertIn(CONF_RUNNING_ENTITY, contact_schema.schema)
-        self.assertNotIn(CONF_POWER_ENTITY, contact_schema.schema)
+        self.assertIn(CONF_POWER_ENTITY, contact_schema.schema)
         self.assertIn(CONF_POWER_ENTITY, power_schema.schema)
-        self.assertNotIn(CONF_RUNNING_ENTITY, power_schema.schema)
+        self.assertIn(CONF_RUNNING_ENTITY, power_schema.schema)
+        self.assertIn(CONF_PLUG_ENTITY, contact_schema.schema)
+        self.assertIn(CONF_PLUG_ENTITY, power_schema.schema)
         self.assertFalse(contact_profile.supports_pending_unload)
         self.assertFalse(contact_profile.estimates_remaining)
         self.assertFalse(power_profile.supports_pending_unload)
@@ -178,11 +193,11 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                 )
                 self.assertIn(expected_source, sensor_schema.schema)
                 self.assertEqual(
-                    "power" in profile.detection_sources,
+                    any(item.config_key == CONF_POWER_ENTITY for item in profile.sensor_inputs),
                     CONF_POWER_ENTITY in sensor_schema.schema,
                 )
                 self.assertEqual(
-                    "running_sensor" in profile.detection_sources,
+                    any(item.config_key == CONF_RUNNING_ENTITY for item in profile.sensor_inputs),
                     CONF_RUNNING_ENTITY in sensor_schema.schema,
                 )
                 self.assertEqual(
@@ -508,7 +523,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
 
 
 @pytest.mark.asyncio
-async def test_config_flow_has_four_forward_steps_and_separates_options():
+async def test_config_flow_has_five_forward_steps_and_separates_options():
     flow = ApplianceCycleMonitorConfigFlow()
     shown_steps: list[dict[str, object]] = []
     flow.async_show_form = lambda **result: shown_steps.append(result) or result
@@ -518,12 +533,14 @@ async def test_config_flow_has_four_forward_steps_and_separates_options():
     assert first_result["step_id"] == "user"
     assert first_result["last_step"] is False
 
-    sensors_result = await flow.async_step_user(
+    mode_result = await flow.async_step_user(
         {
             "name": "Washer",
             "appliance_type": "washer",
         }
     )
+    assert mode_result["step_id"] == "activity_mode"
+    sensors_result = await flow.async_step_activity_mode({"activity_mode": "power"})
     assert sensors_result["step_id"] == "sensors"
 
     parameters_result = await flow.async_step_sensors(
@@ -555,6 +572,7 @@ async def test_config_flow_has_four_forward_steps_and_separates_options():
     assert created["options"]["start_power_w"] == 4
     assert [result["step_id"] for result in shown_steps] == [
         "user",
+        "activity_mode",
         "sensors",
         "parameters",
         "actions",
@@ -573,6 +591,7 @@ async def test_pending_settings_are_validated_on_parameters_step():
             "appliance_type": "washer",
         }
     )
+    await flow.async_step_activity_mode({"activity_mode": "power"})
     await flow.async_step_sensors(
         {
             "power_entity": "sensor.washer_power",

@@ -25,19 +25,21 @@ A local Home Assistant integration for washers, dishwashers, dryers, air conditi
 	- Detect cycles from power thresholds and configurable confirmation times.
 	- Optionally monitor the door and control a smart plug; track pending unloading and reminders.
 - **Air conditioner**
-	- **Climate-entity option:** use an existing climate entity with no parent device as the activity source. The original entity and controls are assigned directly to the appliance device; no wrapper is created. Activity follows `hvac_action` when available and falls back to the climate state. Deselecting or replacing the entity, or removing the appliance, returns it to no device if it is still assigned to this appliance.
-	- **Louver-contact option:** detect activity from a binary contact on the louver; no power or energy entities are created.
-	- **Power option:** detect activity from power readings and configurable thresholds. When both sources are available, choose this profile to use power.
+	- **Climate-entity option:** use an existing climate entity with no parent device as the activity source. The original entity and controls are assigned directly to the appliance device; no wrapper is created. Activity follows `hvac_action` when available and falls back to the climate state. Replacing the entity or removing the appliance returns it to no device if it is still assigned to this appliance.
+	- **Louver-contact option:** detect activity from a binary contact on the louver.
+	- **Power option:** detect activity from power readings and configurable thresholds.
+	- In any mode, a louver contact, power sensor, energy sensor and controllable smart plug can be selected independently. Only the chosen activity source determines running state.
 - **Refrigerator**
 	- **Power option:** requires a power sensor and door contact. A controllable smart plug is optional; compressor-activity and door-open alarms are available.
-	- **Smart-switch option:** requires a smart switch and separate door contact. The switch detects activity; no power, energy, or compressor-inactivity alarm is provided. A door-open alarm is available.
+	- **Smart-switch option:** requires a smart switch and separate door contact. The switch detects activity; optional power and energy sensors do not change that activity. A door-open alarm is available, but not a compressor-inactivity alarm.
 - **Mailbox**
 	- **Interior-motion option:** detect incoming mail with a motion sensor inside the mailbox.
 	- **Mail-slot option:** detect incoming mail with a contact on the letter flap and expose its open/closed state as **Mail slot**.
 	- Both options track pending collection, support arrival actions and reminders, and use a separate main-door contact to clear pending status.
 - **Across all profiles**
 	- Configure Home Assistant actions per device and restore cycle, reminder, and alarm state after Home Assistant restarts.
-	- See running state and last-active duration; power-based profiles also track lifetime energy, while estimated remaining time is limited to laundry profiles.
+	- See running state and last-active duration for appliances; estimated remaining time is limited to laundry profiles.
+	- Monitor power and energy independently of activity detection for plugged-in appliances. Use an existing energy sensor's total or calculate energy from power.
 	- Get a Repairs issue when a configured input is missing or unavailable; the issue clears when the input recovers.
 	- Run configured actions in order. Reminders and alarms wait for the previous run to finish before repeating.
 	- Configure an immediate smart-plug-off alarm with its own repeat interval and count; it pauses while the plug state is unavailable and rearms when switched on.
@@ -60,18 +62,23 @@ The integration works on supported Home Assistant versions; displaying its local
 
 ## Configuration
 
-Each appliance has a separate config entry and device. Setup and editing use four steps. The appliance type is fixed after setup; create a new device to use a different profile.
+Each appliance has a separate config entry and device. The general appliance type and activity mode are fixed after setup and shown when editing; create a new device to change either. Setup uses five steps:
 
 1. Select the appliance type and enter a name.
-2. Select the sensors required or supported by that profile. Laundry doors and smart plugs are optional. A power-based refrigerator requires a power sensor and door contact; its controllable smart plug is optional and does not replace power detection. A smart-switch refrigerator requires the switch and a separate door contact. An AC uses either its louver contact or power; a mailbox uses an arrival sensor and its main-door contact.
-3. Configure the selected profile's thresholds, delays, and reminder parameters.
-4. Configure the available actions for that profile.
+2. Select the activity mode available for that type.
+3. Select the required activity source and optional compatible sensors and controls. A refrigerator also requires a door contact; a mailbox requires a separate main-door contact.
+4. Configure the mode's thresholds, delays, and reminder parameters.
+5. Configure the available actions.
 
-Power-cycle defaults are 4 W for 15 seconds to start and 1 W for 60 seconds to finish. All configurable durations use seconds. Turning off a configured plug cuts appliance power and ends an active period immediately. On a power-based refrigerator, the power sensor remains the activity detector; the optional plug can still end a detected period when switched off. Laundry pending-unload reminders and refrigerator alarms run once, then repeat up to the configured number of additional repetitions. The plug-off alarm runs its configured actions immediately, then repeats on its own interval (900 seconds and 3 additional repetitions by default) while the plug remains off. Switching it on cancels pending repetitions and resets the count; an unavailable state delays alarms until the plug state is known again.
+Editing shows the fixed type and mode alongside the name, followed by sensors, parameters and actions. The activity source can be replaced with a compatible entity; a climate source must be replaced rather than cleared. A running cycle retains its start time after replacement unless the new source confirms it has stopped. An unavailable source does not cause a transition.
+
+For plugged-in appliances, an existing energy sensor can be selected independently of the activity source and power sensor. Its total is displayed in kWh without resetting it. Leave it empty to calculate a persistent total from a selected power sensor. The calculated total is maintained separately, so switching energy sources can change the displayed total; an unavailable external sensor does not fall back to the calculated total.
+
+Power-cycle defaults are 4 W for 15 seconds to start and 1 W for 60 seconds to finish. All configurable durations use seconds. An auxiliary plug controls the appliance's power but does not override its selected activity source. For a power-based appliance, the power sensor determines when the activity period ends; for a switch-based refrigerator, the switch itself determines activity. Laundry pending-unload reminders and refrigerator alarms run once, then repeat up to the configured number of additional repetitions. The plug-off alarm runs its configured actions immediately, then repeats on its own interval (900 seconds and 3 additional repetitions by default) while the plug remains off. Switching it on cancels pending repetitions and resets the count; an unavailable state delays alarms until the plug state is known again.
 
 ## Entities and automations
 
-Outputs depend on the selected profile. Power-based profiles provide power and lifetime energy; appliance profiles provide activity state and last-activity duration. Estimated remaining time is limited to laundry profiles. A power-sensed refrigerator exposes compressor activity and independent door-open/compressor-inactive alarms; its optional smart plug is exposed as a controllable switch. A smart-switch refrigerator requires a switch that both controls the appliance and supplies its activity state; it exposes a door-open alarm but no power, energy, or compressor-inactivity entities. Mailboxes expose their main-door and pending-to-unload states, plus a button to clear pending status. An arrival sensor detects mail and runs its configured actions; opening the main door clears pending status and cancels reminders. An AC contact profile exposes activity without power or energy sensors. A selected smart plug is exposed as a switch on the device.
+Outputs depend on the selected mode and configured inputs. A selected power sensor provides a power entity; an energy sensor or power sensor provides an energy entity. Appliance profiles provide activity state and last-activity duration; estimated remaining time is limited to laundry profiles. A power-sensed refrigerator exposes compressor activity and independent door-open/compressor-inactive alarms; a switch-sensed refrigerator exposes a door-open alarm but no compressor-inactivity alarm. Mailboxes expose their main-door and pending-to-unload states, plus a button to clear pending status. An arrival sensor detects mail and runs its configured actions; opening the main door clears pending status and cancels reminders. A selected smart plug is exposed as a switch on the device.
 
 External automations can react to state changes of the running and pending-unload binary sensors. The integration does not currently fire custom events on the Home Assistant event bus. Pending unload clears when the door opens or when the clear button is pressed.
 

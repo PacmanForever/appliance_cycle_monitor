@@ -9,7 +9,7 @@ import math
 from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
+from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT, UnitOfEnergy
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import (
     async_track_point_in_time,
@@ -23,6 +23,7 @@ from homeassistant.helpers.issue_registry import (
 from homeassistant.helpers.script import Script
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
+from homeassistant.util.unit_conversion import EnergyConverter
 
 from .appliance import (
     ApplianceCycleDetector,
@@ -40,6 +41,7 @@ from .const import (
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_CLIMATE_ENTITY,
     CONF_DOOR_ENTITY,
+    CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
     CONF_PLUG_OFF_ACTIONS,
@@ -83,6 +85,14 @@ _LOGGER = logging.getLogger(__name__)
 _STORE_VERSION = 1
 _SAVE_DELAY_SECONDS = 1
 _ENERGY_UPDATE_INTERVAL = timedelta(minutes=1)
+_ACTIVITY_SOURCE_KEYS = {
+    "power": CONF_POWER_ENTITY,
+    "climate": CONF_CLIMATE_ENTITY,
+    "running_sensor": CONF_RUNNING_ENTITY,
+    "mail_motion": CONF_MAIL_MOTION_ENTITY,
+    "mail_slot": CONF_MAIL_SLOT_ENTITY,
+    "smart_plug": CONF_PLUG_ENTITY,
+}
 
 
 class ApplianceRuntime:
@@ -179,14 +189,7 @@ class ApplianceRuntime:
             self.pending_reminder_count = 0
             self.next_pending_reminder = None
 
-        source_key = {
-            "power": CONF_POWER_ENTITY,
-            "climate": CONF_CLIMATE_ENTITY,
-            "running_sensor": CONF_RUNNING_ENTITY,
-            "mail_motion": CONF_MAIL_MOTION_ENTITY,
-            "mail_slot": CONF_MAIL_SLOT_ENTITY,
-            "smart_plug": CONF_PLUG_ENTITY,
-        }[self.profile.detection_sources[0]]
+        source_key = _ACTIVITY_SOURCE_KEYS[self.profile.detection_sources[0]]
         entity_ids = list(dict.fromkeys(self._configured_inputs.values()))
         self._unsubscribe_states = async_track_state_change_event(
             self.hass, entity_ids, self._async_handle_state_change
@@ -211,6 +214,13 @@ class ApplianceRuntime:
             self._initialize_mail_sensor(source_state)
         else:
             self._apply_power_state(source_state, now, initialize_energy=True)
+
+        if source_key != CONF_POWER_ENTITY and self.config.get(CONF_POWER_ENTITY):
+            self._apply_power_state(
+                self.hass.states.get(self.config[CONF_POWER_ENTITY]),
+                now,
+                initialize_energy=True,
+            )
 
         door_entity = self.config.get(CONF_DOOR_ENTITY)
         if door_entity:
@@ -276,6 +286,25 @@ class ApplianceRuntime:
         return self._last_valid_power_w
 
     @property
+    def display_energy_kwh(self) -> float | None:
+        """Return the selected energy total or the locally calculated total."""
+        entity_id = self.config.get(CONF_ENERGY_ENTITY)
+        if not entity_id:
+            return self.energy_kwh
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+        unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+        if not isinstance(unit, str) or unit not in EnergyConverter.VALID_UNITS:
+            return None
+        try:
+            value = float(state.state)
+            converted = EnergyConverter.convert(value, unit, UnitOfEnergy.KILO_WATT_HOUR)
+        except (TypeError, ValueError):
+            return None
+        return converted if math.isfinite(converted) and converted >= 0 else None
+
+    @property
     def remaining_seconds(self) -> float | None:
         """Estimate remaining time from the most recently completed cycle."""
         if not self.detector.is_running or self.detector.last_cycle_duration is None:
@@ -311,10 +340,7 @@ class ApplianceRuntime:
             and entity_id == self.config.get(CONF_MAIL_SLOT_ENTITY)
         ):
             self._apply_mail_sensor_state(new_state, now)
-        elif (
-            "power" in self.profile.detection_sources
-            and entity_id == self.config.get(CONF_POWER_ENTITY)
-        ):
+        elif entity_id == self.config.get(CONF_POWER_ENTITY):
             self._apply_power_state(new_state, now)
         elif (
             "smart_plug" in self.profile.detection_sources
@@ -324,12 +350,8 @@ class ApplianceRuntime:
         elif entity_id == self.config.get(CONF_DOOR_ENTITY):
             self._apply_door_state(new_state, now)
         elif entity_id == self.config.get(CONF_PLUG_ENTITY):
-            if new_state is not None and new_state.state == "off":
-                event_result = self.detector.finish_by_switch(now)
-                if event_result is not None:
-                    self._handle_cycle_events([event_result])
-                self._schedule_save()
-                self._schedule_deadline()
+            self._notify()
+        elif entity_id == self.config.get(CONF_ENERGY_ENTITY):
             self._notify()
 
         if entity_id == self.config.get(CONF_PLUG_ENTITY):
@@ -482,7 +504,7 @@ class ApplianceRuntime:
             if state is not None
             else None
         )
-        watts = self.detector.to_watts(value, unit)
+        watts = ApplianceCycleDetector.to_watts(value, unit)
 
         if initialize_energy:
             self._energy_power_w = None
@@ -497,6 +519,12 @@ class ApplianceRuntime:
             self._energy_power_w = watts
             self._energy_updated_at = now
             self._last_valid_power_w = watts
+
+        if "power" not in self.profile.detection_sources:
+            self._schedule_save()
+            self._schedule_deadline()
+            self._notify()
+            return
 
         if initialize_energy or self._restoring_detector_state:
             events = self.detector.reconcile_power(value, unit, now)
@@ -616,7 +644,7 @@ class ApplianceRuntime:
             deadlines.append(self.next_compressor_alarm)
         if self._plug_is_off is True and self.next_plug_off_alarm is not None:
             deadlines.append(self.next_plug_off_alarm)
-        if self.detector.power_w is not None or self.detector.is_running:
+        if self._energy_power_w is not None or self.detector.is_running:
             deadlines.append(
                 dt_util.utcnow() + _ENERGY_UPDATE_INTERVAL
             )
@@ -907,6 +935,10 @@ class ApplianceRuntime:
     def _export_state(self) -> dict[str, Any]:
         return {
             "detector": self.detector.export_state(),
+            "activity_entity": self.config.get(
+                _ACTIVITY_SOURCE_KEYS[self.profile.detection_sources[0]]
+            ),
+            "power_entity": self.config.get(CONF_POWER_ENTITY),
             "last_valid_power_w": self._last_valid_power_w,
             "energy_kwh": self.energy_kwh,
             "door_open": self.door_open,
@@ -946,10 +978,23 @@ class ApplianceRuntime:
         try:
             detector_state = stored.get("detector")
             if isinstance(detector_state, dict):
+                current_source = self.config.get(
+                    _ACTIVITY_SOURCE_KEYS[self.profile.detection_sources[0]]
+                )
+                if stored.get("activity_entity", current_source) != current_source:
+                    detector_state = {
+                        **detector_state,
+                        "start_candidate_at": None,
+                        "finish_candidate_at": None,
+                    }
                 self.detector.restore_state(detector_state)
             last_valid_power = stored.get(
                 "last_valid_power_w", self.detector.power_w
             )
+            if stored.get("power_entity", self.config.get(CONF_POWER_ENTITY)) != self.config.get(
+                CONF_POWER_ENTITY
+            ):
+                last_valid_power = None
             if last_valid_power is not None:
                 if isinstance(last_valid_power, bool):
                     raise ValueError("Invalid stored power reading")

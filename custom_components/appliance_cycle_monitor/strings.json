@@ -14,11 +14,16 @@
           "appliance_type": "Appliance type"
         }
       },
+      "activity_mode": {
+        "title": "Activity detection",
+        "data": {"activity_mode": "Activity detection method"}
+      },
       "sensors": {
         "title": "Input sensors",
         "data": {
           "climate_entity": "Original air-conditioner climate entity (no parent device)",
           "power_entity": "Power sensor for this appliance (in watts)",
+          "energy_entity": "Existing energy sensor (optional)",
           "running_entity": "Binary contact that is on while the AC louver is open",
           "mail_motion_entity": "Interior motion sensor that detects incoming mail",
           "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
@@ -33,7 +38,8 @@
           "plug_entity": "Appliance smart plug (optional)"
         },
         "data_description": {
-          "climate_entity": "This moves the original climate entity into the appliance device; it is not a wrapper. Its existing controls remain available. Select a climate entity with no parent device; it is returned to no device when deselected or when this appliance is removed.",
+          "climate_entity": "This associates the original climate entity with the appliance device; it is not a wrapper. Its controls remain available. Select an entity with no parent device; it is released when replaced or when the appliance is removed.",
+          "energy_entity": "Use this sensor's existing total. Leave empty to calculate energy from power when a power sensor is selected.",
           "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
           "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
           "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
@@ -90,7 +96,7 @@
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
       "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
       "invalid_plug_off_alarm_settings": "The plug-off repeat interval must be a positive whole number and additional alarms a non-negative whole number.",
-      "appliance_type_immutable": "The appliance type cannot be changed after setup. Add a new appliance with the desired type.",
+      "appliance_type_immutable": "The appliance type and activity mode cannot be changed after setup. Add a new appliance to change them.",
       "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities.",
       "climate_entity_requires_no_device": "Select an existing climate entity with no parent device, or the climate entity already assigned to this appliance."
     }
@@ -101,7 +107,8 @@
         "title": "Appliance type and name",
         "data": {
           "name": "Name shown for this appliance",
-          "appliance_type": "Appliance type"
+          "appliance_type": "Appliance type",
+          "activity_mode": "Activity detection method"
         }
       },
       "sensors": {
@@ -109,6 +116,7 @@
         "data": {
           "climate_entity": "Original air-conditioner climate entity (no parent device)",
           "power_entity": "Power sensor for this appliance (in watts)",
+          "energy_entity": "Existing energy sensor (optional)",
           "running_entity": "Binary contact that is on while the AC louver is open",
           "mail_motion_entity": "Interior motion sensor that detects incoming mail",
           "mail_slot_entity": "Contact on the mailbox flap used to insert letters",
@@ -123,7 +131,8 @@
           "plug_entity": "Appliance smart plug (optional)"
         },
         "data_description": {
-          "climate_entity": "This moves the original climate entity into the appliance device; it is not a wrapper. Its existing controls remain available. Select a climate entity with no parent device; it is returned to no device when deselected or when this appliance is removed.",
+          "climate_entity": "This associates the original climate entity with the appliance device; it is not a wrapper. Its controls remain available. Select an entity with no parent device; it is released when replaced or when the appliance is removed.",
+          "energy_entity": "Use this sensor's existing total. Leave empty to calculate energy from power when a power sensor is selected.",
           "running_entity": "Mount the contact on the AC louver. An open louver means the air conditioner is running.",
           "mail_motion_entity": "Motion inside the mailbox indicates that a letter has arrived.",
           "mail_slot_entity": "Opening the mail-slot flap indicates that a letter has arrived.",
@@ -180,12 +189,18 @@
       "invalid_pending_settings": "The initial delay must be a positive whole number and repetitions a non-negative whole number.",
       "invalid_alarm_settings": "Alarm delays and repeat interval must be positive whole numbers; additional repeats must be a non-negative whole number.",
       "invalid_plug_off_alarm_settings": "The plug-off repeat interval must be a positive whole number and additional alarms a non-negative whole number.",
-      "appliance_type_immutable": "The appliance type cannot be changed after setup. Add a new appliance with the desired type.",
+      "appliance_type_immutable": "The appliance type and activity mode cannot be changed after setup. Add a new appliance to change them.",
       "mailbox_sensors_must_be_distinct": "The mail-arrival sensor and main-door sensor must be different entities.",
       "climate_entity_requires_no_device": "Select an existing climate entity with no parent device, or the climate entity already assigned to this appliance."
     }
   },
   "selector": {
+    "appliance_category": {
+      "options": {"air_conditioner": "Air conditioner", "dryer": "Dryer", "mailbox": "Mailbox", "refrigerator": "Refrigerator", "washer": "Washer", "dishwasher": "Dishwasher"}
+    },
+    "activity_mode": {
+      "options": {"running_sensor": "Louver contact", "climate": "Climate entity", "power": "Power sensor", "smart_plug": "Smart switch", "mail_slot": "Mail-slot contact", "mail_motion": "Interior motion sensor"}
+    },
     "appliance_type": {
       "options": {
         "washer": "Washer",

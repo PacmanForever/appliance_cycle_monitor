@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 - 2026-10-29
+
+### Added
+
+- Separate general appliance type from the required activity-detection mode; both remain visible and immutable after setup.
+- Allow compatible auxiliary contact, power, energy, and smart-plug inputs independently of the selected activity source.
+- Support an existing energy sensor's accumulated total or persistent energy calculation from power.
+
+### Changed
+
+- Preserve cycle timing when replacing an activity source; unavailable sources do not cause false transitions, and auxiliary power or plug states do not override the selected source.
+- Require a replacement when changing the configured climate activity entity, preserving its original Home Assistant entity and controls.
+- Update setup, options, translations, and documentation for the category-and-mode configuration flow.
+
 ## 0.6.1 - 2026-10-28
 
 ### Fixed

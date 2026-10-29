@@ -21,6 +21,7 @@ from custom_components.appliance_cycle_monitor.const import (
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
     CONF_CLIMATE_ENTITY,
     CONF_DOOR_ENTITY,
+    CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
     CONF_MAIL_ARRIVAL_ACTIONS,
@@ -80,7 +81,7 @@ async def _async_fire_deadline(runtime: ApplianceRuntime, when: datetime) -> Non
 
 
 @pytest.mark.asyncio
-async def test_power_updates_and_switch_off_are_event_driven(hass, config, monkeypatch):
+async def test_auxiliary_switch_off_does_not_end_power_cycle(hass, config, monkeypatch):
     current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     hass.states.async_set(
@@ -100,8 +101,155 @@ async def test_power_updates_and_switch_off_are_event_driven(hass, config, monke
     hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
     await hass.async_block_till_done()
 
+    assert runtime.detector.is_running
+    assert runtime.detector.last_cycle_duration is None
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_auxiliary_power_tracks_consumption_without_changing_contact_activity(
+    hass, monkeypatch
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+        CONF_RUNNING_ENTITY: "binary_sensor.ac_louver",
+        CONF_POWER_ENTITY: "sensor.ac_power",
+        "name": "Air conditioner",
+    }
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
+    hass.states.async_set(config[CONF_POWER_ENTITY], "200", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    assert runtime.display_power_w == 200
     assert not runtime.detector.is_running
-    assert runtime.detector.last_cycle_duration == timedelta(seconds=1)
+    assert runtime._unsubscribe_timer is not None
+
+    current_time[0] += timedelta(minutes=30)
+    await _async_fire_deadline(runtime, current_time[0])
+    assert runtime.energy_kwh == pytest.approx(0.1)
+    assert runtime._unsubscribe_timer is not None
+    current_time[0] += timedelta(minutes=30)
+    hass.states.async_set(config[CONF_POWER_ENTITY], "100", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    await hass.async_block_till_done()
+    assert runtime.display_power_w == 100
+    assert runtime.energy_kwh == pytest.approx(0.2)
+    assert not runtime.detector.is_running
+
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "on")
+    await hass.async_block_till_done()
+    assert runtime.detector.is_running
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_external_energy_sensor_preserves_its_total_and_handles_outages(hass):
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+        CONF_RUNNING_ENTITY: "binary_sensor.ac_louver",
+        CONF_ENERGY_ENTITY: "sensor.ac_energy",
+        "name": "Air conditioner",
+    }
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "1250", {ATTR_UNIT_OF_MEASUREMENT: "Wh"})
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    assert runtime.display_energy_kwh == pytest.approx(1.25)
+
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "unavailable")
+    await hass.async_block_till_done()
+    assert runtime.display_energy_kwh is None
+    assert not runtime.detector.is_running
+
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "10", {ATTR_UNIT_OF_MEASUREMENT: "invalid"})
+    await hass.async_block_till_done()
+    assert runtime.display_energy_kwh is None
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "10")
+    await hass.async_block_till_done()
+    assert runtime.display_energy_kwh is None
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "-1", {ATTR_UNIT_OF_MEASUREMENT: "kWh"})
+    await hass.async_block_till_done()
+    assert runtime.display_energy_kwh is None
+
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "2.5", {ATTR_UNIT_OF_MEASUREMENT: "kWh"})
+    await hass.async_block_till_done()
+    assert runtime.display_energy_kwh == pytest.approx(2.5)
+    await runtime.async_unload()
+
+
+@pytest.mark.parametrize("replacement_state", ["on", "off", "unavailable"])
+@pytest.mark.asyncio
+async def test_replacing_activity_source_reconciles_the_existing_cycle(
+    hass, monkeypatch, replacement_state
+):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_contact",
+        CONF_RUNNING_ENTITY: "binary_sensor.old_source",
+        "name": "Air conditioner",
+    }
+    hass.states.async_set(config[CONF_RUNNING_ENTITY], "on")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    started_at = runtime.detector.cycle_started_at
+    await runtime.async_unload()
+
+    current_time[0] += timedelta(minutes=10)
+    replacement = {**config, CONF_RUNNING_ENTITY: "binary_sensor.new_source"}
+    hass.states.async_set(replacement[CONF_RUNNING_ENTITY], replacement_state)
+    runtime = ApplianceRuntime(hass, entry, replacement)
+    await runtime.async_setup()
+    if replacement_state == "off":
+        assert not runtime.detector.is_running
+        assert runtime.detector.last_cycle_duration == timedelta(minutes=10)
+    else:
+        assert runtime.detector.cycle_started_at == started_at
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_replacing_power_source_restarts_confirmation(hass, config, monkeypatch):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    hass.states.async_set(config[CONF_POWER_ENTITY], "10", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    await runtime.async_unload()
+
+    current_time[0] += timedelta(minutes=1)
+    replacement = {**config, CONF_POWER_ENTITY: "sensor.new_power"}
+    hass.states.async_set(replacement[CONF_POWER_ENTITY], "10", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    runtime = ApplianceRuntime(hass, entry, replacement)
+    await runtime.async_setup()
+    assert not runtime.detector.is_running
+    assert runtime.detector.next_deadline == current_time[0] + timedelta(seconds=15)
+    await runtime.async_unload()
+
+
+@pytest.mark.asyncio
+async def test_replacing_power_source_does_not_display_old_sensor_reading(hass, config):
+    hass.states.async_set(config[CONF_POWER_ENTITY], "10", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    await runtime.async_unload()
+
+    replacement = {**config, CONF_POWER_ENTITY: "sensor.new_power"}
+    hass.states.async_set(replacement[CONF_POWER_ENTITY], "unavailable")
+    runtime = ApplianceRuntime(hass, entry, replacement)
+    await runtime.async_setup()
+    assert runtime.display_power_w is None
     await runtime.async_unload()
 
 
@@ -608,6 +756,70 @@ async def test_config_entry_loads_power_only_entities_and_unloads(
     assert set(remaining) == set(created_entity_ids)
     assert all(state.state == "unavailable" for state in remaining.values())
     assert hass.states.get(config[CONF_POWER_ENTITY]) is not None
+
+
+@pytest.mark.parametrize("with_power", [False, True])
+@pytest.mark.asyncio
+async def test_climate_appliance_exposes_optional_electrical_entities(
+    hass, enable_custom_integrations, with_power
+):
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_climate",
+        CONF_CLIMATE_ENTITY: "climate.ac",
+        CONF_ENERGY_ENTITY: "sensor.ac_energy",
+        CONF_PLUG_ENTITY: "switch.ac_plug",
+        "name": "Air conditioner",
+    }
+    if with_power:
+        config[CONF_POWER_ENTITY] = "sensor.ac_power"
+        hass.states.async_set(config[CONF_POWER_ENTITY], "100", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    hass.states.async_set(config[CONF_CLIMATE_ENTITY], "off")
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "2500", {ATTR_UNIT_OF_MEASUREMENT: "Wh"})
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "on")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    energy_id = registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_total_energy")
+    power_id = registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_power")
+    plug_id = registry.async_get_entity_id("switch", DOMAIN, f"{entry.entry_id}_plug")
+    assert energy_id is not None
+    assert float(hass.states.get(energy_id).state) == pytest.approx(2.5)
+    assert (power_id is not None) == with_power
+    assert plug_id is not None
+    hass.states.async_set(config[CONF_ENERGY_ENTITY], "3000", {ATTR_UNIT_OF_MEASUREMENT: "Wh"})
+    await hass.async_block_till_done()
+    assert float(hass.states.get(energy_id).state) == pytest.approx(3.0)
+    assert not entry.runtime_data.detector.is_running
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_switch_activity_ignores_conflicting_auxiliary_power(hass):
+    config = {
+        CONF_APPLIANCE_TYPE: "refrigerator_switch",
+        CONF_PLUG_ENTITY: "switch.refrigerator",
+        CONF_POWER_ENTITY: "sensor.refrigerator_power",
+        CONF_DOOR_ENTITY: "binary_sensor.refrigerator_door",
+        "name": "Refrigerator",
+    }
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "on")
+    hass.states.async_set(config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    await runtime.async_setup()
+    assert runtime.detector.is_running
+
+    hass.states.async_set(config[CONF_POWER_ENTITY], "500", {ATTR_UNIT_OF_MEASUREMENT: "W"})
+    hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
+    await hass.async_block_till_done()
+    assert not runtime.detector.is_running
+    assert runtime.display_power_w == 500
+    await runtime.async_unload()
 
 
 @pytest.mark.asyncio
