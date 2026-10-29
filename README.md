@@ -11,7 +11,7 @@
 [![Home Assistant](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FPacmanForever%2Fhome_activity_manager%2Fmain%2Fdocs%2Fhome_assistant_compatibility.json&query=%24.tested_version&suffix=%20tested&label=home%20assistant&color=blue)](https://github.com/PacmanForever/home_activity_manager/actions/workflows/daily-ha.yml)
 [![Daily HA compatibility](https://github.com/PacmanForever/home_activity_manager/actions/workflows/daily-ha.yml/badge.svg?branch=main)](https://github.com/PacmanForever/home_activity_manager/actions/workflows/daily-ha.yml)
 
-Home Activity Manager is a local Home Assistant integration for monitoring non-smart household devices through existing sensors and controls. It centralizes per-device activity, actions, reminders, and alarms. Its extensible profile system currently covers washers, dishwashers, dryers, air conditioners, refrigerators, and mailboxes, and can accommodate additional device types. It needs no cloud service, credentials, external helpers, or automations.
+Home Activity Manager brings compatible Home Assistant entities together under a dedicated device, making it easier to monitor household equipment and manage its activity, actions, reminders, and alarms. It is especially useful for non-smart devices monitored with existing sensors. Its extensible profiles currently cover washers, dishwashers, dryers, air conditioners, refrigerators, and mailboxes, with room for additional device types. It needs no cloud service, credentials, external helpers, or automations.
 
 ## Features
 
