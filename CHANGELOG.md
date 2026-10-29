@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.1 - 2026-10-29
+
+### Changed
+
+- Publish the Home Activity Manager name in HACS repository metadata.
+
 ## v0.9.0 - 2026-10-29
 
 ### Added
