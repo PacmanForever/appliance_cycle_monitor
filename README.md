@@ -25,7 +25,7 @@ Home Activity Manager brings compatible Home Assistant entities together under a
 	- Detect cycles from power thresholds and configurable confirmation times.
 	- Optionally monitor the door and control a smart plug; track pending unloading and reminders.
 - **Air conditioner**
-	- **Climate-entity option:** use an existing climate entity with no parent device as the activity source. The original entity and controls are assigned directly to the managed device; no wrapper is created. Activity follows `hvac_action` when available and falls back to the climate state. Replacing the entity or removing the managed device returns it to no device if it is still assigned to this device.
+	- **Climate-entity option:** use an existing climate entity with no parent device as the activity source. The original entity and controls are assigned directly to the managed device; no wrapper is created. Activity follows the climate mode (`off` versus any active mode), including periods when `hvac_action` is idle. Replacing the entity or removing the managed device returns it to no device if it is still assigned to this device.
 	- **Contact/opening-sensor option:** detect activity from a binary contact/opening sensor.
 	- **Power option:** detect activity from power readings and configurable thresholds.
 	- The contact/opening sensor is required in contact mode and is not offered in climate or power mode. Other auxiliary sensors and smart-plug controls are available according to each mode. Only the selected activity source determines running state.

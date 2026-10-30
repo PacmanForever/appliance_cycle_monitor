@@ -712,6 +712,9 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         profile = get_appliance_profile(self._draft[CONF_APPLIANCE_TYPE])
+        data_schema = _threshold_schema(self._draft, profile)
+        if user_input is None and not data_schema.schema:
+            return await self.async_step_actions()
         errors: dict[str, str] = {}
         if user_input is not None:
             if not _validate_thresholds(user_input, profile):
@@ -736,7 +739,7 @@ class ApplianceCycleMonitorConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_actions()
         return self.async_show_form(
             step_id=_profile_step_id("parameters", self._draft[CONF_APPLIANCE_TYPE]),
-            data_schema=_threshold_schema(self._draft, profile),
+            data_schema=data_schema,
             errors=errors,
             last_step=False,
         )
@@ -889,6 +892,9 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
     ) -> dict[str, Any]:
         values = {**self._saved, **self._draft}
         profile = get_appliance_profile(values[CONF_APPLIANCE_TYPE])
+        data_schema = _threshold_schema(values, profile)
+        if user_input is None and not data_schema.schema:
+            return await self.async_step_actions()
         errors: dict[str, str] = {}
         if user_input is not None:
             if not _validate_thresholds(user_input, profile):
@@ -913,7 +919,7 @@ class ApplianceCycleMonitorOptionsFlow(OptionsFlow):
                 return await self.async_step_actions()
         return self.async_show_form(
             step_id=_profile_step_id("parameters", values[CONF_APPLIANCE_TYPE]),
-            data_schema=_threshold_schema(values, profile),
+            data_schema=data_schema,
             errors=errors,
             last_step=False,
         )

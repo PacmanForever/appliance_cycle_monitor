@@ -187,12 +187,6 @@ async def test_add_air_conditioner_with_opening_sensor(hass, enable_custom_integ
         flow_id,
         {"air_conditioner_contact_running_entity": "binary_sensor.ac_vane"},
     )
-    assert result["step_id"] == "parameters_air_conditioner_contact"
-    schema_keys = {marker.schema for marker in result["data_schema"].schema}
-    assert "start_power_w" not in schema_keys
-    assert CONF_PENDING_DELAY_SECONDS not in schema_keys
-
-    result = await hass.config_entries.flow.async_configure(flow_id, {})
     assert result["step_id"] == "actions_air_conditioner_contact"
     assert CONF_PENDING_ACTIONS not in {
         marker.schema for marker in result["data_schema"].schema
@@ -250,16 +244,14 @@ async def test_air_conditioner_climate_requires_unparented_entity(
     sensor_form = await hass.config_entries.flow.async_configure(
         flow_id, {"air_conditioner_climate_climate_entity": parentless_entity.entity_id}
     )
-    assert sensor_form["step_id"] == "parameters_air_conditioner_climate"
+    assert sensor_form["step_id"] == "actions_air_conditioner_climate"
     assert isinstance(climate_selector, selector.EntitySelector)
     assert climate_selector.config["domain"] == ["climate"]
     assert parented_entity.entity_id in climate_selector.config["exclude_entities"]
     assert parentless_entity.entity_id not in climate_selector.config["exclude_entities"]
-    actions_form = await hass.config_entries.flow.async_configure(flow_id, {})
     result = await hass.config_entries.flow.async_configure(
         flow_id, {CONF_START_ACTIONS: [], CONF_FINISH_ACTIONS: []}
     )
-    assert actions_form["step_id"] == "actions_air_conditioner_climate"
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_CLIMATE_ENTITY] == parentless_entity.entity_id
 
@@ -321,8 +313,6 @@ async def test_climate_entity_must_be_replaced_in_options(
     result = await hass.config_entries.options.async_configure(
         flow_id, {"air_conditioner_climate_climate_entity": replacement.entity_id}
     )
-    assert result["step_id"] == "parameters_air_conditioner_climate"
-    result = await hass.config_entries.options.async_configure(flow_id, {})
     assert result["step_id"] == "actions_air_conditioner_climate"
     result = await hass.config_entries.options.async_configure(
         flow_id, {CONF_START_ACTIONS: [], CONF_FINISH_ACTIONS: []}

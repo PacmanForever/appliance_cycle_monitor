@@ -436,20 +436,7 @@ class ApplianceRuntime:
     ) -> None:
         value = None
         if state is not None and state.state not in ("unknown", "unavailable"):
-            hvac_action = state.attributes.get("hvac_action")
-            if hvac_action in ("off", "idle"):
-                value = "off"
-            elif hvac_action in {
-                "cooling",
-                "drying",
-                "fan",
-                "defrosting",
-                "heating",
-                "preheating",
-            }:
-                value = "on"
-            elif hvac_action is None:
-                value = "off" if state.state == "off" else "on"
+            value = "off" if state.state == "off" else "on"
 
         self._apply_running_value(value, now, initialize)
 

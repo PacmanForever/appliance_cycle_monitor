@@ -53,6 +53,7 @@ from custom_components.home_activity_manager import (
 )
 from custom_components.home_activity_manager import runtime as runtime_module
 from custom_components.home_activity_manager.appliance import ApplianceCycleDetector
+from custom_components.home_activity_manager.sensor import _format_duration
 from custom_components.home_activity_manager.appliance_types import APPLIANCE_PROFILES
 from custom_components.home_activity_manager.runtime import ApplianceRuntime
 from custom_components.home_activity_manager.binary_sensor import ApplianceBinarySensor
@@ -536,6 +537,8 @@ async def test_remaining_estimate_decreases_during_power_outage(
     runtime.detector.last_cycle_duration = timedelta(minutes=5)
 
     assert runtime.remaining_seconds == 180
+    assert _format_duration(runtime.remaining_seconds) == "00:03:00"
+    assert _format_duration(90061) == "25:01:01"
 
     await runtime.async_unload()
 
@@ -1032,6 +1035,13 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     await hass.async_block_till_done()
     assert not entry.runtime_data.detector.is_running
     assert entry.runtime_data.detector.last_cycle_duration == timedelta(seconds=12)
+    duration_entity_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_last_cycle_duration"
+    )
+    duration_state = hass.states.get(duration_entity_id)
+    assert duration_state.state == "00:00:12"
+    assert ATTR_UNIT_OF_MEASUREMENT not in duration_state.attributes
+    assert "device_class" not in duration_state.attributes
 
     unique_ids = {
         entity.unique_id
@@ -1851,6 +1861,12 @@ async def test_climate_entity_is_assigned_reassociated_and_released(
         climate_entity.entity_id, "cool", {"hvac_action": "idle"}
     )
     await hass.async_block_till_done()
+    assert entry.runtime_data.detector.is_running
+
+    hass.states.async_set(
+        climate_entity.entity_id, "off", {"hvac_action": "idle"}
+    )
+    await hass.async_block_till_done()
     assert not entry.runtime_data.detector.is_running
     assert entry.runtime_data.detector.last_cycle_duration is not None
 
@@ -1889,6 +1905,45 @@ async def test_climate_entity_is_assigned_reassociated_and_released(
     )
     assert er.async_get(hass).async_get(climate_entity.entity_id).device_id is None
     assert er.async_get(hass).async_get(climate_entity.entity_id).config_entry_id == climate_entry.entry_id
+
+
+@pytest.mark.asyncio
+async def test_climate_mode_transitions_run_start_and_finish_actions(
+    hass, monkeypatch, enable_custom_integrations
+):
+    climate_entry = MockConfigEntry(domain="climate_source")
+    climate_entry.add_to_hass(hass)
+    climate_entity = er.async_get(hass).async_get_or_create(
+        "climate", climate_entry.domain, "air_conditioner", config_entry=climate_entry
+    )
+    hass.states.async_set(climate_entity.entity_id, "off", {"hvac_action": "off"})
+    config = {
+        CONF_APPLIANCE_TYPE: "air_conditioner_climate",
+        CONF_CLIMATE_ENTITY: climate_entity.entity_id,
+        CONF_START_ACTIONS: [{"action": "climate.turn_on"}],
+        CONF_FINISH_ACTIONS: [{"action": "climate.turn_off"}],
+        "name": "Air conditioner",
+    }
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    transitions: list[str] = []
+    monkeypatch.setattr(
+        entry.runtime_data, "_run_actions_in_background", transitions.append
+    )
+    hass.states.async_set(
+        climate_entity.entity_id, "cool", {"hvac_action": "idle"}
+    )
+    await hass.async_block_till_done()
+    hass.states.async_set(
+        climate_entity.entity_id, "off", {"hvac_action": "idle"}
+    )
+    await hass.async_block_till_done()
+
+    assert transitions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS]
+    assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.asyncio

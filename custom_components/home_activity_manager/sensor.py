@@ -12,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTime
+from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -20,6 +20,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .appliance_types import get_appliance_model
 from .const import CONF_ENERGY_ENTITY, CONF_POWER_ENTITY, DOMAIN
 from .runtime import ApplianceRuntime
+
+
+def _format_duration(seconds: float | None) -> str | None:
+    if seconds is None:
+        return None
+    total_seconds = max(0, round(seconds))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 class ApplianceSensor(SensorEntity):
@@ -34,9 +43,9 @@ class ApplianceSensor(SensorEntity):
         entry: ConfigEntry,
         key: str,
         value_fn: Callable[[], Any],
-        unit: str,
-        device_class: SensorDeviceClass,
-        state_class: SensorStateClass,
+        unit: str | None,
+        device_class: SensorDeviceClass | None,
+        state_class: SensorStateClass | None,
     ) -> None:
         self._runtime = runtime
         self._key = key
@@ -135,23 +144,23 @@ async def async_setup_entry(
             runtime,
             entry,
             "last_cycle_duration",
-            lambda: (
+            lambda: _format_duration(
                 runtime.detector.last_cycle_duration.total_seconds()
                 if runtime.detector.last_cycle_duration is not None
                 else None
             ),
-            UnitOfTime.SECONDS,
-            SensorDeviceClass.DURATION,
-            SensorStateClass.MEASUREMENT,
+            None,
+            None,
+            None,
         ),
         "estimated_remaining": ApplianceSensor(
             runtime,
             entry,
             "estimated_remaining",
-            lambda: runtime.remaining_seconds,
-            UnitOfTime.SECONDS,
-            SensorDeviceClass.DURATION,
-            SensorStateClass.MEASUREMENT,
+            lambda: _format_duration(runtime.remaining_seconds),
+            None,
+            None,
+            None,
         ),
     }
     async_add_entities(

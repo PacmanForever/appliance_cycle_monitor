@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.7 - 2026-10-30
+
+### Changed
+
+- Display cycle duration and estimated remaining time as `HH:MM:SS`.
+- Detect air-conditioner activity from its climate mode so idle periods do not suppress cycle actions.
+- Skip empty parameter forms when no optional settings are available.
+
 ## v0.9.6 - 2026-10-30
 
 ### Added
