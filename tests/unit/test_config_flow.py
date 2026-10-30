@@ -41,6 +41,7 @@ from custom_components.home_activity_manager.const import (
     CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_EMPTIED_ACTIONS,
     CONF_FINISH_ACTIONS,
     CONF_MAIL_ARRIVAL_ACTIONS,
     CONF_MAIL_MOTION_ENTITY,
@@ -175,6 +176,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         action_keys = {
             "cycle_start": "start_actions",
             "cycle_finish": "finish_actions",
+            "emptied": CONF_EMPTIED_ACTIONS,
             "max_runtime": "max_runtime_actions",
             "pending_unload": CONF_PENDING_ACTIONS,
             "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
@@ -455,7 +457,9 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         self.assertNotIn(CONF_PENDING_INTERVAL_SECONDS, actions_with_door.schema)
         self.assertNotIn(CONF_PENDING_REPEATS, actions_with_door.schema)
         self.assertNotIn(CONF_PENDING_ACTIONS, actions_without_door.schema)
+        self.assertNotIn(CONF_EMPTIED_ACTIONS, actions_without_door.schema)
         self.assertIn(CONF_PENDING_ACTIONS, actions_with_door.schema)
+        self.assertIn(CONF_EMPTIED_ACTIONS, actions_with_door.schema)
         values = with_door(
             {
                 "start_power_w": 4,

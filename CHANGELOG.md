@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.6 - 2026-10-30
+
+### Added
+
+- Add optional actions for when pending laundry or mailbox contents are removed.
+
+### Changed
+
+- Use contact-specific open/closed icons for air-conditioner, mailbox-slot, and main-door input wrappers.
+
 ## v0.9.5 - 2026-10-30
 
 ### Changed

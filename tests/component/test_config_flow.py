@@ -26,6 +26,7 @@ from custom_components.home_activity_manager.const import (
     CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_EMPTIED_ACTIONS,
     CONF_FINISH_ACTIONS,
     CONF_MAIL_ARRIVAL_ACTIONS,
     CONF_MAIL_MOTION_ENTITY,
@@ -683,6 +684,7 @@ async def test_every_profile_supports_config_entry_crud(
     action_keys = {
         "cycle_start": CONF_START_ACTIONS,
         "cycle_finish": CONF_FINISH_ACTIONS,
+        "emptied": CONF_EMPTIED_ACTIONS,
         "max_runtime": CONF_MAX_RUNTIME_ACTIONS,
         "pending_unload": CONF_PENDING_ACTIONS,
         "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,

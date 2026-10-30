@@ -38,6 +38,7 @@ Home Activity Manager brings compatible Home Assistant entities together under a
 	- Both options track the mailbox cycle from detected arrival until collection. Cycle-start actions run on arrival; cycle-end actions run when the main door opens or pending collection is cleared. Reminders remain separate, and both options use a separate main-door contact.
 - **Across all profiles**
 	- Configure consistent actions when a cycle starts and ends, plus any profile-specific reminders or alarms; restore cycle, reminder, and alarm state after Home Assistant restarts.
+	- On washer, dishwasher, dryer, and mailbox profiles, configure a separate action for when pending contents are removed or collected; it runs when the main door opens or pending status is cleared.
 	- See running state and last-active duration for cycle-based profiles; estimated remaining time is limited to laundry profiles.
 	- Monitor power and energy independently of activity detection for profiles with a selected power sensor. Use a cumulative energy sensor's total or calculate energy from power.
 	- Get a Repairs issue when a configured input is missing or unavailable; the issue clears when the input recovers.

@@ -25,6 +25,7 @@ from custom_components.home_activity_manager.const import (
     CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_EMPTIED_ACTIONS,
     CONF_FINISH_ACTIONS,
     CONF_MAIL_ARRIVAL_ACTIONS,
     CONF_MAIL_MOTION_ENTITY,
@@ -279,11 +280,14 @@ async def test_replacing_power_source_does_not_display_old_sensor_reading(hass, 
 async def test_door_open_clears_pending_reminders(hass, config, monkeypatch):
     current_time = [datetime.now(timezone.utc)]
     monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
+    config[CONF_EMPTIED_ACTIONS] = [{"action": "test.contents_removed"}]
     hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
     hass.states.async_set(config[CONF_DOOR_ENTITY], "off")
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     runtime = ApplianceRuntime(hass, entry, config)
+    emptied_actions: list[str] = []
+    monkeypatch.setattr(runtime, "_run_actions_in_background", emptied_actions.append)
     await runtime.async_setup()
     runtime.pending_unload = True
     runtime.pending_reminder_count = 2
@@ -297,6 +301,9 @@ async def test_door_open_clears_pending_reminders(hass, config, monkeypatch):
     assert runtime.pending_unload is False
     assert runtime.pending_reminder_count == 0
     assert runtime.next_pending_reminder is None
+    assert emptied_actions == [CONF_EMPTIED_ACTIONS]
+    runtime.clear_pending_unload()
+    assert emptied_actions == [CONF_EMPTIED_ACTIONS]
     await runtime.async_unload()
 
 
@@ -882,11 +889,14 @@ async def test_switch_activity_ignores_conflicting_auxiliary_power(hass):
 async def test_optional_plug_and_pending_button_controls(
     hass, config, monkeypatch, enable_custom_integrations
 ):
+    config[CONF_EMPTIED_ACTIONS] = [{"action": "test.contents_removed"}]
     hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     runtime = entry.runtime_data
+    emptied_actions: list[str] = []
+    monkeypatch.setattr(runtime, "_run_actions_in_background", emptied_actions.append)
 
     plug_entities = []
     await setup_switch_entry(hass, entry, plug_entities.extend)
@@ -946,6 +956,7 @@ async def test_optional_plug_and_pending_button_controls(
     assert not runtime.pending_unload
     assert runtime.pending_reminder_count == 0
     assert runtime.next_pending_reminder is None
+    assert emptied_actions == [CONF_EMPTIED_ACTIONS]
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -1015,7 +1026,7 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     assert hass.states.get(running_entity_id).state == "on"
     assert hass.states.get(wrapper_entity_id).state == "on"
     assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:hvac"
-    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:window-shutter-open"
+    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:door-sliding-open"
     current_time[0] += timedelta(seconds=12)
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
     await hass.async_block_till_done()
@@ -1042,7 +1053,7 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
     assert hass.states.get(wrapper_entity_id).attributes["device_class"] == "opening"
     assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:hvac-off"
-    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:window-shutter"
+    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:door-sliding"
     device_id = _async_appliance_device_id(hass, entry)
     assert device_id is not None
     assert registry.async_get(running_entity_id).device_id == device_id
@@ -1202,6 +1213,21 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
         wrapper_state = hass.states.get(wrapper.entity_id)
         assert wrapper_state is not None
         assert wrapper_state.attributes["source_entity"] == source_entity_id
+        input_name = input_config.config_key.removesuffix("_entity")
+        if input_config in profile.inputs_requiring_wrapper and input_name == "door":
+            assert wrapper_state.attributes["icon"] == "mdi:door-closed"
+            hass.states.async_set(source_entity_id, "on")
+            await hass.async_block_till_done()
+            assert hass.states.get(wrapper.entity_id).attributes["icon"] == "mdi:door-open"
+            hass.states.async_set(source_entity_id, "off")
+            await hass.async_block_till_done()
+        elif input_config in profile.inputs_requiring_wrapper and input_name == "mail_slot":
+            assert wrapper_state.attributes["icon"] == "mdi:mailbox-up"
+            hass.states.async_set(source_entity_id, "on")
+            await hass.async_block_till_done()
+            assert hass.states.get(wrapper.entity_id).attributes["icon"] == "mdi:mailbox-open-up"
+            hass.states.async_set(source_entity_id, "off")
+            await hass.async_block_till_done()
         if input_config.force_wrapper:
             output_entity_id = integration_registry.async_get_entity_id(
                 "binary_sensor", DOMAIN, f"{entry.entry_id}_{input_config.output_entity}"
@@ -1366,6 +1392,7 @@ async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
         CONF_DOOR_ENTITY: f"binary_sensor.{appliance_type}_door",
         CONF_START_ACTIONS: [{"action": "test.mail_arrived"}],
         CONF_FINISH_ACTIONS: [{"action": "test.mail_collected"}],
+        CONF_EMPTIED_ACTIONS: [{"action": "test.contents_removed"}],
         CONF_PENDING_ACTIONS: [{"action": "test.mail_reminder"}],
         CONF_PENDING_DELAY_SECONDS: 10,
         CONF_PENDING_INTERVAL_SECONDS: 20,
@@ -1411,13 +1438,18 @@ async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
     await hass.async_block_till_done()
     assert not runtime.pending_unload
     assert runtime.next_pending_reminder is None
-    assert transitions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS]
+    assert transitions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS, CONF_EMPTIED_ACTIONS]
 
     hass.states.async_set(config[source_key], "off")
     await hass.async_block_till_done()
     hass.states.async_set(config[source_key], "on")
     await hass.async_block_till_done()
-    assert transitions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS, CONF_START_ACTIONS]
+    assert transitions == [
+        CONF_START_ACTIONS,
+        CONF_FINISH_ACTIONS,
+        CONF_EMPTIED_ACTIONS,
+        CONF_START_ACTIONS,
+    ]
     assert runtime.pending_unload
     assert runtime.pending_reminder_count == 0
     assert runtime.next_pending_reminder is None

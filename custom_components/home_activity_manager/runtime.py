@@ -44,6 +44,7 @@ from .const import (
     CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_EMPTIED_ACTIONS,
     CONF_PLUG_OFF_ACTIONS,
     CONF_PLUG_OFF_REPEAT_COUNT,
     CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
@@ -269,6 +270,8 @@ class ApplianceRuntime:
             and ("mail_motion" in self.profile.detection_sources or "mail_slot" in self.profile.detection_sources)
         ):
             self._run_actions_in_background(CONF_FINISH_ACTIONS)
+        if was_pending and "emptied" in self.profile.action_groups:
+            self._run_actions_in_background(CONF_EMPTIED_ACTIONS)
         self._schedule_save()
         self._schedule_deadline()
         self._notify()

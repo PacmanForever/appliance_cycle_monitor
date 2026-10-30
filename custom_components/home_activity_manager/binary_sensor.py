@@ -202,11 +202,17 @@ class ApplianceInputBinarySensor(BinarySensorEntity):
 
     @property
     def icon(self) -> str | None:
-        """Show the louver's open or closed state on contact-based AC."""
+        """Show a state-specific icon for contact and opening inputs."""
         if self._input_name == "running":
+            return "mdi:door-sliding-open" if self.is_on else "mdi:door-sliding"
+        if self._input_name == "door":
             if self.is_on is None:
-                return "mdi:window-shutter-alert"
-            return "mdi:window-shutter-open" if self.is_on else "mdi:window-shutter"
+                return "mdi:door"
+            return "mdi:door-open" if self.is_on else "mdi:door-closed"
+        if self._input_name == "mail_slot":
+            if self.is_on is None:
+                return "mdi:mailbox-outline"
+            return "mdi:mailbox-open-up" if self.is_on else "mdi:mailbox-up"
         return super().icon
 
     async def async_added_to_hass(self) -> None:

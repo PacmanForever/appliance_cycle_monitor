@@ -29,6 +29,7 @@ from .const import (
     CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_EMPTIED_ACTIONS,
     CONF_PLUG_OFF_ACTIONS,
     CONF_PLUG_OFF_REPEAT_COUNT,
     CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
@@ -365,6 +366,7 @@ def _action_schema(
     action_keys = {
         "cycle_start": CONF_START_ACTIONS,
         "cycle_finish": CONF_FINISH_ACTIONS,
+        "emptied": CONF_EMPTIED_ACTIONS,
         "max_runtime": CONF_MAX_RUNTIME_ACTIONS,
         "pending_unload": CONF_PENDING_ACTIONS,
         "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
@@ -377,6 +379,8 @@ def _action_schema(
         if group == "plug_off_alarm" and not values.get(CONF_PLUG_ENTITY):
             continue
         if group == "pending_unload" and not values.get(CONF_DOOR_ENTITY):
+            continue
+        if group == "emptied" and not values.get(CONF_DOOR_ENTITY):
             continue
         key = action_keys[group]
         default = values.get(key, [])
@@ -586,6 +590,8 @@ def _entry_options(values: dict[str, Any]) -> dict[str, Any]:
         unsupported.add(CONF_START_ACTIONS)
     if "cycle_finish" not in profile.action_groups:
         unsupported.add(CONF_FINISH_ACTIONS)
+    if "emptied" not in profile.action_groups or not values.get(CONF_DOOR_ENTITY):
+        unsupported.add(CONF_EMPTIED_ACTIONS)
     if "mail_arrival" not in profile.action_groups:
         unsupported.add(CONF_MAIL_ARRIVAL_ACTIONS)
     if "door_open_alarm" not in profile.action_groups:
