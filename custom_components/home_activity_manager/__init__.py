@@ -9,7 +9,17 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.entity_registry import EVENT_ENTITY_REGISTRY_UPDATED
 from homeassistant.helpers.storage import Store
 
-from .const import CONF_CLIMATE_ENTITY, DOMAIN
+from .const import (
+	CONF_APPLIANCE_TYPE,
+	CONF_CLIMATE_ENTITY,
+	CONF_COMPRESSOR_INACTIVE_ACTIONS,
+	CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+	CONF_PLUG_OFF_ACTIONS,
+	CONF_PLUG_OFF_REPEAT_COUNT,
+	CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+	CONF_RUNNING_ENTITY,
+	DOMAIN,
+)
 from .runtime import ApplianceRuntime
 
 _LOGGER = logging.getLogger(__name__)
@@ -141,11 +151,15 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-	"""Convert duration options saved in minutes to seconds."""
-	if entry.version > 2:
+	"""Migrate old durations and remove obsolete profile settings."""
+	if entry.version > 5:
 		return False
+	if entry.version == 5:
+		return True
+
+	data = dict(entry.data)
+	options = dict(entry.options)
 	if entry.version == 1:
-		options = dict(entry.options)
 		for old_key, new_key in (
 			("start_duration_minutes", "start_duration_seconds"),
 			("finish_duration_minutes", "finish_duration_seconds"),
@@ -155,5 +169,25 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 				value = options.pop(old_key)
 				if value not in (None, ""):
 					options[new_key] = float(value) * 60
-		hass.config_entries.async_update_entry(entry, options=options, version=2)
+	if {**data, **options}.get(CONF_APPLIANCE_TYPE) in {
+		"air_conditioner_power",
+		"air_conditioner_climate",
+	}:
+		data.pop(CONF_RUNNING_ENTITY, None)
+		options.pop(CONF_RUNNING_ENTITY, None)
+	if {**data, **options}.get(CONF_APPLIANCE_TYPE) in {
+		"refrigerator",
+		"refrigerator_switch",
+	}:
+		for key in (
+			CONF_COMPRESSOR_INACTIVE_ACTIONS,
+			CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+			CONF_PLUG_OFF_ACTIONS,
+			CONF_PLUG_OFF_REPEAT_COUNT,
+			CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS,
+		):
+			options.pop(key, None)
+	hass.config_entries.async_update_entry(
+		entry, data=data, options=options, version=5
+	)
 	return True

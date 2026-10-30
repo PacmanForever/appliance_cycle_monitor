@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.4 - 2026-10-30
+
+### Changed
+
+- Rename the air-conditioner louver-contact mode and inputs to contact/opening sensor in all translations and documentation.
+- Remove the contact/opening sensor from power-managed air-conditioner configuration and migrate existing entries to drop the obsolete selection.
+- Remove the auxiliary contact/opening sensor from climate-managed air conditioners and mark the required climate entity explicitly in every translation.
+- Clarify the mailbox slot input as a contact/opening sensor in its mode, field, model, and requirements labels.
+- Add configurable activity start/finish actions to both refrigerator profiles.
+- Remove compressor-inactivity and plug-off alarms from refrigerator profiles; keep the door alarm.
+- Restore refrigerator sensor and action descriptions in all translations and config forms.
+
 ## v0.9.3 - 2026-10-30
 
 ### Fixed

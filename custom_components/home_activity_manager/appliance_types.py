@@ -25,6 +25,7 @@ class SensorInput:
     required: bool = False
     detection_source: str | None = None
     output_entity: str | None = None
+    force_wrapper: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +45,8 @@ class ApplianceTypeProfile:
         return tuple(
             item
             for item in self.sensor_inputs
-            if item.domain != "climate" and item.output_entity is None
+            if item.domain != "climate"
+            and (item.output_entity is None or item.force_wrapper)
         )
 
     @property
@@ -92,12 +94,6 @@ APPLIANCE_PROFILES = {
                 domain="sensor",
                 device_classes=("power",),
                 output_entity="power",
-            ),
-            SensorInput(
-                form_key="air_conditioner_climate_running_entity",
-                config_key=CONF_RUNNING_ENTITY,
-                domain="binary_sensor",
-                device_classes=("opening",),
             ),
             SensorInput(
                 form_key="air_conditioner_climate_plug_entity",
@@ -289,12 +285,6 @@ APPLIANCE_PROFILES = {
                 output_entity="plug",
             ),
             SensorInput(
-                form_key="air_conditioner_power_running_entity",
-                config_key=CONF_RUNNING_ENTITY,
-                domain="binary_sensor",
-                device_classes=("opening",),
-            ),
-            SensorInput(
                 form_key="air_conditioner_power_energy_entity",
                 config_key=CONF_ENERGY_ENTITY,
                 domain="sensor",
@@ -343,11 +333,13 @@ APPLIANCE_PROFILES = {
         parameter_groups=(
             "power_cycle",
             "door_alarm",
-            "compressor_alarm",
             "alarm_repeats",
-            "plug_off_alarm",
         ),
-        action_groups=("door_open_alarm", "compressor_inactive_alarm", "plug_off_alarm"),
+        action_groups=(
+            "cycle_start",
+            "cycle_finish",
+            "door_open_alarm",
+        ),
         output_entities=("power", "total_energy", "last_cycle_duration", "running", "door", "plug"),
         supports_pending_unload=False,
         estimates_remaining=False,
@@ -386,8 +378,12 @@ APPLIANCE_PROFILES = {
                     output_entity="total_energy",
                 ),
             ),
-            parameter_groups=("door_alarm", "alarm_repeats", "plug_off_alarm"),
-            action_groups=("door_open_alarm", "plug_off_alarm"),
+            parameter_groups=("door_alarm", "alarm_repeats"),
+            action_groups=(
+                "cycle_start",
+                "cycle_finish",
+                "door_open_alarm",
+            ),
             output_entities=("last_cycle_duration", "running", "door", "plug"),
             supports_pending_unload=False,
             estimates_remaining=False,
@@ -410,6 +406,7 @@ APPLIANCE_PROFILES = {
                 device_classes=("door",),
                 required=True,
                 output_entity="door",
+                force_wrapper=True,
             ),
         ),
         parameter_groups=("pending_unload",),
@@ -429,6 +426,7 @@ APPLIANCE_PROFILES = {
                 required=True,
                 detection_source="mail_slot",
                 output_entity="mail_slot",
+                force_wrapper=True,
             ),
             SensorInput(
                 form_key="mailbox_slot_door_entity",
@@ -437,6 +435,7 @@ APPLIANCE_PROFILES = {
                 device_classes=("door",),
                 required=True,
                 output_entity="door",
+                force_wrapper=True,
             ),
         ),
         parameter_groups=("pending_unload",),
@@ -464,8 +463,8 @@ APPLIANCE_CATEGORIES = {
 
 # Keep the selector alphabetized by its Catalan display labels.
 APPLIANCE_TYPES = (
-    "air_conditioner_contact",
     "air_conditioner_climate",
+    "air_conditioner_contact",
     "air_conditioner_power",
     "dryer",
     "mailbox_slot",
@@ -482,12 +481,12 @@ APPLIANCE_MODEL_NAMES = {
     "washer": "Washer",
     "dishwasher": "Dishwasher",
     "dryer": "Dryer",
-    "air_conditioner_contact": "Air conditioner (louver contact)",
+    "air_conditioner_contact": "Air conditioner (contact/opening sensor)",
     "air_conditioner_power": "Air conditioner (power sensor)",
     "refrigerator": "Refrigerator (power sensor)",
     "refrigerator_switch": "Refrigerator (smart switch)",
     "mailbox_motion": "Mailbox (interior motion sensor)",
-    "mailbox_slot": "Mailbox (mail-slot flap contact)",
+    "mailbox_slot": "Mailbox (mail-slot contact/opening sensor)",
 }
 
 

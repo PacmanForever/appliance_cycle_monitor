@@ -361,6 +361,10 @@ class ApplianceRuntime:
         self._update_input_availability(entity_id, new_state)
 
     def _update_plug_off_alarm_state(self, state: Any, now: datetime) -> None:
+        if "plug_off_alarm" not in self.profile.parameter_groups:
+            self._plug_is_off = None
+            self._update_alarm_condition("plug_off", False, now)
+            return
         value = state.state if state is not None else None
         if value not in ("on", "off"):
             self._plug_is_off = None
@@ -637,9 +641,17 @@ class ApplianceRuntime:
             deadlines.append(self.next_pending_reminder)
         if self.door_open is not None and self.next_door_alarm is not None:
             deadlines.append(self.next_door_alarm)
-        if self._power_available and self.next_compressor_alarm is not None:
+        if (
+            "compressor_alarm" in self.profile.parameter_groups
+            and self._power_available
+            and self.next_compressor_alarm is not None
+        ):
             deadlines.append(self.next_compressor_alarm)
-        if self._plug_is_off is True and self.next_plug_off_alarm is not None:
+        if (
+            "plug_off_alarm" in self.profile.parameter_groups
+            and self._plug_is_off is True
+            and self.next_plug_off_alarm is not None
+        ):
             deadlines.append(self.next_plug_off_alarm)
         if self._energy_power_w is not None or self.detector.is_running:
             deadlines.append(
@@ -835,7 +847,12 @@ class ApplianceRuntime:
             or now < deadline
         ):
             return False
-        return (alarm != "door" or self.door_open is not None) and (
+        return (
+            alarm != "compressor"
+            or "compressor_alarm" in self.profile.parameter_groups
+        ) and (
+            alarm != "plug_off" or "plug_off_alarm" in self.profile.parameter_groups
+        ) and (alarm != "door" or self.door_open is not None) and (
             alarm != "compressor" or self._power_available
         ) and (alarm != "plug_off" or self._plug_is_off is True)
 

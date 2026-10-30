@@ -502,7 +502,7 @@ async def test_migrate_saved_duration_options_from_minutes_to_seconds(hass):
 
     assert await async_migrate_entry(hass, entry)
 
-    assert entry.version == 2
+    assert entry.version == 5
     assert entry.options == {
         "start_duration_seconds": 15,
         "finish_duration_seconds": 60,
@@ -513,11 +513,78 @@ async def test_migrate_saved_duration_options_from_minutes_to_seconds(hass):
 
 @pytest.mark.asyncio
 async def test_migrate_future_config_entry_version_is_rejected(hass):
-    entry = MockConfigEntry(domain=DOMAIN, version=3)
+    entry = MockConfigEntry(domain=DOMAIN, version=6)
     entry.add_to_hass(hass)
 
     assert not await async_migrate_entry(hass, entry)
-    assert entry.version == 3
+    assert entry.version == 6
+
+
+@pytest.mark.parametrize(
+    ("version", "appliance_type", "source_key", "source_entity"),
+    (
+        (2, "air_conditioner_power", CONF_POWER_ENTITY, "sensor.ac_power"),
+        (3, "air_conditioner_climate", CONF_CLIMATE_ENTITY, "climate.ac"),
+    ),
+)
+@pytest.mark.asyncio
+async def test_migrate_removes_unsupported_ac_contact_sensor(
+    hass, version, appliance_type, source_key, source_entity
+):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=version,
+        data={
+            CONF_APPLIANCE_TYPE: appliance_type,
+            source_key: source_entity,
+            CONF_RUNNING_ENTITY: "binary_sensor.ac_louver",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+
+    assert entry.version == 5
+    assert entry.data == {
+        CONF_APPLIANCE_TYPE: appliance_type,
+        source_key: source_entity,
+    }
+
+
+@pytest.mark.parametrize("appliance_type", ("refrigerator", "refrigerator_switch"))
+@pytest.mark.asyncio
+async def test_migrate_removes_refrigerator_compressor_and_plug_alarms(
+    hass, appliance_type
+):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=4,
+        data={CONF_APPLIANCE_TYPE: appliance_type},
+        options={
+            CONF_START_ACTIONS: [{"action": "test.start"}],
+            CONF_FINISH_ACTIONS: [{"action": "test.finish"}],
+            CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door"}],
+            CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor"}],
+            CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 3600,
+            CONF_PLUG_OFF_ACTIONS: [{"action": "test.plug_off"}],
+            CONF_PLUG_OFF_REPEAT_COUNT: 3,
+            CONF_PLUG_OFF_REPEAT_INTERVAL_SECONDS: 900,
+            CONF_ALARM_REPEAT_COUNT: 2,
+            CONF_ALARM_REPEAT_INTERVAL_SECONDS: 600,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+
+    assert entry.version == 5
+    assert entry.options == {
+        CONF_START_ACTIONS: [{"action": "test.start"}],
+        CONF_FINISH_ACTIONS: [{"action": "test.finish"}],
+        CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door"}],
+        CONF_ALARM_REPEAT_COUNT: 2,
+        CONF_ALARM_REPEAT_INTERVAL_SECONDS: 600,
+    }
 
 
 @pytest.mark.parametrize("appliance_type", tuple(APPLIANCE_PROFILES))

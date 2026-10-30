@@ -25,6 +25,7 @@ from custom_components.home_activity_manager.const import (
     CONF_ENERGY_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
+    CONF_FINISH_ACTIONS,
     CONF_MAIL_ARRIVAL_ACTIONS,
     CONF_MAIL_MOTION_ENTITY,
     CONF_MAIL_SLOT_ENTITY,
@@ -561,6 +562,34 @@ async def test_action_failure_does_not_stop_later_actions(
     assert executed == ["test.fail", "test.succeed"]
 
 
+@pytest.mark.parametrize("appliance_type", ["refrigerator", "refrigerator_switch"])
+@pytest.mark.asyncio
+async def test_refrigerator_profiles_run_cycle_start_and_finish_actions(
+    hass, monkeypatch, appliance_type
+):
+    config = {CONF_APPLIANCE_TYPE: appliance_type}
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    runtime = ApplianceRuntime(hass, entry, config)
+    executed: list[str] = []
+    monkeypatch.setattr(runtime, "_run_actions_in_background", executed.append)
+    current_time = datetime.now(timezone.utc)
+
+    runtime._handle_cycle_events(
+        [
+            runtime_module.CycleEvent(
+                runtime_module.CycleTransition.STARTED, current_time
+            ),
+            runtime_module.CycleEvent(
+                runtime_module.CycleTransition.FINISHED,
+                current_time + timedelta(minutes=5),
+            ),
+        ]
+    )
+
+    assert executed == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS]
+    await runtime.async_unload()
+
+
 @pytest.mark.asyncio
 async def test_removing_entry_deletes_its_persistent_state(hass, config):
     entry = MockConfigEntry(domain=DOMAIN, data=config)
@@ -1010,6 +1039,7 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     assert registry.async_get(wrapper_entity_id).translation_key == "input_running"
     assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
     assert hass.states.get(wrapper_entity_id).attributes["device_class"] == "opening"
+    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:air-conditioner"
     device_id = _async_appliance_device_id(hass, entry)
     assert device_id is not None
     assert registry.async_get(running_entity_id).device_id == device_id
@@ -1025,13 +1055,6 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
 @pytest.mark.parametrize(
     ("appliance_type", "source_key", "source_entity", "extra_input", "wrapper_key"),
     (
-        (
-            "air_conditioner_power",
-            CONF_RUNNING_ENTITY,
-            "binary_sensor.ac_louver",
-            {CONF_POWER_ENTITY: "sensor.ac_power"},
-            "running",
-        ),
         (
             "mailbox_motion",
             CONF_MAIL_MOTION_ENTITY,
@@ -1053,10 +1076,6 @@ async def test_unrepresented_binary_inputs_get_a_single_source_wrapper(
         **extra_input,
     }
     hass.states.async_set(source_entity, "off")
-    if CONF_POWER_ENTITY in extra_input:
-        hass.states.async_set(
-            extra_input[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
-        )
     if CONF_DOOR_ENTITY in extra_input:
         hass.states.async_set(extra_input[CONF_DOOR_ENTITY], "off")
     entry = MockConfigEntry(domain=DOMAIN, data=config)
@@ -1076,12 +1095,6 @@ async def test_unrepresented_binary_inputs_get_a_single_source_wrapper(
     hass.states.async_set(source_entity, "on")
     await hass.async_block_till_done()
     assert hass.states.get(wrapper_entity_id).state == "on"
-    if appliance_type == "air_conditioner_power":
-        running_entity_id = registry.async_get_entity_id(
-            "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
-        )
-        assert hass.states.get(running_entity_id).state == "off"
-
     hass.states.async_set(source_entity, "off")
     await hass.async_block_till_done()
     assert hass.states.get(wrapper_entity_id).state == "off"
@@ -1167,9 +1180,9 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
 
         assert source.device_id == original_device_id
         unique_id = (
-            f"{entry.entry_id}_{input_config.output_entity}"
-            if input_config.output_entity is not None
-            else f"{entry.entry_id}_input_{input_config.config_key.removesuffix('_entity')}"
+            f"{entry.entry_id}_input_{input_config.config_key.removesuffix('_entity')}"
+            if input_config in profile.inputs_requiring_wrapper
+            else f"{entry.entry_id}_{input_config.output_entity}"
         )
         wrapper = next(
             (
@@ -1186,6 +1199,16 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
         wrapper_state = hass.states.get(wrapper.entity_id)
         assert wrapper_state is not None
         assert wrapper_state.attributes["source_entity"] == source_entity_id
+        if input_config.force_wrapper:
+            output_entity_id = integration_registry.async_get_entity_id(
+                "binary_sensor", DOMAIN, f"{entry.entry_id}_{input_config.output_entity}"
+            )
+            assert output_entity_id is not None
+            assert output_entity_id != wrapper.entity_id
+            assert (
+                hass.states.get(output_entity_id).attributes["source_entity"]
+                == source_entity_id
+            )
 
         if input_config.domain in ("binary_sensor", "switch"):
             for value, expected in (
@@ -1505,7 +1528,7 @@ async def test_smart_switch_refrigerator_creates_only_its_declared_entities(
 
 
 @pytest.mark.asyncio
-async def test_smart_switch_refrigerator_tracks_switch_and_door_only(
+async def test_smart_switch_refrigerator_tracks_switch_and_door_actions(
     hass, monkeypatch
 ):
     current_time = [datetime.now(timezone.utc)]
@@ -1515,6 +1538,7 @@ async def test_smart_switch_refrigerator_tracks_switch_and_door_only(
         CONF_PLUG_ENTITY: "switch.fridge_power",
         CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
         CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door_alarm"}],
+        CONF_PLUG_OFF_ACTIONS: [{"action": "test.plug_off_alarm"}],
         CONF_DOOR_OPEN_DELAY_SECONDS: 2,
         CONF_ALARM_REPEAT_INTERVAL_SECONDS: 3,
         CONF_ALARM_REPEAT_COUNT: 0,
@@ -1532,7 +1556,9 @@ async def test_smart_switch_refrigerator_tracks_switch_and_door_only(
 
     monkeypatch.setattr(runtime, "_run_actions", record_alarm)
     await runtime.async_setup()
+    await hass.async_block_till_done()
     assert not runtime.detector.is_running
+    assert alarms == []
     assert not runtime.power_available
     assert runtime.next_compressor_alarm is None
 
@@ -1553,12 +1579,16 @@ async def test_smart_switch_refrigerator_tracks_switch_and_door_only(
     await hass.async_block_till_done()
     current_time[0] += timedelta(seconds=2)
     await _async_fire_deadline(runtime, current_time[0])
-    assert alarms == [CONF_DOOR_OPEN_ACTIONS]
+    assert alarms == [
+        CONF_START_ACTIONS,
+        CONF_FINISH_ACTIONS,
+        CONF_DOOR_OPEN_ACTIONS,
+    ]
     await runtime.async_unload()
 
 
 @pytest.mark.asyncio
-async def test_refrigerator_alarms_repeat_rearm_and_persist_independently(
+async def test_refrigerator_door_alarm_repeats_rearms_and_persists(
     hass, monkeypatch
 ):
     current_time = [datetime.now(timezone.utc)]
@@ -1568,9 +1598,7 @@ async def test_refrigerator_alarms_repeat_rearm_and_persist_independently(
         CONF_POWER_ENTITY: "sensor.fridge_power",
         CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
         CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door_alarm"}],
-        CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor_alarm"}],
         CONF_DOOR_OPEN_DELAY_SECONDS: 2,
-        CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 4,
         CONF_ALARM_REPEAT_INTERVAL_SECONDS: 3,
         CONF_ALARM_REPEAT_COUNT: 1,
         "name": "Refrigerator",
@@ -1589,7 +1617,7 @@ async def test_refrigerator_alarms_repeat_rearm_and_persist_independently(
 
     monkeypatch.setattr(runtime, "_run_actions", record_action)
     await runtime.async_setup()
-    assert runtime.next_compressor_alarm == current_time[0] + timedelta(seconds=4)
+    assert runtime.next_compressor_alarm is None
 
     hass.states.async_set(config[CONF_DOOR_ENTITY], "on")
     await hass.async_block_till_done()
@@ -1599,16 +1627,16 @@ async def test_refrigerator_alarms_repeat_rearm_and_persist_independently(
     assert actions == [CONF_DOOR_OPEN_ACTIONS]
     current_time[0] += timedelta(seconds=2)
     await _async_fire_deadline(runtime, current_time[0])
-    assert actions == [CONF_DOOR_OPEN_ACTIONS, CONF_COMPRESSOR_INACTIVE_ACTIONS]
+    assert actions == [CONF_DOOR_OPEN_ACTIONS]
 
     await runtime.async_unload()
     restored = ApplianceRuntime(hass, entry, config)
     monkeypatch.setattr(restored, "_run_actions", record_action)
     await restored.async_setup()
     assert restored.door_alarm_fired_count == 1
-    assert restored.compressor_alarm_fired_count == 1
+    assert restored.compressor_alarm_fired_count == 0
     assert restored.next_door_alarm == current_time[0] + timedelta(seconds=1)
-    assert restored.next_compressor_alarm == current_time[0] + timedelta(seconds=3)
+    assert restored.next_compressor_alarm is None
 
     current_time[0] += timedelta(seconds=1)
     await _async_fire_deadline(restored, current_time[0])
@@ -1853,9 +1881,7 @@ async def test_unavailable_alarm_inputs_pause_without_clearing_or_false_alarm(
         CONF_POWER_ENTITY: "sensor.fridge_power",
         CONF_DOOR_ENTITY: "binary_sensor.fridge_door",
         CONF_DOOR_OPEN_ACTIONS: [{"action": "test.door_alarm"}],
-        CONF_COMPRESSOR_INACTIVE_ACTIONS: [{"action": "test.compressor_alarm"}],
         CONF_DOOR_OPEN_DELAY_SECONDS: 2,
-        CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS: 4,
         CONF_ALARM_REPEAT_INTERVAL_SECONDS: 3,
         CONF_ALARM_REPEAT_COUNT: 0,
         "name": "Refrigerator",
@@ -1893,26 +1919,27 @@ async def test_unavailable_alarm_inputs_pause_without_clearing_or_false_alarm(
         config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
     )
     await hass.async_block_till_done()
-    compressor_deadline = runtime.next_compressor_alarm
-    assert compressor_deadline == current_time[0] + timedelta(seconds=4)
+    assert not runtime.compressor_alarm_active
+    assert runtime.next_compressor_alarm is None
     current_time[0] += timedelta(seconds=1)
     hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
     await hass.async_block_till_done()
     current_time[0] += timedelta(seconds=4)
     await _async_fire_deadline(runtime, current_time[0])
     assert actions == [CONF_DOOR_OPEN_ACTIONS]
+    assert runtime.next_compressor_alarm is None
 
     hass.states.async_set(
         config[CONF_POWER_ENTITY], "0", {ATTR_UNIT_OF_MEASUREMENT: "W"}
     )
     await hass.async_block_till_done()
     await _async_fire_deadline(runtime, current_time[0])
-    assert actions == [CONF_DOOR_OPEN_ACTIONS, CONF_COMPRESSOR_INACTIVE_ACTIONS]
+    assert actions == [CONF_DOOR_OPEN_ACTIONS]
     await runtime.async_unload()
 
 
 @pytest.mark.asyncio
-async def test_compressor_alarm_rearms_after_activity_cycle(
+async def test_refrigerator_ignores_legacy_compressor_alarm_configuration(
     hass, monkeypatch
 ):
     current_time = [datetime.now(timezone.utc)]
@@ -1934,8 +1961,15 @@ async def test_compressor_alarm_rearms_after_activity_cycle(
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     runtime = ApplianceRuntime(hass, entry, config)
+    actions: list[str] = []
+
+    async def record_action(key: str) -> None:
+        actions.append(key)
+
+    monkeypatch.setattr(runtime, "_run_actions", record_action)
     await runtime.async_setup()
-    assert runtime.compressor_alarm_active
+    assert not runtime.compressor_alarm_active
+    assert runtime.next_compressor_alarm is None
 
     current_time[0] += timedelta(seconds=1)
     hass.states.async_set(
@@ -1956,8 +1990,9 @@ async def test_compressor_alarm_rearms_after_activity_cycle(
     current_time[0] += timedelta(seconds=60)
     await _async_fire_deadline(runtime, current_time[0])
     assert not runtime.detector.is_running
-    assert runtime.compressor_alarm_active
-    assert runtime.next_compressor_alarm == current_time[0] + timedelta(seconds=60)
+    assert not runtime.compressor_alarm_active
+    assert runtime.next_compressor_alarm is None
+    assert actions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS]
     await runtime.async_unload()
 
 
@@ -2125,7 +2160,7 @@ async def test_old_pending_action_does_not_schedule_for_new_cycle(
 
 
 @pytest.mark.asyncio
-async def test_due_refrigerator_alarms_start_without_blocking_each_other(
+async def test_legacy_compressor_alarm_does_not_block_door_alarm(
     hass, monkeypatch
 ):
     current_time = datetime.now(timezone.utc)
@@ -2159,14 +2194,14 @@ async def test_due_refrigerator_alarms_start_without_blocking_each_other(
     monkeypatch.setattr(runtime, "_run_actions", hold_action)
     await runtime._async_handle_deadline(current_time)
     await asyncio.wait_for(
-        asyncio.gather(*(event.wait() for event in started.values())), timeout=1
+        started[CONF_DOOR_OPEN_ACTIONS].wait(), timeout=1
     )
 
     release.set()
     await hass.async_block_till_done()
 
     assert runtime.door_alarm_fired_count == 1
-    assert runtime.compressor_alarm_fired_count == 1
+    assert runtime.compressor_alarm_fired_count == 0
     await runtime.async_unload()
 
 

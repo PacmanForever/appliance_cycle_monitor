@@ -38,6 +38,7 @@ from custom_components.home_activity_manager.const import (
     CONF_APPLIANCE_TYPE,
     CONF_COMPRESSOR_INACTIVE_ACTIONS,
     CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS,
+    CONF_DOOR_ENTITY,
     CONF_DOOR_OPEN_ACTIONS,
     CONF_DOOR_OPEN_DELAY_SECONDS,
     CONF_FINISH_ACTIONS,
@@ -80,7 +81,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         self.assertEqual(set(APPLIANCE_MODEL_NAMES), set(APPLIANCE_PROFILES))
         self.assertEqual(
             get_appliance_model("air_conditioner_contact"),
-            "Air conditioner (louver contact)",
+            "Air conditioner (contact/opening sensor)",
         )
         self.assertEqual(
             get_appliance_model("air_conditioner_power"),
@@ -88,7 +89,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         )
         self.assertEqual(
             get_appliance_model("mailbox_slot"),
-            "Mailbox (mail-slot flap contact)",
+            "Mailbox (mail-slot contact/opening sensor)",
         )
 
     def test_identity_schema_requires_name_and_type(self) -> None:
@@ -127,14 +128,18 @@ class ConfigFlowSchemaTests(unittest.TestCase):
 
     def test_ac_profiles_offer_auxiliary_sources(self) -> None:
         contact_profile = get_appliance_profile("air_conditioner_contact")
+        climate_profile = get_appliance_profile("air_conditioner_climate")
         power_profile = get_appliance_profile("air_conditioner_power")
         contact_schema = _sensor_schema({}, contact_profile)
+        climate_schema = _sensor_schema({}, climate_profile)
         power_schema = _sensor_schema({}, power_profile)
 
         self.assertIn("air_conditioner_contact_running_entity", contact_schema.schema)
         self.assertIn("air_conditioner_contact_power_entity", contact_schema.schema)
+        self.assertIn("air_conditioner_climate_climate_entity", climate_schema.schema)
+        self.assertNotIn("air_conditioner_climate_running_entity", climate_schema.schema)
         self.assertIn("air_conditioner_power_power_entity", power_schema.schema)
-        self.assertIn("air_conditioner_power_running_entity", power_schema.schema)
+        self.assertNotIn("air_conditioner_power_running_entity", power_schema.schema)
         self.assertIn("air_conditioner_contact_plug_entity", contact_schema.schema)
         self.assertIn("air_conditioner_power_plug_entity", power_schema.schema)
         self.assertFalse(contact_profile.supports_pending_unload)
@@ -178,10 +183,9 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
         }
         expected_input_wrappers = {
-            "air_conditioner_climate": {CONF_RUNNING_ENTITY},
             "air_conditioner_contact": {CONF_RUNNING_ENTITY},
-            "air_conditioner_power": {CONF_RUNNING_ENTITY},
-            "mailbox_motion": {CONF_MAIL_MOTION_ENTITY},
+            "mailbox_motion": {CONF_MAIL_MOTION_ENTITY, CONF_DOOR_ENTITY},
+            "mailbox_slot": {CONF_MAIL_SLOT_ENTITY, CONF_DOOR_ENTITY},
         }
         for appliance_type, profile in APPLIANCE_PROFILES.items():
             with self.subTest(appliance_type=appliance_type):
@@ -406,11 +410,14 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             }
         )
 
-        self.assertNotIn(CONF_START_ACTIONS, options)
-        self.assertNotIn(CONF_FINISH_ACTIONS, options)
+        self.assertIn(CONF_START_ACTIONS, options)
+        self.assertIn(CONF_FINISH_ACTIONS, options)
         self.assertNotIn(CONF_MAX_RUNTIME_ACTIONS, options)
         self.assertIn(CONF_DOOR_OPEN_ACTIONS, options)
-        self.assertIn(CONF_COMPRESSOR_INACTIVE_ACTIONS, options)
+        self.assertNotIn(CONF_COMPRESSOR_INACTIVE_ACTIONS, options)
+        self.assertNotIn(CONF_COMPRESSOR_INACTIVE_DELAY_SECONDS, options)
+        self.assertNotIn(CONF_PLUG_OFF_ACTIONS, options)
+        self.assertNotIn(CONF_PLUG_OFF_REPEAT_COUNT, options)
         self.assertIn(CONF_ALARM_REPEAT_COUNT, options)
         self.assertIn(CONF_ALARM_REPEAT_INTERVAL_SECONDS, options)
 
@@ -527,6 +534,19 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         self.assertEqual(key_shape(translations[1]), expected)
         self.assertEqual(key_shape(translations[2]), expected)
         self.assertEqual(key_shape(translations[3]), expected)
+        expected_input_names = (
+            ("Motion sensor", "Main-door contact/opening sensor", "Mail-slot contact/opening sensor"),
+            ("Motion sensor", "Main-door contact/opening sensor", "Mail-slot contact/opening sensor"),
+            ("Sensor de movimiento", "Sensor de contacto/apertura de la puerta principal", "Sensor de contacto/apertura de la trampilla"),
+            ("Sensor de moviment", "Sensor de contacte/obertura de la porta principal", "Sensor de contacte/obertura de la portella"),
+        )
+        for translation, expected_names in zip(translations, expected_input_names):
+            binary_sensor_names = translation["entity"]["binary_sensor"]
+            for key, expected_name in zip(
+                ("input_mail_motion", "input_door", "input_mail_slot"),
+                expected_names,
+            ):
+                self.assertEqual(binary_sensor_names[key]["name"], expected_name)
 
         for translation in translations:
             for flow in ("config", "options"):
@@ -576,6 +596,17 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                             self.assertIn(key, labels)
                             self.assertTrue(labels[key].strip())
                             self.assertNotEqual(labels[key], key)
+                        if step.startswith("sensors_air_conditioner_"):
+                            descriptions = translation[flow]["step"][step][
+                                "data_description"
+                            ]
+                            self.assertEqual(
+                                set(descriptions),
+                                {marker.schema for marker in schema.schema},
+                            )
+                            self.assertTrue(
+                                all(description.strip() for description in descriptions.values())
+                            )
                     sensor_labels = translation[flow]["step"][
                         f"sensors_{profile_name}"
                     ]["data"]
@@ -584,6 +615,12 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                             self.assertTrue(
                                 "(optional)" in sensor_labels[sensor_input.form_key]
                                 or "(opcional)" in sensor_labels[sensor_input.form_key]
+                            )
+                        else:
+                            self.assertTrue(
+                                "(required)" in sensor_labels[sensor_input.form_key]
+                                or "(obligatori)" in sensor_labels[sensor_input.form_key]
+                                or "(obligatorio)" in sensor_labels[sensor_input.form_key]
                             )
                     action_labels = translation[flow]["step"][
                         f"actions_{profile_name}"
