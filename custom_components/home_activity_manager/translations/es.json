@@ -162,7 +162,8 @@
       "plug": {"name": "Enchufe inteligente"}
     },
     "button": {
-      "clear_pending": {"name": "Borrar estado «Pendiente de vaciar»"}
+      "clear_pending": {"name": "Borrar estado «Pendiente de vaciar»"},
+      "reset_energy": {"name": "Reiniciar la energía calculada localmente"}
     }
   }
 }

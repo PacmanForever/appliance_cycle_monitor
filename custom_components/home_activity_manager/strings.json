@@ -162,7 +162,8 @@
       "plug": {"name": "Smart plug"}
     },
     "button": {
-      "clear_pending": {"name": "Clear pending-to-unload status"}
+      "clear_pending": {"name": "Clear pending-to-unload status"},
+      "reset_energy": {"name": "Reset locally calculated energy"}
     }
   }
 }

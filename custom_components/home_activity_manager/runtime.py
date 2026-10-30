@@ -313,6 +313,15 @@ class ApplianceRuntime:
             return None
         return converted if math.isfinite(converted) and converted >= 0 else None
 
+    def reset_local_energy(self) -> None:
+        """Reset the locally calculated total without changing an external source."""
+        if not self.config.get(CONF_POWER_ENTITY) or self.config.get(CONF_ENERGY_ENTITY):
+            return
+        self._integrate_energy_to(dt_util.utcnow())
+        self.energy_kwh = 0.0
+        self._schedule_save()
+        self._notify()
+
     @property
     def remaining_seconds(self) -> float | None:
         """Estimate remaining time from the most recently completed cycle."""

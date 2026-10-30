@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.8 - 2026-10-30
+
+### Added
+
+- Add a device button to reset locally calculated energy totals without changing external energy sensors.
+
 ## v0.9.7 - 2026-10-30
 
 ### Changed

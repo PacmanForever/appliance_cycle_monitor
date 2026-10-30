@@ -60,6 +60,7 @@ from custom_components.home_activity_manager.binary_sensor import ApplianceBinar
 from custom_components.home_activity_manager.sensor import ApplianceSensor
 from custom_components.home_activity_manager.button import (
     ClearPendingButton,
+    ResetEnergyButton,
     async_setup_entry as setup_button_entry,
 )
 from custom_components.home_activity_manager.switch import (
@@ -794,6 +795,7 @@ async def test_config_entry_loads_power_only_entities_and_unloads(
         f"{entry.entry_id}_last_cycle_duration",
         f"{entry.entry_id}_estimated_remaining",
         f"{entry.entry_id}_running",
+        f"{entry.entry_id}_energy_reset",
     }
     created_entity_ids = [entity.entity_id for entity in entry_entities]
     assert all(hass.states.get(entity_id) is not None for entity_id in created_entity_ids)
@@ -853,6 +855,9 @@ async def test_climate_appliance_exposes_optional_electrical_entities(
     plug_id = registry.async_get_entity_id("switch", DOMAIN, f"{entry.entry_id}_plug")
     assert energy_id is not None
     assert float(hass.states.get(energy_id).state) == pytest.approx(2.5)
+    assert registry.async_get_entity_id(
+        "button", DOMAIN, f"{entry.entry_id}_energy_reset"
+    ) is None
     assert (power_id is not None) == with_power
     assert plug_id is not None
     hass.states.async_set(config[CONF_ENERGY_ENTITY], "3000", {ATTR_UNIT_OF_MEASUREMENT: "Wh"})
@@ -892,7 +897,12 @@ async def test_switch_activity_ignores_conflicting_auxiliary_power(hass):
 async def test_optional_plug_and_pending_button_controls(
     hass, config, monkeypatch, enable_custom_integrations
 ):
+    current_time = [datetime.now(timezone.utc)]
+    monkeypatch.setattr(dt_util, "utcnow", lambda: current_time[0])
     config[CONF_EMPTIED_ACTIONS] = [{"action": "test.contents_removed"}]
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "100", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
     hass.states.async_set(config[CONF_PLUG_ENTITY], "off")
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
@@ -944,7 +954,23 @@ async def test_optional_plug_and_pending_button_controls(
 
     button_entities = []
     await setup_button_entry(hass, entry, button_entities.extend)
-    assert len(button_entities) == 1
+    assert len(button_entities) == 2
+    pending_button = next(
+        button for button in button_entities if isinstance(button, ClearPendingButton)
+    )
+    reset_button = next(
+        button for button in button_entities if isinstance(button, ResetEnergyButton)
+    )
+    assert reset_button.icon == "mdi:counter"
+    runtime.energy_kwh = 0.25
+    await reset_button.async_press()
+    assert runtime.energy_kwh == 0
+    assert hass.states.get(config[CONF_POWER_ENTITY]).state == "100"
+    energy_entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_total_energy"
+    )
+    assert float(hass.states.get(energy_entity_id).state) == pytest.approx(0)
+
     runtime.pending_unload = True
     runtime.pending_reminder_count = 2
     runtime.next_pending_reminder = dt_util.utcnow() + timedelta(minutes=1)
@@ -953,14 +979,49 @@ async def test_optional_plug_and_pending_button_controls(
     )
     runtime._notify()
     assert hass.states.get(pending_entity_id).attributes["icon"] == "mdi:bell-alert"
-    await button_entities[0].async_press()
-    assert button_entities[0].icon == "mdi:notification-clear-all"
+    await pending_button.async_press()
+    assert pending_button.icon == "mdi:notification-clear-all"
     assert hass.states.get(pending_entity_id).attributes["icon"] == "mdi:bell-outline"
     assert not runtime.pending_unload
     assert runtime.pending_reminder_count == 0
     assert runtime.next_pending_reminder is None
     assert emptied_actions == [CONF_EMPTIED_ACTIONS]
+    store = runtime._store
     assert await hass.config_entries.async_unload(entry.entry_id)
+    assert (await store.async_load())["energy_kwh"] == 0
+
+
+@pytest.mark.parametrize(
+    "appliance_type",
+    (
+        "air_conditioner_climate",
+        "air_conditioner_contact",
+        "air_conditioner_power",
+        "washer",
+        "dishwasher",
+        "dryer",
+        "refrigerator",
+        "refrigerator_switch",
+    ),
+)
+@pytest.mark.asyncio
+async def test_local_energy_reset_button_is_available_for_power_profiles(
+    hass, appliance_type
+):
+    config = {
+        CONF_APPLIANCE_TYPE: appliance_type,
+        CONF_POWER_ENTITY: "sensor.appliance_power",
+        "name": "Appliance",
+    }
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    entry.runtime_data = ApplianceRuntime(hass, entry, config)
+
+    buttons = []
+    await setup_button_entry(hass, entry, buttons.extend)
+
+    assert len(buttons) == 1
+    assert isinstance(buttons[0], ResetEnergyButton)
 
 
 @pytest.mark.asyncio
@@ -1545,6 +1606,7 @@ async def test_refrigerator_creates_only_its_declared_entities(
         f"{entry.entry_id}_last_cycle_duration",
         f"{entry.entry_id}_running",
         f"{entry.entry_id}_door",
+        f"{entry.entry_id}_energy_reset",
     }
     door_entity_id = registry.async_get_entity_id(
         "binary_sensor", DOMAIN, f"{entry.entry_id}_door"
