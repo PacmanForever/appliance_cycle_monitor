@@ -57,12 +57,7 @@ class ApplianceBinarySensor(BinarySensorEntity):
         self._key = key
         self._value_fn = value_fn
         self._attr_unique_id = f"{entry.entry_id}_{key}"
-        self._attr_translation_key = (
-            "input_running"
-            if key == "running"
-            and "running_sensor" in runtime.profile.detection_sources
-            else key
-        )
+        self._attr_translation_key = key
         self._attr_device_class = device_class
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
@@ -77,7 +72,13 @@ class ApplianceBinarySensor(BinarySensorEntity):
 
     @property
     def available(self) -> bool:
-        """Reflect the louver input's availability for contact-based profiles."""
+        """Reflect availability of the source for input-backed entities."""
+        source_key = {"door": CONF_DOOR_ENTITY, "mail_slot": CONF_MAIL_SLOT_ENTITY}.get(
+            self._key
+        )
+        if source_key is not None:
+            state = self.hass.states.get(self._runtime.config.get(source_key))
+            return state is not None and state.state != "unavailable"
         source_input = next(
             (
                 item
@@ -189,9 +190,9 @@ class ApplianceInputBinarySensor(BinarySensorEntity):
 
     @property
     def available(self) -> bool:
-        """Return whether the source has a valid binary state."""
+        """Return whether the source is available."""
         state = self.hass.states.get(self._source_entity_id)
-        return state is not None and state.state in ("on", "off")
+        return state is not None and state.state != "unavailable"
 
     @property
     def extra_state_attributes(self) -> dict[str, str]:

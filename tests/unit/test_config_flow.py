@@ -179,6 +179,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         }
         expected_input_wrappers = {
             "air_conditioner_climate": {CONF_RUNNING_ENTITY},
+            "air_conditioner_contact": {CONF_RUNNING_ENTITY},
             "air_conditioner_power": {CONF_RUNNING_ENTITY},
             "mailbox_motion": {CONF_MAIL_MOTION_ENTITY},
         }

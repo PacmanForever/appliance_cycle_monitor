@@ -623,7 +623,7 @@ async def test_removing_door_sensor_clears_restored_pending_state(hass, config):
 
 
 @pytest.mark.asyncio
-async def test_power_entity_is_available_before_first_valid_reading(hass, config):
+async def test_power_entity_is_unavailable_without_a_source(hass, config):
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     runtime = ApplianceRuntime(hass, entry, config)
@@ -638,13 +638,13 @@ async def test_power_entity_is_available_before_first_valid_reading(hass, config
         SensorStateClass.MEASUREMENT,
     )
 
-    assert power.available
+    assert not power.available
     assert power.native_value is None
     await runtime.async_unload()
 
 
 @pytest.mark.asyncio
-async def test_power_entity_keeps_last_reading_when_input_is_unavailable(
+async def test_power_entity_preserves_last_reading_internally_during_outage(
     hass, config
 ):
     hass.states.async_set(
@@ -672,8 +672,9 @@ async def test_power_entity_keeps_last_reading_when_input_is_unavailable(
 
     assert not runtime.power_available
     assert runtime.detector.power_w is None
-    assert power.available
-    assert power.native_value == 0
+    assert not power.available
+    assert power.native_value is None
+    assert runtime.display_power_w == 0
 
     restored_runtime = ApplianceRuntime(hass, entry, config)
     restored_runtime._restore(runtime._export_state())
@@ -689,7 +690,7 @@ async def test_power_entity_keeps_last_reading_when_input_is_unavailable(
 
 
 @pytest.mark.asyncio
-async def test_power_entity_restores_last_reading_after_reload_during_outage(
+async def test_power_entity_stays_unavailable_after_reload_during_outage(
     hass, config, enable_custom_integrations
 ):
     hass.states.async_set(
@@ -707,14 +708,19 @@ async def test_power_entity_restores_last_reading_after_reload_during_outage(
 
     hass.states.async_set(config[CONF_POWER_ENTITY], "unavailable")
     await hass.async_block_till_done()
-    assert hass.states.get(power_entity_id).state == "42.0"
+    assert hass.states.get(power_entity_id).state == "unavailable"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert await hass.config_entries.async_setup(entry.entry_id)
 
     power_state = hass.states.get(power_entity_id)
-    assert power_state.state == "42.0"
-    assert power_state.state not in ("unknown", "unavailable")
+    assert power_state.state == "unavailable"
+    assert entry.runtime_data.display_power_w == 42
+    hass.states.async_set(
+        config[CONF_POWER_ENTITY], "11", {ATTR_UNIT_OF_MEASUREMENT: "W"}
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(power_entity_id).state == "11.0"
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -970,13 +976,21 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "on")
     await hass.async_block_till_done()
     assert entry.runtime_data.detector.is_running
+    registry = er.async_get(hass)
+    running_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
+    )
+    wrapper_entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_input_running"
+    )
+    assert hass.states.get(running_entity_id).state == "on"
+    assert hass.states.get(wrapper_entity_id).state == "on"
     current_time[0] += timedelta(seconds=12)
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
     await hass.async_block_till_done()
     assert not entry.runtime_data.detector.is_running
     assert entry.runtime_data.detector.last_cycle_duration == timedelta(seconds=12)
 
-    registry = er.async_get(hass)
     unique_ids = {
         entity.unique_id
         for entity in registry.entities.values()
@@ -985,19 +999,26 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     assert unique_ids == {
         f"{entry.entry_id}_last_cycle_duration",
         f"{entry.entry_id}_running",
+        f"{entry.entry_id}_input_running",
     }
-    running_entity_id = registry.async_get_entity_id(
-        "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
-    )
     running_state = hass.states.get(running_entity_id)
+    assert running_state.state == "off"
+    assert hass.states.get(wrapper_entity_id).state == "off"
     assert running_state.attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
+    assert running_state.attributes["device_class"] == "running"
+    assert registry.async_get(running_entity_id).translation_key == "running"
+    assert registry.async_get(wrapper_entity_id).translation_key == "input_running"
+    assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
+    assert hass.states.get(wrapper_entity_id).attributes["device_class"] == "opening"
     device_id = _async_appliance_device_id(hass, entry)
     assert device_id is not None
     assert registry.async_get(running_entity_id).device_id == device_id
+    assert registry.async_get(wrapper_entity_id).device_id == device_id
 
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "unavailable")
     await hass.async_block_till_done()
     assert hass.states.get(running_entity_id).state == "unavailable"
+    assert hass.states.get(wrapper_entity_id).state == "unavailable"
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -1052,6 +1073,21 @@ async def test_unrepresented_binary_inputs_get_a_single_source_wrapper(
     assert hass.states.get(wrapper_entity_id).state == "off"
     assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == source_entity
 
+    hass.states.async_set(source_entity, "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(wrapper_entity_id).state == "on"
+    if appliance_type == "air_conditioner_power":
+        running_entity_id = registry.async_get_entity_id(
+            "binary_sensor", DOMAIN, f"{entry.entry_id}_running"
+        )
+        assert hass.states.get(running_entity_id).state == "off"
+
+    hass.states.async_set(source_entity, "off")
+    await hass.async_block_till_done()
+    assert hass.states.get(wrapper_entity_id).state == "off"
+    hass.states.async_set(source_entity, "unavailable")
+    await hass.async_block_till_done()
+    assert hass.states.get(wrapper_entity_id).state == "unavailable"
     hass.states.async_set(source_entity, "on")
     await hass.async_block_till_done()
     assert hass.states.get(wrapper_entity_id).state == "on"
@@ -1115,6 +1151,12 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
     device_id = _async_appliance_device_id(hass, entry)
     assert device_id is not None
     integration_registry = er.async_get(hass)
+    status_key = "pending_unload" if appliance_type.startswith("mailbox_") else "running"
+    status_entity_id = integration_registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_{status_key}"
+    )
+    assert status_entity_id is not None
+    assert integration_registry.async_get(status_entity_id).device_id == device_id
 
     for input_config, source_entity_id, original_device_id in input_entities:
         source = source_registry.async_get(source_entity_id)
@@ -1139,10 +1181,50 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
             None,
         )
         assert wrapper is not None
+        assert wrapper.entity_id != status_entity_id
         assert wrapper.device_id == device_id
         wrapper_state = hass.states.get(wrapper.entity_id)
         assert wrapper_state is not None
         assert wrapper_state.attributes["source_entity"] == source_entity_id
+
+        if input_config.domain in ("binary_sensor", "switch"):
+            for value, expected in (
+                ("on", "on"),
+                ("off", "off"),
+                ("unknown", "unknown"),
+                ("unavailable", "unavailable"),
+                ("on", "on"),
+            ):
+                hass.states.async_set(source_entity_id, value)
+                await hass.async_block_till_done()
+                assert hass.states.get(wrapper.entity_id).state == expected
+        elif input_config.domain == "sensor":
+            unit = "kWh" if "energy" in input_config.device_classes else "W"
+            for value, expected in (
+                ("12", "12.0"),
+                ("unknown", "unknown"),
+                ("unavailable", "unavailable"),
+                ("7", "7.0"),
+            ):
+                hass.states.async_set(
+                    source_entity_id, value, {ATTR_UNIT_OF_MEASUREMENT: unit}
+                )
+                await hass.async_block_till_done()
+                assert hass.states.get(wrapper.entity_id).state == expected
+
+            hass.states.async_remove(source_entity_id)
+            await hass.async_block_till_done()
+            assert hass.states.get(wrapper.entity_id).state == "unavailable"
+            if input_config.domain == "sensor":
+                hass.states.async_set(
+                    source_entity_id, "3", {ATTR_UNIT_OF_MEASUREMENT: unit}
+                )
+                expected = "3.0"
+            else:
+                hass.states.async_set(source_entity_id, "off")
+                expected = "off"
+            await hass.async_block_till_done()
+            assert hass.states.get(wrapper.entity_id).state == expected
 
     assert await hass.config_entries.async_unload(entry.entry_id)
 

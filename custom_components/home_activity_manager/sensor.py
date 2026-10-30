@@ -61,7 +61,23 @@ class ApplianceSensor(SensorEntity):
     @property
     def native_value(self) -> Any:
         """Return the latest value from the appliance runtime."""
+        if self._key == "power" and not self._runtime.power_available:
+            return None
         return self._value_fn()
+
+    @property
+    def available(self) -> bool:
+        """Reflect availability of a selected source sensor."""
+        source_key = None
+        if self._key == "power":
+            source_key = CONF_POWER_ENTITY
+        elif self._key == "total_energy" and self._runtime.config.get(CONF_ENERGY_ENTITY):
+            source_key = CONF_ENERGY_ENTITY
+        if source_key is None:
+            return super().available
+        source_entity = self._runtime.config.get(source_key)
+        state = self._runtime.hass.states.get(source_entity) if source_entity else None
+        return state is not None and state.state != "unavailable"
 
     @property
     def extra_state_attributes(self) -> dict[str, str] | None:

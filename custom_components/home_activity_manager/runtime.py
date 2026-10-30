@@ -463,7 +463,6 @@ class ApplianceRuntime:
 
     def _apply_mail_sensor_state(self, state: Any, now: datetime) -> None:
         value = state.state if state is not None else None
-        previous_mail_slot_open = self.mail_slot_open
         if "mail_slot" in self.profile.detection_sources:
             self.mail_slot_open = (
                 value == "on" if value in ("on", "off") else None
@@ -476,11 +475,7 @@ class ApplianceRuntime:
                 self._handle_mail_arrival(now)
         else:
             self._mail_sensor_ready = False
-        if (
-            "mail_slot" in self.profile.detection_sources
-            and previous_mail_slot_open != self.mail_slot_open
-        ):
-            self._notify()
+        self._notify()
 
     def _handle_mail_arrival(self, now: datetime) -> None:
         self._pending_generation += 1

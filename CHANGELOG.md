@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.3 - 2026-10-30
+
+### Fixed
+
+- Keep running and pending states separate from input wrappers, including the air conditioner louver contact.
+- Update mailbox motion wrappers for every source transition and reflect unavailable or missing inputs across all profiles.
+- Avoid presenting a stale power reading as current while its source is unavailable.
+
 ## v0.9.2 - 2026-10-29
 
 ### Changed

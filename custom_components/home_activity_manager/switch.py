@@ -33,15 +33,17 @@ class AppliancePlugSwitch(SwitchEntity):
         )
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return the selected plug's current state."""
         state = self.hass.states.get(self._entity_id)
-        return state is not None and state.state == "on"
+        if state is None or state.state not in ("on", "off"):
+            return None
+        return state.state == "on"
 
     @property
     def icon(self) -> str:
         """Reflect whether the selected smart plug is on or off."""
-        if not self.available:
+        if not self.available or self.is_on is None:
             return "mdi:power-plug-off-outline"
         return "mdi:power-plug" if self.is_on else "mdi:power-plug-off"
 
@@ -49,7 +51,7 @@ class AppliancePlugSwitch(SwitchEntity):
     def available(self) -> bool:
         """Return whether the selected plug is available."""
         state = self.hass.states.get(self._entity_id)
-        return state is not None and state.state in ("on", "off")
+        return state is not None and state.state != "unavailable"
 
     @property
     def extra_state_attributes(self) -> dict[str, str]:

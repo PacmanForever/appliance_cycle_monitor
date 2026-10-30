@@ -246,7 +246,6 @@ APPLIANCE_PROFILES = {
                 device_classes=("opening",),
                 required=True,
                 detection_source="running_sensor",
-                output_entity="running",
             ),
             SensorInput(
                 form_key="air_conditioner_contact_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
