@@ -1014,6 +1014,8 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     )
     assert hass.states.get(running_entity_id).state == "on"
     assert hass.states.get(wrapper_entity_id).state == "on"
+    assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:hvac"
+    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:window-shutter-open"
     current_time[0] += timedelta(seconds=12)
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
     await hass.async_block_till_done()
@@ -1039,7 +1041,8 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     assert registry.async_get(wrapper_entity_id).translation_key == "input_running"
     assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
     assert hass.states.get(wrapper_entity_id).attributes["device_class"] == "opening"
-    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:air-conditioner"
+    assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:hvac-off"
+    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:window-shutter"
     device_id = _async_appliance_device_id(hass, entry)
     assert device_id is not None
     assert registry.async_get(running_entity_id).device_id == device_id
@@ -1330,6 +1333,21 @@ def test_laundry_door_icons_follow_appliance_type(
 
 
 @pytest.mark.parametrize(
+    "appliance_type",
+    ("air_conditioner_climate", "air_conditioner_contact", "air_conditioner_power"),
+)
+def test_air_conditioner_activity_icons_reflect_running_state(appliance_type):
+    runtime = type("Runtime", (), {"config": {CONF_APPLIANCE_TYPE: appliance_type}})()
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    is_running = False
+    sensor = ApplianceBinarySensor(runtime, entry, "running", lambda: is_running)
+
+    assert sensor.icon == "mdi:hvac-off"
+    is_running = True
+    assert sensor.icon == "mdi:hvac"
+
+
+@pytest.mark.parametrize(
     ("appliance_type", "source_key"),
     (
         ("mailbox_motion", CONF_MAIL_MOTION_ENTITY),
@@ -1346,7 +1364,8 @@ async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
         CONF_APPLIANCE_TYPE: appliance_type,
         source_key: f"binary_sensor.{appliance_type}_trigger",
         CONF_DOOR_ENTITY: f"binary_sensor.{appliance_type}_door",
-        CONF_MAIL_ARRIVAL_ACTIONS: [{"action": "test.mail_arrived"}],
+        CONF_START_ACTIONS: [{"action": "test.mail_arrived"}],
+        CONF_FINISH_ACTIONS: [{"action": "test.mail_collected"}],
         CONF_PENDING_ACTIONS: [{"action": "test.mail_reminder"}],
         CONF_PENDING_DELAY_SECONDS: 10,
         CONF_PENDING_INTERVAL_SECONDS: 20,
@@ -1358,10 +1377,10 @@ async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     runtime = ApplianceRuntime(hass, entry, config)
-    arrivals: list[str] = []
+    transitions: list[str] = []
     reminders: list[str] = []
 
-    monkeypatch.setattr(runtime, "_run_actions_in_background", arrivals.append)
+    monkeypatch.setattr(runtime, "_run_actions_in_background", transitions.append)
 
     async def record_reminder(key: str) -> None:
         reminders.append(key)
@@ -1372,8 +1391,15 @@ async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
     current_time[0] += timedelta(seconds=1)
     hass.states.async_set(config[source_key], "on")
     await hass.async_block_till_done()
-    assert arrivals == [CONF_MAIL_ARRIVAL_ACTIONS]
+    assert transitions == [CONF_START_ACTIONS]
     assert runtime.pending_unload
+    assert runtime.next_pending_reminder == current_time[0] + timedelta(seconds=10)
+
+    hass.states.async_set(config[source_key], "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(config[source_key], "on")
+    await hass.async_block_till_done()
+    assert transitions == [CONF_START_ACTIONS]
     assert runtime.next_pending_reminder == current_time[0] + timedelta(seconds=10)
 
     current_time[0] += timedelta(seconds=10)
@@ -1385,12 +1411,13 @@ async def test_mailbox_arrival_actions_pending_reminders_and_door_clear(
     await hass.async_block_till_done()
     assert not runtime.pending_unload
     assert runtime.next_pending_reminder is None
+    assert transitions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS]
 
     hass.states.async_set(config[source_key], "off")
     await hass.async_block_till_done()
     hass.states.async_set(config[source_key], "on")
     await hass.async_block_till_done()
-    assert arrivals == [CONF_MAIL_ARRIVAL_ACTIONS, CONF_MAIL_ARRIVAL_ACTIONS]
+    assert transitions == [CONF_START_ACTIONS, CONF_FINISH_ACTIONS, CONF_START_ACTIONS]
     assert runtime.pending_unload
     assert runtime.pending_reminder_count == 0
     assert runtime.next_pending_reminder is None
@@ -1415,7 +1442,7 @@ async def test_mailbox_starting_with_active_trigger_does_not_report_arrival(
         CONF_APPLIANCE_TYPE: appliance_type,
         source_key: f"binary_sensor.{appliance_type}_trigger",
         CONF_DOOR_ENTITY: f"binary_sensor.{appliance_type}_door",
-        CONF_MAIL_ARRIVAL_ACTIONS: [{"action": "test.mail_arrived"}],
+        CONF_START_ACTIONS: [{"action": "test.mail_arrived"}],
         "name": "Mailbox",
     }
     hass.states.async_set(config[source_key], "on")

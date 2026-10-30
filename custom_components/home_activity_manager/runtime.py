@@ -258,11 +258,17 @@ class ApplianceRuntime:
 
     def clear_pending_unload(self) -> None:
         """Clear the unload state and cancel all scheduled reminders."""
+        was_pending = self.pending_unload
         self._pending_generation += 1
         self.pending_unload = False
         self.pending_reminder_count = 0
         self.next_pending_reminder = None
         self._pending_action_running = False
+        if (
+            was_pending
+            and ("mail_motion" in self.profile.detection_sources or "mail_slot" in self.profile.detection_sources)
+        ):
+            self._run_actions_in_background(CONF_FINISH_ACTIONS)
         self._schedule_save()
         self._schedule_deadline()
         self._notify()
@@ -482,12 +488,14 @@ class ApplianceRuntime:
         self._notify()
 
     def _handle_mail_arrival(self, now: datetime) -> None:
+        cycle_already_active = self.pending_unload
         self._pending_generation += 1
         self.pending_unload = True
         self.pending_reminder_count = 0
         self.next_pending_reminder = None
         self._pending_action_running = False
-        self._run_actions_in_background(CONF_MAIL_ARRIVAL_ACTIONS)
+        if not cycle_already_active:
+            self._run_actions_in_background(CONF_START_ACTIONS)
         if self.door_open is False and self.config.get(CONF_PENDING_ACTIONS):
             self.next_pending_reminder = now + timedelta(
                 seconds=self._pending_delay_seconds
@@ -778,7 +786,13 @@ class ApplianceRuntime:
             await self._run_actions(key)
 
     async def _run_actions(self, key: str) -> None:
-        actions = self.config.get(key, [])
+        actions = self.config.get(key)
+        if (
+            actions is None
+            and key == CONF_START_ACTIONS
+            and ("mail_motion" in self.profile.detection_sources or "mail_slot" in self.profile.detection_sources)
+        ):
+            actions = self.config.get(CONF_MAIL_ARRIVAL_ACTIONS, [])
         if not isinstance(actions, list):
             return
         for index, action in enumerate(actions):

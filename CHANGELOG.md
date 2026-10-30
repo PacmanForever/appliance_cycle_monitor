@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.5 - 2026-10-30
+
+### Changed
+
+- Use consistent cycle-start and cycle-end action labels across appliance profiles and translations.
+- Treat mailbox activity as a cycle from detected mail arrival until collection, with separate start and finish actions; preserve existing arrival actions.
+- Use state-specific icons for air-conditioner activity and contact-based louver state.
+
 ## v0.9.4 - 2026-10-30
 
 ### Changed

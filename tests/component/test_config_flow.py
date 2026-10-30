@@ -687,7 +687,6 @@ async def test_every_profile_supports_config_entry_crud(
         "pending_unload": CONF_PENDING_ACTIONS,
         "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
         "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
-        "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
         "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
     }
     action_values = {action_keys[group]: [] for group in profile.action_groups}

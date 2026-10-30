@@ -22,8 +22,9 @@ _RUNNING_ICONS = {
     "washer": ("mdi:washing-machine", "mdi:washing-machine-off"),
     "dishwasher": ("mdi:dishwasher", "mdi:dishwasher-off"),
     "dryer": ("mdi:tumble-dryer", "mdi:tumble-dryer-off"),
-    "air_conditioner_contact": ("mdi:air-conditioner", "mdi:air-conditioner"),
-    "air_conditioner_power": ("mdi:air-conditioner", "mdi:air-conditioner"),
+    "air_conditioner_climate": ("mdi:hvac", "mdi:hvac-off"),
+    "air_conditioner_contact": ("mdi:hvac", "mdi:hvac-off"),
+    "air_conditioner_power": ("mdi:hvac", "mdi:hvac-off"),
     "refrigerator": ("mdi:fridge", "mdi:fridge-off"),
     "refrigerator_switch": ("mdi:fridge", "mdi:fridge-off"),
 }
@@ -168,6 +169,7 @@ class ApplianceInputBinarySensor(BinarySensorEntity):
         self._runtime = runtime
         self._source_entity_id = runtime.config[input_config.config_key]
         input_name = input_config.config_key.removesuffix("_entity")
+        self._input_name = input_name
         self._attr_unique_id = f"{entry.entry_id}_input_{input_name}"
         self._attr_translation_key = f"input_{input_name}"
         self._attr_device_info = DeviceInfo(
@@ -197,6 +199,15 @@ class ApplianceInputBinarySensor(BinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, str]:
         return {"source_entity": self._source_entity_id}
+
+    @property
+    def icon(self) -> str | None:
+        """Show the louver's open or closed state on contact-based AC."""
+        if self._input_name == "running":
+            if self.is_on is None:
+                return "mdi:window-shutter-alert"
+            return "mdi:window-shutter-open" if self.is_on else "mdi:window-shutter"
+        return super().icon
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to source updates through the appliance runtime."""

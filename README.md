@@ -30,14 +30,14 @@ Home Activity Manager brings compatible Home Assistant entities together under a
 	- **Power option:** detect activity from power readings and configurable thresholds.
 	- The contact/opening sensor is required in contact mode and is not offered in climate or power mode. Other auxiliary sensors and smart-plug controls are available according to each mode. Only the selected activity source determines running state.
 - **Refrigerator**
-	- **Power option:** requires a power sensor and door contact. Start/finish actions follow compressor activity; the door-open alarm is configurable. A controllable smart plug is optional and does not trigger an off alarm.
-	- **Smart-switch option:** requires a smart switch and separate door contact. Start/finish actions follow the switch turning on/off; optional power and energy sensors do not change activity. The door-open alarm is configurable; the switch does not trigger an off alarm.
+	- **Power option:** requires a power sensor and door contact. Cycle-start/end actions follow compressor activity; the door-open alarm is configurable. A controllable smart plug is optional and does not trigger an off alarm.
+	- **Smart-switch option:** requires a smart switch and separate door contact. Cycle-start/end actions follow the switch state; optional power and energy sensors do not change activity. The door-open alarm is configurable; the switch does not trigger an off alarm.
 - **Mailbox**
 	- **Interior-motion option:** detect incoming mail with a motion sensor inside the mailbox.
 	- **Mail-slot option:** detect incoming mail with a contact on the letter flap and expose its open/closed state as **Mail slot**.
-	- Both options track pending collection, support arrival actions and reminders, and use a separate main-door contact to clear pending status.
+	- Both options track the mailbox cycle from detected arrival until collection. Cycle-start actions run on arrival; cycle-end actions run when the main door opens or pending collection is cleared. Reminders remain separate, and both options use a separate main-door contact.
 - **Across all profiles**
-	- Configure Home Assistant actions per device and restore cycle, reminder, and alarm state after Home Assistant restarts.
+	- Configure consistent actions when a cycle starts and ends, plus any profile-specific reminders or alarms; restore cycle, reminder, and alarm state after Home Assistant restarts.
 	- See running state and last-active duration for cycle-based profiles; estimated remaining time is limited to laundry profiles.
 	- Monitor power and energy independently of activity detection for profiles with a selected power sensor. Use a cumulative energy sensor's total or calculate energy from power.
 	- Get a Repairs issue when a configured input is missing or unavailable; the issue clears when the input recovers.
@@ -72,7 +72,7 @@ Each configured device has a separate config entry. Its general type and activit
 
 Editing shows the fixed type and mode alongside the name, followed by sensors, parameters and actions. The activity source can be replaced with a compatible entity; a climate source must be replaced rather than cleared. A running cycle retains its start time after replacement unless the new source confirms it has stopped. An unavailable source does not cause a transition.
 
-Each device-type-and-mode profile uses its own sensor, parameter and action steps, field keys and labels. Optional sensor and action fields are marked explicitly in the selected profile's form.
+Each device-type-and-mode profile uses its own sensor, parameter and action fields. Cycle-start and cycle-end actions use the same labels across profiles; optional fields are marked explicitly in the selected profile's form.
 
 For profiles with a power sensor, a cumulative energy sensor can be selected independently of the activity source. Its total is displayed in kWh without resetting it. Leave it empty to calculate a persistent total from power readings. The calculated total is maintained separately, so switching energy sources can change the displayed total; an unavailable external sensor does not fall back to the calculated total.
 
@@ -80,7 +80,7 @@ Power-cycle defaults are 4 W for 15 seconds to start and 1 W for 60 seconds to f
 
 ## Entities and automations
 
-Outputs depend on the selected profile and configured inputs. A selected power sensor provides a power entity; an energy sensor or power sensor provides an energy entity. Cycle-based profiles provide activity state and last-activity duration; estimated remaining time is limited to laundry profiles. Both refrigerator modes expose activity and a door-open alarm; neither has a compressor-inactivity or plug-off alarm. Mailboxes expose their main-door and pending-collection states, plus a button to clear pending status. An arrival sensor detects mail and runs its configured actions; opening the main door clears pending status and cancels reminders. A selected smart plug is exposed as a switch on the managed device.
+Outputs depend on the selected profile and configured inputs. A selected power sensor provides a power entity; an energy sensor or power sensor provides an energy entity. Cycle-based profiles provide activity state and last-activity duration; estimated remaining time is limited to laundry profiles. Both refrigerator modes expose activity and a door-open alarm; neither has a compressor-inactivity or plug-off alarm. Mailboxes expose their main-door and pending-collection states, plus a button to clear pending status. Detecting mail starts the mailbox cycle and runs its start actions; opening the main door or pressing the clear button ends the cycle, runs its end actions, and cancels reminders. A selected smart plug is exposed as a switch on the managed device.
 
 Configured inputs are represented on the managed device by integration wrappers. An output that directly mirrors an input can serve as its wrapper, but the derived running and pending-collection states are separate from all input wrappers. Mailbox opening sensors also have distinct input wrappers alongside the existing main-door and mail-slot state entities. In contact mode, the air conditioner's contact/opening sensor has its own wrapper alongside the running sensor, even when it determines activity. The only exception is the air conditioner's original climate entity, which is associated directly with the managed device so its controls are preserved.
 

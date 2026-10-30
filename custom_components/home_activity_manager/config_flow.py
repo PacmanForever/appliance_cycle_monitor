@@ -379,7 +379,14 @@ def _action_schema(
         if group == "pending_unload" and not values.get(CONF_DOOR_ENTITY):
             continue
         key = action_keys[group]
-        schema[vol.Optional(key, default=values.get(key, []))] = (
+        default = values.get(key, [])
+        if (
+            group == "cycle_start"
+            and key not in values
+            and any(source in profile.detection_sources for source in ("mail_motion", "mail_slot"))
+        ):
+            default = values.get(CONF_MAIL_ARRIVAL_ACTIONS, [])
+        schema[vol.Optional(key, default=default)] = (
             selector.ActionSelector()
         )
     return vol.Schema(schema)

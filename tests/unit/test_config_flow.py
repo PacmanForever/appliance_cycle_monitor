@@ -180,7 +180,6 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "door_open_alarm": CONF_DOOR_OPEN_ACTIONS,
             "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
             "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
-            "mail_arrival": CONF_MAIL_ARRIVAL_ACTIONS,
         }
         expected_input_wrappers = {
             "air_conditioner_contact": {CONF_RUNNING_ENTITY},
@@ -513,6 +512,27 @@ class ConfigFlowSchemaTests(unittest.TestCase):
         self.assertEqual(values[CONF_PENDING_INTERVAL_SECONDS], 900)
         self.assertEqual(values[CONF_PENDING_REPEATS], 3)
 
+    def test_cycle_action_labels_are_consistent_across_profiles(self) -> None:
+        root = Path(__file__).parents[2] / "custom_components" / "home_activity_manager"
+        paths = (
+            root / "strings.json",
+            root / "translations" / "en.json",
+            root / "translations" / "es.json",
+            root / "translations" / "ca.json",
+        )
+        for path in paths:
+            translation = json.loads(path.read_text(encoding="utf-8"))
+            for flow in ("config", "options"):
+                for group, key in (
+                    ("cycle_start", "start_actions"),
+                    ("cycle_finish", "finish_actions"),
+                ):
+                    labels = {
+                        translation[flow]["step"][f"actions_{profile_name}"]["data"][key]
+                        for profile_name, profile in APPLIANCE_PROFILES.items()
+                        if group in profile.action_groups
+                    }
+                    self.assertEqual(len(labels), 1, (path, flow, group))
 
     def test_all_translation_files_have_matching_keys(self) -> None:
         root = Path(__file__).parents[2] / "custom_components" / "home_activity_manager"
@@ -591,6 +611,12 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                     }
                     for step, schema in step_schemas.items():
                         labels = translation[flow]["step"][step]["data"]
+                        descriptions = translation[flow]["step"][step].get(
+                            "data_description", {}
+                        )
+                        self.assertTrue(
+                            all(";" not in description for description in descriptions.values())
+                        )
                         for marker in schema.schema:
                             key = marker.schema
                             self.assertIn(key, labels)
