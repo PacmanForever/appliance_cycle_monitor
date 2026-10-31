@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -279,10 +280,28 @@ async def async_setup_entry(
                 BinarySensorDeviceClass.DOOR,
             )
         )
-    entities.extend(
-        ApplianceInputBinarySensor(runtime, entry, input_config)
+    input_wrappers = tuple(
+        input_config
         for input_config in runtime.profile.inputs_requiring_wrapper
         if input_config.domain == "binary_sensor"
         and runtime.config.get(input_config.config_key)
+    )
+    registry = er.async_get(hass)
+    expected_unique_ids = {
+        f"{entry.entry_id}_input_{input_config.config_key.removesuffix('_entity')}"
+        for input_config in input_wrappers
+    }
+    input_prefix = f"{entry.entry_id}_input_"
+    for registered_entity in tuple(registry.entities.values()):
+        if (
+            registered_entity.config_entry_id == entry.entry_id
+            and registered_entity.unique_id.startswith(input_prefix)
+            and registered_entity.unique_id not in expected_unique_ids
+        ):
+            registry.async_remove(registered_entity.entity_id)
+
+    entities.extend(
+        ApplianceInputBinarySensor(runtime, entry, input_config)
+        for input_config in input_wrappers
     )
     async_add_entities(entities)

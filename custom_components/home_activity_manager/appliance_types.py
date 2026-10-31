@@ -25,7 +25,7 @@ class SensorInput:
     required: bool = False
     detection_source: str | None = None
     output_entity: str | None = None
-    force_wrapper: bool = False
+    create_wrapper: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +46,8 @@ class ApplianceTypeProfile:
             item
             for item in self.sensor_inputs
             if item.domain != "climate"
-            and (item.output_entity is None or item.force_wrapper)
+            and item.create_wrapper
+            and item.output_entity is None
         )
 
     @property
@@ -242,6 +243,7 @@ APPLIANCE_PROFILES = {
                 device_classes=("opening",),
                 required=True,
                 detection_source="running_sensor",
+                output_entity="running",
             ),
             SensorInput(
                 form_key="air_conditioner_contact_plug_entity", config_key=CONF_PLUG_ENTITY, domain="switch",
@@ -398,6 +400,7 @@ APPLIANCE_PROFILES = {
                 device_classes=("motion",),
                 required=True,
                 detection_source="mail_motion",
+                create_wrapper=False,
             ),
             SensorInput(
                 form_key="mailbox_motion_door_entity",
@@ -406,7 +409,6 @@ APPLIANCE_PROFILES = {
                 device_classes=("door",),
                 required=True,
                 output_entity="door",
-                force_wrapper=True,
             ),
         ),
         parameter_groups=("pending_unload",),
@@ -426,7 +428,6 @@ APPLIANCE_PROFILES = {
                 required=True,
                 detection_source="mail_slot",
                 output_entity="mail_slot",
-                force_wrapper=True,
             ),
             SensorInput(
                 form_key="mailbox_slot_door_entity",
@@ -435,7 +436,6 @@ APPLIANCE_PROFILES = {
                 device_classes=("door",),
                 required=True,
                 output_entity="door",
-                force_wrapper=True,
             ),
         ),
         parameter_groups=("pending_unload",),

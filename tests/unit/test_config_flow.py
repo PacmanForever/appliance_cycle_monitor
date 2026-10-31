@@ -183,11 +183,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
             "compressor_inactive_alarm": CONF_COMPRESSOR_INACTIVE_ACTIONS,
             "plug_off_alarm": CONF_PLUG_OFF_ACTIONS,
         }
-        expected_input_wrappers = {
-            "air_conditioner_contact": {CONF_RUNNING_ENTITY},
-            "mailbox_motion": {CONF_MAIL_MOTION_ENTITY, CONF_DOOR_ENTITY},
-            "mailbox_slot": {CONF_MAIL_SLOT_ENTITY, CONF_DOOR_ENTITY},
-        }
+        expected_input_wrappers = {}
         for appliance_type, profile in APPLIANCE_PROFILES.items():
             with self.subTest(appliance_type=appliance_type):
                 self.assertEqual(
@@ -203,6 +199,7 @@ class ConfigFlowSchemaTests(unittest.TestCase):
                     else:
                         self.assertTrue(
                             input_config.output_entity
+                            or not input_config.create_wrapper
                             or input_config in profile.inputs_requiring_wrapper
                         )
                 self.assertTrue(

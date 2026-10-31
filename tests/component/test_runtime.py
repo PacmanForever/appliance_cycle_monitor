@@ -855,11 +855,20 @@ async def test_climate_appliance_exposes_optional_electrical_entities(
     plug_id = registry.async_get_entity_id("switch", DOMAIN, f"{entry.entry_id}_plug")
     assert energy_id is not None
     assert float(hass.states.get(energy_id).state) == pytest.approx(2.5)
-    assert registry.async_get_entity_id(
+    reset_button_id = registry.async_get_entity_id(
         "button", DOMAIN, f"{entry.entry_id}_energy_reset"
-    ) is None
+    )
+    assert (reset_button_id is not None) == with_power
     assert (power_id is not None) == with_power
     assert plug_id is not None
+    if reset_button_id is not None:
+        entry.runtime_data.energy_kwh = 1.25
+        await hass.services.async_call(
+            "button", "press", {"entity_id": reset_button_id}, blocking=True
+        )
+        assert entry.runtime_data.energy_kwh == 0
+        assert hass.states.get(config[CONF_ENERGY_ENTITY]).state == "2500"
+        assert float(hass.states.get(energy_id).state) == pytest.approx(2.5)
     hass.states.async_set(config[CONF_ENERGY_ENTITY], "3000", {ATTR_UNIT_OF_MEASUREMENT: "Wh"})
     await hass.async_block_till_done()
     assert float(hass.states.get(energy_id).state) == pytest.approx(3.0)
@@ -992,27 +1001,33 @@ async def test_optional_plug_and_pending_button_controls(
 
 
 @pytest.mark.parametrize(
-    "appliance_type",
+    ("appliance_type", "with_external_energy"),
     (
-        "air_conditioner_climate",
-        "air_conditioner_contact",
-        "air_conditioner_power",
-        "washer",
-        "dishwasher",
-        "dryer",
-        "refrigerator",
-        "refrigerator_switch",
+        (appliance_type, with_external_energy)
+        for appliance_type in (
+            "air_conditioner_climate",
+            "air_conditioner_contact",
+            "air_conditioner_power",
+            "washer",
+            "dishwasher",
+            "dryer",
+            "refrigerator",
+            "refrigerator_switch",
+        )
+        for with_external_energy in (False, True)
     ),
 )
 @pytest.mark.asyncio
 async def test_local_energy_reset_button_is_available_for_power_profiles(
-    hass, appliance_type
+    hass, appliance_type, with_external_energy
 ):
     config = {
         CONF_APPLIANCE_TYPE: appliance_type,
         CONF_POWER_ENTITY: "sensor.appliance_power",
         "name": "Appliance",
     }
+    if with_external_energy:
+        config[CONF_ENERGY_ENTITY] = "sensor.appliance_energy"
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
     entry.runtime_data = ApplianceRuntime(hass, entry, config)
@@ -1050,7 +1065,7 @@ async def test_obsolete_optional_buttons_are_removed_from_entity_registry(
     if unique_id == "energy_reset":
         config.update(
             {
-                CONF_POWER_ENTITY: "sensor.appliance_power",
+                CONF_POWER_ENTITY: None,
                 CONF_ENERGY_ENTITY: "sensor.appliance_energy",
             }
         )
@@ -1137,9 +1152,8 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
         "binary_sensor", DOMAIN, f"{entry.entry_id}_input_running"
     )
     assert hass.states.get(running_entity_id).state == "on"
-    assert hass.states.get(wrapper_entity_id).state == "on"
+    assert wrapper_entity_id is None
     assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:hvac"
-    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:door-sliding-open"
     current_time[0] += timedelta(seconds=12)
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "off")
     await hass.async_block_till_done()
@@ -1161,90 +1175,93 @@ async def test_contact_profile_tracks_louver_sensor_without_power_entities(
     assert unique_ids == {
         f"{entry.entry_id}_last_cycle_duration",
         f"{entry.entry_id}_running",
-        f"{entry.entry_id}_input_running",
     }
     running_state = hass.states.get(running_entity_id)
     assert running_state.state == "off"
-    assert hass.states.get(wrapper_entity_id).state == "off"
     assert running_state.attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
     assert running_state.attributes["device_class"] == "running"
     assert registry.async_get(running_entity_id).translation_key == "running"
-    assert registry.async_get(wrapper_entity_id).translation_key == "input_running"
-    assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == config[CONF_RUNNING_ENTITY]
-    assert hass.states.get(wrapper_entity_id).attributes["device_class"] == "opening"
     assert hass.states.get(running_entity_id).attributes["icon"] == "mdi:hvac-off"
-    assert hass.states.get(wrapper_entity_id).attributes["icon"] == "mdi:door-sliding"
     device_id = _async_appliance_device_id(hass, entry)
     assert device_id is not None
     assert registry.async_get(running_entity_id).device_id == device_id
-    assert registry.async_get(wrapper_entity_id).device_id == device_id
 
     hass.states.async_set(config[CONF_RUNNING_ENTITY], "unavailable")
     await hass.async_block_till_done()
     assert hass.states.get(running_entity_id).state == "unavailable"
-    assert hass.states.get(wrapper_entity_id).state == "unavailable"
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.parametrize(
-    ("appliance_type", "source_key", "source_entity", "extra_input", "wrapper_key"),
+    ("appliance_type", "inputs", "hidden_keys", "visible_keys"),
     (
         (
+            "air_conditioner_contact",
+            {CONF_RUNNING_ENTITY: "binary_sensor.ac_louver"},
+            ("input_running",),
+            ("running",),
+        ),
+        (
             "mailbox_motion",
-            CONF_MAIL_MOTION_ENTITY,
-            "binary_sensor.mailbox_motion",
-            {CONF_DOOR_ENTITY: "binary_sensor.mailbox_door"},
-            "mail_motion",
+            {
+                CONF_MAIL_MOTION_ENTITY: "binary_sensor.mailbox_motion",
+                CONF_DOOR_ENTITY: "binary_sensor.mailbox_door",
+            },
+            ("input_mail_motion", "input_door"),
+            ("door", "pending_unload"),
+        ),
+        (
+            "mailbox_slot",
+            {
+                CONF_MAIL_SLOT_ENTITY: "binary_sensor.mail_slot",
+                CONF_DOOR_ENTITY: "binary_sensor.mailbox_door",
+            },
+            ("input_mail_slot", "input_door"),
+            ("door", "mail_slot", "pending_unload"),
         ),
     ),
 )
 @pytest.mark.asyncio
-async def test_unrepresented_binary_inputs_get_a_single_source_wrapper(
-    hass, appliance_type, source_key, source_entity, extra_input, wrapper_key,
+async def test_hidden_input_wrappers_are_removed_and_outputs_remain(
+    hass, appliance_type, inputs, hidden_keys, visible_keys,
     enable_custom_integrations,
 ):
     config = {
         CONF_APPLIANCE_TYPE: appliance_type,
-        source_key: source_entity,
+        **inputs,
         "name": "Test appliance",
-        **extra_input,
     }
-    hass.states.async_set(source_entity, "off")
-    if CONF_DOOR_ENTITY in extra_input:
-        hass.states.async_set(extra_input[CONF_DOOR_ENTITY], "off")
+    for source_entity in inputs.values():
+        hass.states.async_set(source_entity, "off")
     entry = MockConfigEntry(domain=DOMAIN, data=config)
     entry.add_to_hass(hass)
 
+    registry = er.async_get(hass)
+    stale_entities = [
+        registry.async_get_or_create(
+            "binary_sensor",
+            DOMAIN,
+            f"{entry.entry_id}_{key}",
+            config_entry=entry,
+        )
+        for key in hidden_keys
+    ]
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    registry = er.async_get(hass)
-    wrapper_entity_id = registry.async_get_entity_id(
-        "binary_sensor", DOMAIN, f"{entry.entry_id}_input_{wrapper_key}"
+    assert all(registry.async_get(entity.entity_id) is None for entity in stale_entities)
+    assert all(
+        registry.async_get_entity_id("binary_sensor", DOMAIN, f"{entry.entry_id}_{key}")
+        is not None
+        for key in visible_keys
     )
-    assert wrapper_entity_id is not None
-    assert hass.states.get(wrapper_entity_id).state == "off"
-    assert hass.states.get(wrapper_entity_id).attributes["source_entity"] == source_entity
-
-    hass.states.async_set(source_entity, "on")
-    await hass.async_block_till_done()
-    assert hass.states.get(wrapper_entity_id).state == "on"
-    hass.states.async_set(source_entity, "off")
-    await hass.async_block_till_done()
-    assert hass.states.get(wrapper_entity_id).state == "off"
-    hass.states.async_set(source_entity, "unavailable")
-    await hass.async_block_till_done()
-    assert hass.states.get(wrapper_entity_id).state == "unavailable"
-    hass.states.async_set(source_entity, "on")
-    await hass.async_block_till_done()
-    assert hass.states.get(wrapper_entity_id).state == "on"
 
     await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.parametrize("appliance_type", tuple(APPLIANCE_PROFILES))
 @pytest.mark.asyncio
-async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
+async def test_all_profile_inputs_are_represented_without_reassigning_sources(
     hass, appliance_type, enable_custom_integrations
 ):
     profile = APPLIANCE_PROFILES[appliance_type]
@@ -1313,6 +1330,15 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
             continue
 
         assert source.device_id == original_device_id
+        if input_config.output_entity is None and input_config not in profile.inputs_requiring_wrapper:
+            input_wrapper_id = integration_registry.async_get_entity_id(
+                "binary_sensor",
+                DOMAIN,
+                f"{entry.entry_id}_input_{input_config.config_key.removesuffix('_entity')}",
+            )
+            assert input_wrapper_id is None
+            continue
+
         unique_id = (
             f"{entry.entry_id}_input_{input_config.config_key.removesuffix('_entity')}"
             if input_config in profile.inputs_requiring_wrapper
@@ -1328,38 +1354,18 @@ async def test_all_profile_inputs_are_wrapped_without_reassigning_sources(
             None,
         )
         assert wrapper is not None
-        assert wrapper.entity_id != status_entity_id
+        if input_config.output_entity == status_key:
+            assert wrapper.entity_id == status_entity_id
+        else:
+            assert wrapper.entity_id != status_entity_id
         assert wrapper.device_id == device_id
         wrapper_state = hass.states.get(wrapper.entity_id)
         assert wrapper_state is not None
         assert wrapper_state.attributes["source_entity"] == source_entity_id
         input_name = input_config.config_key.removesuffix("_entity")
-        if input_config in profile.inputs_requiring_wrapper and input_name == "door":
-            assert wrapper_state.attributes["icon"] == "mdi:door-closed"
-            hass.states.async_set(source_entity_id, "on")
-            await hass.async_block_till_done()
-            assert hass.states.get(wrapper.entity_id).attributes["icon"] == "mdi:door-open"
-            hass.states.async_set(source_entity_id, "off")
-            await hass.async_block_till_done()
-        elif input_config in profile.inputs_requiring_wrapper and input_name == "mail_slot":
-            assert wrapper_state.attributes["icon"] == "mdi:mailbox-up"
-            hass.states.async_set(source_entity_id, "on")
-            await hass.async_block_till_done()
-            assert hass.states.get(wrapper.entity_id).attributes["icon"] == "mdi:mailbox-open-up"
-            hass.states.async_set(source_entity_id, "off")
-            await hass.async_block_till_done()
-        if input_config.force_wrapper:
-            output_entity_id = integration_registry.async_get_entity_id(
-                "binary_sensor", DOMAIN, f"{entry.entry_id}_{input_config.output_entity}"
-            )
-            assert output_entity_id is not None
-            assert output_entity_id != wrapper.entity_id
-            assert (
-                hass.states.get(output_entity_id).attributes["source_entity"]
-                == source_entity_id
-            )
-
         if input_config.domain in ("binary_sensor", "switch"):
+            if input_config.output_entity == "running":
+                continue
             for value, expected in (
                 ("on", "on"),
                 ("off", "off"),

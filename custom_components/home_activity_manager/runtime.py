@@ -315,7 +315,7 @@ class ApplianceRuntime:
 
     def reset_local_energy(self) -> None:
         """Reset the locally calculated total without changing an external source."""
-        if not self.config.get(CONF_POWER_ENTITY) or self.config.get(CONF_ENERGY_ENTITY):
+        if not self.config.get(CONF_POWER_ENTITY):
             return
         self._integrate_energy_to(dt_util.utcnow())
         self.energy_kwh = 0.0

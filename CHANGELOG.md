@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.10 - 2026-10-31
+
+### Changed
+
+- Keep the local energy reset button available when an external energy sensor is selected; reset only the locally calculated total.
+- Hide standalone input wrappers for air-conditioner louver and mailbox sensors while retaining the profile's derived outputs.
+
+### Fixed
+
+- Remove obsolete air-conditioner and mailbox input wrappers from the entity registry.
+
 ## v0.9.9 - 2026-10-31
 
 ### Changed

@@ -71,9 +71,7 @@ async def async_setup_entry(
     if has_pending_button:
         buttons.append(ClearPendingButton(runtime, entry))
 
-    has_reset_button = bool(runtime.config.get(CONF_POWER_ENTITY)) and not bool(
-        runtime.config.get(CONF_ENERGY_ENTITY)
-    )
+    has_reset_button = bool(runtime.config.get(CONF_POWER_ENTITY))
     if has_reset_button:
         buttons.append(ResetEnergyButton(runtime, entry))
 
