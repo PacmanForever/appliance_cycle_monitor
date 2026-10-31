@@ -163,7 +163,7 @@
     },
     "button": {
       "clear_pending": {"name": "Clear pending-to-unload status"},
-      "reset_energy": {"name": "Reset locally calculated energy"}
+      "reset_energy": {"name": "Reset total energy"}
     }
   }
 }

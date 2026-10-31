@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.9 - 2026-10-31
+
+### Changed
+
+- Shorten the energy reset button label across all supported languages.
+
+### Fixed
+
+- Remove stale pending-unload and energy-reset buttons when their configuration no longer supports them.
+
 ## v0.9.8 - 2026-10-30
 
 ### Added

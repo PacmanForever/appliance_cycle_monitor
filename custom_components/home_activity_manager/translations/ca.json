@@ -163,7 +163,7 @@
     },
     "button": {
       "clear_pending": {"name": "Neteja l’estat «Pendent de buidar»"},
-      "reset_energy": {"name": "Reinicia l’energia calculada localment"}
+      "reset_energy": {"name": "Reinicia l’energia total"}
     }
   }
 }

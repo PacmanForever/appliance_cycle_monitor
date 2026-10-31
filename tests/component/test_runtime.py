@@ -1024,6 +1024,55 @@ async def test_local_energy_reset_button_is_available_for_power_profiles(
     assert isinstance(buttons[0], ResetEnergyButton)
 
 
+@pytest.mark.parametrize(
+    ("appliance_type", "unique_id"),
+    (
+        ("washer", "clear_pending"),
+        ("dishwasher", "clear_pending"),
+        ("dryer", "clear_pending"),
+        ("mailbox_motion", "clear_pending"),
+        ("mailbox_slot", "clear_pending"),
+        ("air_conditioner_climate", "energy_reset"),
+        ("air_conditioner_contact", "energy_reset"),
+        ("air_conditioner_power", "energy_reset"),
+        ("washer", "energy_reset"),
+        ("dishwasher", "energy_reset"),
+        ("dryer", "energy_reset"),
+        ("refrigerator", "energy_reset"),
+        ("refrigerator_switch", "energy_reset"),
+    ),
+)
+@pytest.mark.asyncio
+async def test_obsolete_optional_buttons_are_removed_from_entity_registry(
+    hass, appliance_type, unique_id
+):
+    config = {CONF_APPLIANCE_TYPE: appliance_type, "name": "Appliance"}
+    if unique_id == "energy_reset":
+        config.update(
+            {
+                CONF_POWER_ENTITY: "sensor.appliance_power",
+                CONF_ENERGY_ENTITY: "sensor.appliance_energy",
+            }
+        )
+    entry = MockConfigEntry(domain=DOMAIN, data=config)
+    entry.add_to_hass(hass)
+    runtime = ApplianceRuntime(hass, entry, config)
+    entry.runtime_data = runtime
+    registry = er.async_get(hass)
+    stale_entity = registry.async_get_or_create(
+        "button",
+        DOMAIN,
+        f"{entry.entry_id}_{unique_id}",
+        config_entry=entry,
+    )
+
+    buttons = []
+    await setup_button_entry(hass, entry, buttons.extend)
+
+    assert buttons == []
+    assert registry.async_get(stale_entity.entity_id) is None
+
+
 @pytest.mark.asyncio
 async def test_restored_finish_deadline_waits_for_power_to_return(
     hass, config, monkeypatch

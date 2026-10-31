@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -63,14 +64,31 @@ async def async_setup_entry(
     """Set up the manual-clear button when a door sensor is configured."""
     runtime: ApplianceRuntime = entry.runtime_data
     buttons: list[ButtonEntity] = []
-    if (
+    has_pending_button = (
         "clear_pending" in runtime.profile.output_entities
         and runtime.config.get(CONF_DOOR_ENTITY)
-    ):
+    )
+    if has_pending_button:
         buttons.append(ClearPendingButton(runtime, entry))
-    if runtime.config.get(CONF_POWER_ENTITY) and not runtime.config.get(
-        CONF_ENERGY_ENTITY
-    ):
+
+    has_reset_button = bool(runtime.config.get(CONF_POWER_ENTITY)) and not bool(
+        runtime.config.get(CONF_ENERGY_ENTITY)
+    )
+    if has_reset_button:
         buttons.append(ResetEnergyButton(runtime, entry))
+
+    registry = er.async_get(hass)
+    for suffix, is_configured in (
+        ("clear_pending", has_pending_button),
+        ("energy_reset", has_reset_button),
+    ):
+        if is_configured:
+            continue
+        entity_id = registry.async_get_entity_id(
+            "button", DOMAIN, f"{entry.entry_id}_{suffix}"
+        )
+        if entity_id is not None:
+            registry.async_remove(entity_id)
+
     if buttons:
         async_add_entities(buttons)
